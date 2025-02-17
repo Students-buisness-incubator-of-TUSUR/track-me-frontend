@@ -115,7 +115,7 @@ const Login = () => {
             </div>
           </div>
 
-          <a href="#" className="forgot-password">
+          <a href="#" className="forgot-password" onClick={handleRegisterClick}>
             Забыли пароль? Восстановить?
           </a>
 

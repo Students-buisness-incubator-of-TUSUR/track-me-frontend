@@ -11,7 +11,6 @@ import CreateStream from "./accets/create-stream-page/create-stream-page.js";
 import TrackerList from "./accets/list-trackers/TrackerList.js";
 import AdminList from "./accets/list-admins/AdminList.js"
 
-
 const AdminPage = () => <h1>Страница Админа</h1>;
 const SuperAdminPage = () => <h1>Страница Суперадмина</h1>;
 

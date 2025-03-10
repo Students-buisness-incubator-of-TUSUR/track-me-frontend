@@ -20,12 +20,10 @@ export default function Stream() {
   const [searchQuery, setSearchQuery] = useState('');
   // eslint-disable-next-line
   const [filters, setFilters] = useState([]); // Состояние для фильтров
-  const [page, setpage] = useState(0); 
+  const [page, setpage] = useState(1); 
   const [selectedYears, setSelectedYears] = useState(new Set()); // Выбранные годы (Set)
-
   const [selectedMarkets, setSelectedMarkets] = useState(new Set()); // Выбранные рынки (Set)
   const [selectedTRLs, setSelectedTRLs] = useState(new Set()); // Выбранные TRL (Set)
-
   let today = new Date();
   let year = today.getFullYear();
   const backendHost = process.env.REACT_APP_BACKEND_HOST || 'http://localhost:8080';
@@ -37,6 +35,8 @@ export default function Stream() {
     setLoading(true);
     setError(null);
     console.log(page);
+
+    
     const token = localStorage.getItem("accessToken");
     if (!token) {
       setError("Ошибка: отсутствует токен авторизации. Выполните вход.");
@@ -70,25 +70,31 @@ export default function Stream() {
     fetchData(); // Первоначальный запрос без фильтров
   }, [fetchData]);
 
+
+
   const cardd = data.content.map((item, index) => ({
     id: item.id,
     title: item.name,
     content: item.description,
     startDate: item.startDate,
     endDate: item.endDate,
-    readinessLevel: item.readinessLevel
+    readinessLevel: item.readinessLevel,
   }));
 
+
+  
   const handleClick = () => {
     setIsVisible(!isVisible);
   };
 
   const handleShowMore = () => {
+    console.log(data.page.totalPages);
     setpage(page+1);
 
   };
 
   const handleShowPrevious = () => {
+    console.log(data.page.totalPages);
     setpage(page-1);
   };
 
@@ -387,32 +393,36 @@ export default function Stream() {
         )}
       </header>
       <main className="Stream-main">
+      {/* localStorage.setItem("streamName",card.title)   onClick={console.log(card.title)} */}
         {visibleCards.map(card => (
-          <div key={card.id} className="Stream-card">
-            <div className="Stream-card-pic"></div>
-            <h1 className="Stream-card-headText">{card.title}</h1>
-            <div className="Stream-card-bodyText">{card.content}</div>
-          </div>
-        ))}
+
+          <Link to="/team-cards" key={card.id} onClick={() => localStorage.setItem("streamName",card.title)} className="Stream-card">
+    <div className="Stream-card-pic">
+      {card.pic && <img src={card.pic} alt={card.title} />} {/* Отображаем картинку, если она есть */}
+    </div>            <h1 className="Stream-card-headText">{card.title} </h1>
+          </Link>
+        ))},
+
+
       </main>
       <footer className="Stream-footer">
         <div className="Stream-footer-butts">
           <div className="Stream-footer-p-butt-1">
-            {data.page.totalPages -1 <= page && (
+            {1 < page && (
               <button onClick={handleShowPrevious} className="Stream-footer-button-1"></button>
             )}
           </div>
           <div className="Stream-footer-p-butts">
-            {data.page.totalPages -1 <= page && (
+            {1 < page && (
               <button onClick={handleShowPrevious} className="Stream-footer-button-2"></button>
             )}
             <button className="Stream-footer-button-3"></button>
-            {data.page.totalPages -1 > page && (
+            {data.page.totalPages > (page + 1) && (
               <button onClick={handleShowMore} className="Stream-footer-button-4"></button>
             )}
           </div>
           <div className="Stream-footer-p-butt-5">
-            {data.page.totalPages -1 > page && (
+            {data.page.totalPages > (page + 1) && (
               <button onClick={handleShowMore} className="Stream-footer-button-5"></button>
             )}
           </div>

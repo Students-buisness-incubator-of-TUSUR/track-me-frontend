@@ -21,6 +21,7 @@ function TrackerPage() {
     const [username, setusername] = useState(null);
 
     const backendHost = (process.env.REACT_APP_CLIENT_GATEWAY_URI || 'http://localhost:8080') + '/backend';
+    const logoutHost = (process.env.REACT_APP_CLIENT_GATEWAY_URI || 'http://localhost:8080') + '/logout';
     // Состояния для отображения панели фильтров и групп чекбоксов
     const [isVisible, setIsVisible] = useState(false);
     const [showCheckboxesStream, setShowCheckboxesStream] = useState(false); // Для "Все потоки"
@@ -146,18 +147,9 @@ function TrackerPage() {
         // Загружаем карточки без фильтров при первом рендере
         fetchCards([]);
 
-        // Запрос текущего потока
-        const token = localStorage.getItem("accessToken");
-        if (!token) {
-            setError("Отсутствует токен авторизации. Пожалуйста, выполните вход.");
-            return;
-        }
-
         fetch(`${backendHost}/api/v1/streams/nti-markets`, {
             method: "GET",
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
+            credentials: "include"
         })
             .then((response) => {
                 if (!response.ok) {
@@ -294,6 +286,9 @@ function TrackerPage() {
                     </div>
 
                     <div className="Stream-buttons">
+                        <Link to={logoutHost}>
+                            <button className="Stream-butt">Выход</button>
+                        </Link>
                         <Link to="/profile" className="Stream-pic"></Link>
                     </div>
                 </div>

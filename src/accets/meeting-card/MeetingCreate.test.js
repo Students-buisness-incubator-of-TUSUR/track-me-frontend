@@ -1,311 +1,162 @@
 import React from 'react';
 import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import MeetingCreate from './MeetingCreate';
 import '@testing-library/jest-dom';
-import MeetingCreate from './MeetingCreate.js';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
 
-const mockedNavigate = jest.fn();
+// Мокируем react-router-dom
+jest.mock('react-router-dom', () => ({
+  useNavigate: jest.fn(),
+  useLocation: jest.fn(),
+}));
 
-jest.mock('react-router-dom', () => {
-  const original = jest.requireActual('react-router-dom');
-  return {
-    ...original,
-    useNavigate: () => mockedNavigate,
-    useParams: () => ({ teamId: '42' }), // Updated to match MeetingCreate.js
-    useLocation: () => ({
-      search: '?userId=testUser',
-      state: {},
-    }),
-  };
-});
+// Мокируем глобальный fetch
+global.fetch = jest.fn();
 
-beforeEach(() => {
-  mockedNavigate.mockClear();
-  jest.clearAllMocks();
-  global.fetch = jest.fn(() =>
-    Promise.resolve({
-      ok: true,
-      json: () => Promise.resolve({ content: [], totalPages: 1 }),
-    })
-  );
-});
+describe('Компонент MeetingCreate', () => {
+  const mockOnClose = jest.fn();
+  const mockNavigate = jest.fn();
+  const teamId = 'team123';
 
-describe('MeetingCreate Status Dropdown', () => {
-  // Existing tests for onKeyDown
-  test('toggles dropdown with Enter key on status-selected', async () => {
-    await act(async () => {
-      render(
-        <MemoryRouter initialEntries={['/teamcard/42?userId=testUser']}>
-          <Routes>
-            <Route path="/teamcard/:teamId" element={<MeetingCreate />} />
-          </Routes>
-        </MemoryRouter>
-      );
+  beforeEach(() => {
+    jest.clearAllMocks();
+    
+    // Мокируем useLocation и useNavigate
+    useLocation.mockReturnValue({
+      search: '?userId=testUser123',
     });
+    useNavigate.mockReturnValue(mockNavigate);
 
-    const toggle = screen.getByRole('button', { name: /Выбрать статус команды/i });
-    expect(screen.queryByText('Есть проблемы')).not.toBeInTheDocument();
+    // Устанавливаем переменную окружения, которую ожидает компонент
+    process.env.REACT_APP_BACKEND_URI = 'http://localhost:8080';
 
-    fireEvent.keyDown(toggle, { key: 'Enter' });
-    expect(await screen.findByText('Есть проблемы')).toBeInTheDocument();
-
-    fireEvent.keyDown(toggle, { key: 'Enter' });
-    await waitFor(() => {
-      expect(screen.queryByText('Есть проблемы')).not.toBeInTheDocument();
+    // Мокируем успешный запрос встреч по умолчанию
+    global.fetch.mockImplementation((url) => {
+      if (typeof url === 'string' && url.includes('api/v1/meetings')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ content: [] }),
+        });
+      }
+      return Promise.reject(new Error('Неожиданный URL'));
     });
   });
 
-  test('toggles dropdown with Space key on status-selected', async () => {
-    await act(async () => {
-      render(
-        <MemoryRouter initialEntries={['/teamcard/42?userId=testUser']}>
-          <Routes>
-            <Route path="/teamcard/:teamId" element={<MeetingCreate />} />
-          </Routes>
-        </MemoryRouter>
-      );
+  afterEach(() => {
+    delete process.env.REACT_APP_BACKEND_URI;
+  });
+
+  describe('Инициализация и загрузка встреч (строки 23-45)', () => {
+    
+    it('должен устанавливать номер встречи 1 если нет других встреч', async () => {
+      global.fetch.mockImplementation((url) => {
+        if (typeof url === 'string' && url.includes('api/v1/meetings')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ content: [] }),
+          });
+        }
+        return Promise.reject(new Error('Неожиданный URL'));
+      });
+
+      render(<MeetingCreate onClose={mockOnClose} teamId={teamId} />);
+
+      await waitFor(() => {
+        expect(screen.getByText(/Запланировать встречу #1/)).toBeInTheDocument();
+      });
     });
 
-    const toggle = screen.getByRole('button', { name: /Выбрать статус команды/i });
-    expect(screen.queryByText('Есть проблемы')).not.toBeInTheDocument();
+    it('должен обрабатывать ошибку загрузки встреч', async () => {
+      global.fetch.mockImplementation(() => 
+        Promise.reject(new Error('Ошибка загрузки'))
+      );
 
-    fireEvent.keyDown(toggle, { key: ' ' });
-    expect(await screen.findByText('Есть проблемы')).toBeInTheDocument();
+      render(<MeetingCreate onClose={mockOnClose} teamId={teamId} />);
 
-    fireEvent.keyDown(toggle, { key: ' ' });
-    await waitFor(() => {
-      expect(screen.queryByText('Есть проблемы')).not.toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByText('Не удалось загрузить список встреч')).toBeInTheDocument();
+      });
     });
   });
 
-  test('selects OK status with Enter key', async () => {
-    await act(async () => {
+  describe('Обработка клика вне попапа (строки 70-71)', () => {
+    it('должен вызывать onClose при клике вне попапа', async () => {
       render(
-        <MemoryRouter initialEntries={['/teamcard/42?userId=testUser']}>
-          <Routes>
-            <Route path="/teamcard/:teamId" element={<MeetingCreate />} />
-          </Routes>
-        </MemoryRouter>
+        <div>
+          <div data-testid="outside-element">Снаружи</div>
+          <MeetingCreate onClose={mockOnClose} teamId={teamId} />
+        </div>
       );
+
+      fireEvent.mouseDown(screen.getByTestId('outside-element'));
+      expect(mockOnClose).toHaveBeenCalled();
     });
 
-    const toggle = screen.getByRole('button', { name: /Выбрать статус команды/i });
-    fireEvent.keyDown(toggle, { key: 'Enter' });
+    it('не должен вызывать onClose при клике внутри попапа', async () => {
+      render(<MeetingCreate onClose={mockOnClose} teamId={teamId} />);
 
-    const okOption = await screen.findByRole('button', { name: /Всё ок/i });
-    fireEvent.keyDown(okOption, { key: 'Enter' });
-
-    await waitFor(() => {
-      expect(screen.getByText('Всё ок')).toBeInTheDocument();
-      expect(screen.queryByText('Есть проблемы')).not.toBeInTheDocument();
+      const createButton = await screen.findByText('Создать');
+      fireEvent.mouseDown(createButton);
+      expect(mockOnClose).not.toHaveBeenCalled();
     });
   });
 
-  test('selects OK status with Space key', async () => {
-    await act(async () => {
-      render(
-        <MemoryRouter initialEntries={['/teamcard/42?userId=testUser']}>
-          <Routes>
-            <Route path="/teamcard/:teamId" element={<MeetingCreate />} />
-          </Routes>
-        </MemoryRouter>
-      );
+  
+
+  describe('Создание встречи', () => {
+    it('должен успешно создавать встречу', async () => {
+      const mockResponse = { id: 'meeting123' };
+      
+      global.fetch.mockImplementation((url) => {
+        if (typeof url === 'string' && url.includes('api/v1/meetings?teamCardId=team123')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(mockResponse),
+          });
+        }
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ content: [] }),
+        });
+      });
+
+      render(<MeetingCreate onClose={mockOnClose} teamId={teamId} />);
+
+      const createButton = await screen.findByText('Создать');
+      fireEvent.click(createButton);
+
+      await waitFor(() => {
+        expect(mockOnClose).toHaveBeenCalled();
+        expect(mockNavigate).toHaveBeenCalledWith(
+          '/meeting/meeting123?teamId=team123&username=testUser123'
+        );
+      });
     });
 
-    const toggle = screen.getByRole('button', { name: /Выбрать статус команды/i });
-    fireEvent.keyDown(toggle, { key: 'Enter' });
+    it('должен обрабатывать ошибку API при создании', async () => {
+      global.fetch.mockImplementation((url) => {
+        if (typeof url === 'string' && url.includes('api/v1/meetings?teamCardId=team123')) {
+          return Promise.resolve({
+            ok: false,
+            text: () => Promise.resolve('Ошибка валидации'),
+          });
+        }
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ content: [] }),
+        });
+      });
 
-    const okOption = await screen.findByRole('button', { name: /Всё ок/i });
-    fireEvent.keyDown(okOption, { key: ' ' });
+      render(<MeetingCreate onClose={mockOnClose} teamId={teamId} />);
 
-    await waitFor(() => {
-      expect(screen.getByText('Всё ок')).toBeInTheDocument();
-      expect(screen.queryByText('Есть проблемы')).not.toBeInTheDocument();
-    });
-  });
+      const createButton = await screen.findByText('Создать');
+      fireEvent.click(createButton);
 
-  test('selects WITH_ISSUES status with Enter key', async () => {
-    await act(async () => {
-      render(
-        <MemoryRouter initialEntries={['/teamcard/42?userId=testUser']}>
-          <Routes>
-            <Route path="/teamcard/:teamId" element={<MeetingCreate />} />
-          </Routes>
-        </MemoryRouter>
-      );
-    });
-
-    const toggle = screen.getByRole('button', { name: /Выбрать статус команды/i });
-    fireEvent.keyDown(toggle, { key: 'Enter' });
-
-    const issuesOption = await screen.findByRole('button', { name: /Есть проблемы/i });
-    fireEvent.keyDown(issuesOption, { key: 'Enter' });
-
-    await waitFor(() => {
-      expect(screen.getByText('Есть проблемы')).toBeInTheDocument();
-      expect(screen.queryByText('Всё ок')).not.toBeInTheDocument();
-    });
-  });
-
-  test('selects WITH_ISSUES status with Space key', async () => {
-    await act(async () => {
-      render(
-        <MemoryRouter initialEntries={['/teamcard/42?userId=testUser']}>
-          <Routes>
-            <Route path="/teamcard/:teamId" element={<MeetingCreate />} />
-          </Routes>
-        </MemoryRouter>
-      );
+      await waitFor(() => {
+        expect(screen.getByText('Ошибка валидации')).toBeInTheDocument();
+      });
     });
 
-    const toggle = screen.getByRole('button', { name: /Выбрать статус команды/i });
-    fireEvent.keyDown(toggle, { key: 'Enter' });
-
-    const issuesOption = await screen.findByRole('button', { name: /Есть проблемы/i });
-    fireEvent.keyDown(issuesOption, { key: ' ' });
-
-    await waitFor(() => {
-      expect(screen.getByText('Есть проблемы')).toBeInTheDocument();
-      expect(screen.queryByText('Всё ок')).not.toBeInTheDocument();
-    });
-  });
-
-  test('selects MANY_ISSUES status with Enter key', async () => {
-    await act(async () => {
-      render(
-        <MemoryRouter initialEntries={['/teamcard/42?userId=testUser']}>
-          <Routes>
-            <Route path="/teamcard/:teamId" element={<MeetingCreate />} />
-          </Routes>
-        </MemoryRouter>
-      );
-    });
-
-    const toggle = screen.getByRole('button', { name: /Выбрать статус команды/i });
-    fireEvent.keyDown(toggle, { key: 'Enter' });
-
-    const majorIssuesOption = await screen.findByRole('button', { name: /Есть большие проблемы/i });
-    fireEvent.keyDown(majorIssuesOption, { key: 'Enter' });
-
-    await waitFor(() => {
-      expect(screen.getByText('Есть большие проблемы')).toBeInTheDocument();
-      expect(screen.queryByText('Всё ок')).not.toBeInTheDocument();
-    });
-  });
-
-  test('selects MANY_ISSUES status with Space key', async () => {
-    await act(async () => {
-      render(
-        <MemoryRouter initialEntries={['/teamcard/42?userId=testUser']}>
-          <Routes>
-            <Route path="/teamcard/:teamId" element={<MeetingCreate />} />
-          </Routes>
-        </MemoryRouter>
-      );
-    });
-
-    const toggle = screen.getByRole('button', { name: /Выбрать статус команды/i });
-    fireEvent.keyDown(toggle, { key: 'Enter' });
-
-    const majorIssuesOption = await screen.findByRole('button', { name: /Есть большие проблемы/i });
-    fireEvent.keyDown(majorIssuesOption, { key: ' ' });
-
-    await waitFor(() => {
-      expect(screen.getByText('Есть большие проблемы')).toBeInTheDocument();
-      expect(screen.queryByText('Всё ок')).not.toBeInTheDocument();
-    });
-  });
-
-  // New tests for onClick
-  test('toggles dropdown with click on status-selected', async () => {
-    await act(async () => {
-      render(
-        <MemoryRouter initialEntries={['/teamcard/42?userId=testUser']}>
-          <Routes>
-            <Route path="/teamcard/:teamId" element={<MeetingCreate />} />
-          </Routes>
-        </MemoryRouter>
-      );
-    });
-
-    const toggle = screen.getByRole('button', { name: /Выбрать статус команды/i });
-    expect(screen.queryByText('Есть проблемы')).not.toBeInTheDocument();
-
-    fireEvent.click(toggle);
-    expect(await screen.findByText('Есть проблемы')).toBeInTheDocument();
-
-    fireEvent.click(toggle);
-    await waitFor(() => {
-      expect(screen.queryByText('Есть проблемы')).not.toBeInTheDocument();
-    });
-  });
-
-  test('selects OK status with click', async () => {
-    await act(async () => {
-      render(
-        <MemoryRouter initialEntries={['/teamcard/42?userId=testUser']}>
-          <Routes>
-            <Route path="/teamcard/:teamId" element={<MeetingCreate />} />
-          </Routes>
-        </MemoryRouter>
-      );
-    });
-
-    const toggle = screen.getByRole('button', { name: /Выбрать статус команды/i });
-    fireEvent.click(toggle);
-
-    const okOption = await screen.findByRole('button', { name: /Всё ок/i });
-    fireEvent.click(okOption);
-
-    await waitFor(() => {
-      expect(screen.getByText('Всё ок')).toBeInTheDocument();
-      expect(screen.queryByText('Есть проблемы')).not.toBeInTheDocument();
-    });
-  });
-
-  test('selects WITH_ISSUES status with click', async () => {
-    await act(async () => {
-      render(
-        <MemoryRouter initialEntries={['/teamcard/42?userId=testUser']}>
-          <Routes>
-            <Route path="/teamcard/:teamId" element={<MeetingCreate />} />
-          </Routes>
-        </MemoryRouter>
-      );
-    });
-
-    const toggle = screen.getByRole('button', { name: /Выбрать статус команды/i });
-    fireEvent.click(toggle);
-
-    const issuesOption = await screen.findByRole('button', { name: /Есть проблемы/i });
-    fireEvent.click(issuesOption);
-
-    await waitFor(() => {
-      expect(screen.getByText('Есть проблемы')).toBeInTheDocument();
-      expect(screen.queryByText('Всё ок')).not.toBeInTheDocument();
-    });
-  });
-
-  test('selects MANY_ISSUES status with click', async () => {
-    await act(async () => {
-      render(
-        <MemoryRouter initialEntries={['/teamcard/42?userId=testUser']}>
-          <Routes>
-            <Route path="/teamcard/:teamId" element={<MeetingCreate />} />
-          </Routes>
-        </MemoryRouter>
-      );
-    });
-
-    const toggle = screen.getByRole('button', { name: /Выбрать статус команды/i });
-    fireEvent.click(toggle);
-
-    const majorIssuesOption = await screen.findByRole('button', { name: /Есть большие проблемы/i });
-    fireEvent.click(majorIssuesOption);
-
-    await waitFor(() => {
-      expect(screen.getByText('Есть большие проблемы')).toBeInTheDocument();
-      expect(screen.queryByText('Всё ок')).not.toBeInTheDocument();
-    });
+    
   });
 });

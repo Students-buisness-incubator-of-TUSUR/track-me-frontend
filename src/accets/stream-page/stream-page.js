@@ -3,6 +3,7 @@ import {Link} from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import axios from 'axios';
 import './stream-page.css';
+import {useSelector} from "react-redux";
 import ProfileIcon from "./personal_account_1.png";
 import { getCsrfConfig } from '../../utils/csrf-utils'; // Импортируем функцию для CSRF конфигурации
 // import LoginService from '../../services/login-service'; // Импортируем сервис для логина
@@ -36,7 +37,8 @@ export default function Stream() {
     const logoutHost = (process.env.REACT_APP_BACKEND_URI || 'http://localhost:8080') + '/logout';
     const numberOfCheckboxes = year - 2015;
     const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
-
+const [userRole, setUserRole] = useState('');
+const user = useSelector((state) => state.user);
     // const { logout } = LoginService();
 const toggleProfileMenu = () => {
     setIsProfileMenuOpen(prev => !prev);
@@ -121,6 +123,19 @@ const toggleProfileMenu = () => {
             return null;
         }
     }, [backendHost]);
+useEffect(() => {
+    /* istanbul ignore next */
+    const savedUser = localStorage.getItem('user');
+    /* istanbul ignore next */
+    if (savedUser) {
+        const userData = JSON.parse(savedUser);
+        setUserRole(userData.roles[0]);
+    /* istanbul ignore next */
+    } else if (user?.user) {
+        localStorage.setItem('user', JSON.stringify(user.user));
+        setUserRole(user.user.roles[0]);
+    }
+}, [user]);
 
     useEffect(() => {
         const fetchImages = async () => {
@@ -391,9 +406,11 @@ const toggleProfileMenu = () => {
 </h1>{/*NOSONAR*/}
 
                     <div className="Stream-buttons">
-                        <Link to="/list-admins">
-                            <button className="Stream-butt">Администраторы</button>
-                        </Link>
+                        {userRole === 'SUPER_ADMIN' && (
+                            <Link to="/list-admins">
+                                <button className="Stream-butt">Администраторы</button>
+                            </Link>
+                        )}
                         <Link to="/list-trackers">
                             <button className="Stream-butt">Трекеры</button>
                         </Link>

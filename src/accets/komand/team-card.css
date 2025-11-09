@@ -776,13 +776,93 @@ select.team-input-widget option {
     }
 }
 
+.show-meetings-mobile-btn {
+    display: none; /* По умолчанию кнопка скрыта */
+    width: 100%;
+    padding: 10px;
+    background: #8338EB;
+    color: white;
+    border: none;
+    border-radius: 20px;
+    font-size: 16px;
+    margin-bottom: 10px;
+    cursor: pointer;
+}
+
 @media (max-width: 768px) {
+
+    .team-page {
+        padding-top: 60px;
+        min-height: 100vh;
+    }
+
     .team-card-widget-container {
+        min-height: calc(100vh - 60px);
+    }
+
+    .team-meetings-block {
+        display: none; /* По умолчанию скрыт на мобильных */
+        max-width: 100%;
+        box-sizing: border-box;
+        padding: 25px 10px 25px 15px;
+        height: auto;
+    }
+
+    .team-meetings-block.show-mobile {
+        display: flex; /* Показываем при активном состоянии */
+    }
+
+    .show-meetings-mobile-btn {
+        width: 100%;
+        padding: 10px;
+        background: #8338EB;
+        color: white;
+        border: none;
+        border-radius: 20px;
+        font-size: 16px;
+        margin-bottom: 10px;
+        cursor: pointer;
+    }
+
+    .header-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+        flex: 1;
+    }
+}
+
+
+
+
+
+
+
+
+@media (max-width: 768px) {
+
+    .team-page {
+        padding-top: 60px;
+        min-height: 100vh;
+    }
+
+    .team-card-widget-container {
+        min-height: calc(100vh - 60px);
         padding: 20px;
         min-width: 90%;
-        margin: 20px auto;
-        border-radius: 30px;
+        flex-direction: column;
+        border-radius: 0;
+        margin: 0;
+        margin-top: 60px;
+        max-height: 100%;
     }
+
+    .show-meetings-mobile-btn {
+        display: block; /* Показываем кнопку на мобильных */
+        margin-top: 20px;
+    }
+
 
     .team-title-widget {
         font-size: 18px;
@@ -793,13 +873,8 @@ select.team-input-widget option {
     .edit-button-widget {
         padding: 6px 15px;
         font-size: 16px;
-        top: 25px;
-        right: 80px;
-    }
-
-    .close-button-widget {
-        top: 25px;
-        right: 25px;
+        top: 20px;
+        right: 60px;
     }
 
     .team-card-content {
@@ -815,12 +890,37 @@ select.team-input-widget option {
         gap: 20px;
     }
 
+    .team-card-left {
+        padding: 60px 10px 0 10px;
+        width: 95%;
+    }
+
     .right-panel {
-        position: static;
-        width: 25%;
-        margin: 30px 0 0 0; /* Центрирование всей панели */
-        padding: 15px; /* Внутренние отступы */
-        margin-left: 55px;
+        width: 95%;
+        margin: 15px 0 0 0; /* Центрирование всей панели */
+        padding: 10px; /* Внутренние отступы */
+    }
+
+    .team-meeting {
+        height: 30px;
+    }
+
+    .meeting-date, .meeting-title {
+        font-size: 18px;
+    }
+
+    .team-meeting-add {
+        height: 30px;
+        width: auto;
+        font-size: 18px;
+    }
+
+    .date-edit-container{
+        width: 100%;
+    }
+    .date-input {
+        margin-left: 8px;
+        max-width: 150px;
     }
 
     .team-label-widget {
@@ -829,8 +929,8 @@ select.team-input-widget option {
     }
 
     .team-input-widget {
+        width: 200px;
         height: 36px;
-        font-size: 14px;
         padding: 0 40px 0 15px;
     }
 
@@ -876,6 +976,7 @@ select.team-input-widget option {
     .red-button-widget {
         padding: 10px 20px;
         font-size: 14px;
+        margin-top: 10px;
     }
 
     .stream-attach-button-container {
@@ -889,9 +990,48 @@ select.team-input-widget option {
     .inputs-container {
         gap: 20px;
     }
+
+    .close-button-widget {
+        top: 20px;
+        right: 20px;
+    }
+
+    .red-button-container {
+        position: static;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
 }
 
 @media (max-width: 480px) {
+     .header-left {
+        max-width: calc(100% - 60px); /* оставляем место для кнопки меню */
+        overflow: hidden;
+    }
+
+    .header-left img {
+        width: 32px;
+        height: 32px;
+        min-width: 32px;
+    }
+
+    .Stream-header-logo {
+        display: block !important;
+        margin-left: -50px !important;
+    }
+
+    .mobile-header-text {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .team-card-widget-container {
+        min-height: calc(100vh - 60px);
+        padding: 15px;
+    }
+
     .stream-attach-button-container {
         width: 100%; /* На мобильных занимает всю ширину */
         max-width: 200px; 
@@ -911,11 +1051,54 @@ select.team-input-widget option {
         padding: 10px; /* Внутренние отступы */
     }
     
+    .team-description-wrapper {
+        width: 100%;
+        height: 256px;
+        border-radius: 27px;
+        padding: 20px 30px 10px 15px;
+    }
+
+    .team-input-wrapper {
+        width: auto
+    }
+
+    .team-card-info {
+        width: 100%;
+    }
+
+    .team-rating {
+        height: 40px;
+        width: 150px;
+        font-size: 20px;
+        line-height: 40px;
+    }
+
+    .stream-info-block {
+        flex-direction: row;
+        font-size: 18px;
+        margin-top: 80px;
+        font-weight: 500;
+    }
+
+    .stream-header {
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .stream-header-label {
+        min-width: 150px;
+    }
+
+    .stream-data {
+        flex-direction: column;
+        gap: 20px;
+    }
+
     .red-button-widget {
         min-width: 120px;
         height: 42px;
         padding: 8px 15px;
-        margin: 20px;
+        margin-bottom: 20px;
     }
     
     .inputs-container {
@@ -923,7 +1106,32 @@ select.team-input-widget option {
     }
 
     .team-input-widget {
-        height: 42px;
+        width: 170px;
+        background: #E6D7FB;
+        color: #44069A;
+        box-sizing: border-box;
+    }
+
+    .team-input-widget1 {
+        width: 85px;
+    }
+
+    .team-input-widget1, .team-input-widget2 {
+        height: 27px;
+    }
+
+    .team-input-widget1, .team-input-widget2, .team-input-widget, .team-description-label, .team-description-input {
+        font-size: 18px !important;
+    }
+
+    .create-dropdown-toggle{
+        height: 30px;
+        font-size: 18px !important;
+        padding: 3px 0 0 15px !important;
+    }
+
+    .create-dropdown-toggle::after {
+        top: 8px !important;
     }
 
     .team-info-widget,

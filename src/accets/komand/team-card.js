@@ -5,6 +5,7 @@ import {useSelector} from "react-redux";
 import penIcon from "./pen.png";
 import MeetingCreate from "../meeting-card/MeetingCreate.js";
 import { getCsrfConfigForFetch } from "../../utils/csrf-utils";
+import MobileHeader from "../adaptive-accets/MobileHeader";
 
 const backendHost = (process.env.REACT_APP_BACKEND_URI || "https://localhost:8080") + '/backend';
 const backendHost1 = (process.env.REACT_APP_BACKEND_URI || "https://localhost:8080") + '/sso';
@@ -50,7 +51,7 @@ const [teamCardsCount, setTeamCardsCount] = useState(0);
     const forceEdit = query.get("edit") === "true";
     const [isEditing, setIsEditing] = useState(forceEdit);
     const [showTooltip, setShowTooltip] = useState(false);
-
+    const [showMeetingsOnMobile, setShowMeetingsOnMobile] = useState(false);
     const [showNTI, setShowNTI] = useState(false);
     const [showTRL, setShowTRL] = useState(false);
     const [selectedMarket, setSelectedMarket] = useState(null);
@@ -564,12 +565,13 @@ const saveMeetingDate = async () => {
    
 
     return (
-        <div className="team-card-widget-container">
-          {teamData.averageGrade !== undefined && teamData.averageGrade !== null && (
-  <div className="team-rating">
-    {teamData.averageGrade.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-  </div>
-)}
+            <div className="team-card-widget-container">
+              <MobileHeader onNavigate={navigate} />
+                {teamData.averageGrade !== undefined && teamData.averageGrade !== null && (
+                    <div className="team-rating">
+                        {teamData.averageGrade.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </div>
+                )}
             <button className="close-button-widget" onClick={() => navigate(from)}>×</button>
 
             <button
@@ -877,13 +879,19 @@ const saveMeetingDate = async () => {
             </div>
 
             <div className="right-panel">
-  {/* Сообщение об ошибке */}
-  {meetingError && (
-    <div className="error-message">
-      {meetingError}
-    </div>
-  )}
-            <div className="team-meetings-block">
+              <button
+               className="show-meetings-mobile-btn" 
+               onClick={() => setShowMeetingsOnMobile(!showMeetingsOnMobile)}
+               >
+                {showMeetingsOnMobile ? "Скрыть встречи" : "Показать встречи"}
+              </button>
+              {/* Сообщение об ошибке */}
+              {meetingError && (
+                <div className="error-message">
+                  {meetingError}
+                </div>
+              )}
+            <div className={`team-meetings-block${showMeetingsOnMobile ? " show-mobile" : ""}`}>
                     <div className="team-meetings-exist">
   {meetings.map((meeting) => (
     <div
@@ -993,7 +1001,7 @@ const saveMeetingDate = async () => {
                     </button>
                 </div>
             ) : null}
-        </div>
+            </div>
     );
 };
 

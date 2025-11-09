@@ -1,5 +1,10 @@
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400&family=Mulish:wght@300;400&display=swap');
 
+.meeting-page {
+    min-height: 100vh;
+    background: #ffffff;
+}
+
 
 .unique-meeting-container {
     display: flex;
@@ -598,14 +603,12 @@
   }
   
   @media (max-width: 768px) {
+
     .unique-meeting-container {
       padding: 10px;
+      padding-top: 60px;
     }
   
-    .unique-meeting-card {
-      border-radius: 30px;
-      padding: 20px;
-    }
   
     .unique-close-button {
       top: 20px;
@@ -715,7 +718,7 @@
     }
   
     .unique-date-row {
-      flex-direction: column;
+      flex-direction: row;
       align-items: flex-start;
       gap: 10px;
     }
@@ -819,6 +822,7 @@
     height: 236px;
     display: flex;
     align-items: center;
+    margin-left: 30px;
     justify-content: center;
     cursor: pointer; /* Added to indicate clickability */
 }
@@ -985,15 +989,75 @@
 }
 
 @media (max-width: 480px) {
+    .header-left {
+        max-width: calc(100% - 60px);
+        overflow: hidden;
+    }
+
+    .header-left img {
+        width: 32px;
+        height: 32px;
+        min-width: 32px;
+    }
+    .unique-meeting-container {
+        padding: 0;
+    }
+
+    .unique-image-upload {
+        margin-left: 0px;
+    }
+
+    .unique-meeting-card {
+        background: #F8F3FF;
+        border-radius: 0;
+        min-height: 100%;
+    }
+    .unique-meeting-number {
+        background: #F8F3FF;
+        color: #44069A;
+        font-size: 32px;
+        padding-left: 0px;
+    }
+    .unique-label {
+        color: black;
+    }
+    .unique-screenshot-placeholder {
+      width: 93%;
+    }
+    .edit-icon23 {
+      display: none;
+    }
+    .unique-meeting-date {
+      max-width: 60px;
+    }
+    .unique-input {
+      width: 93%;
+    }
+    .unique-task, .unique-link, .unique-textarea, .unique-input {
+        border: 1px solid #8338EB;
+    }
+    .unique-textarea {
+      width: 93%;
+    }
+
     .unique-status-button {
         padding: 8px 16px;
         font-size: 14px;
     }
 }
 @media (max-width: 768px) {
+
+    .unique-meeting-card {
+        min-height: calc(100vh - 60px);
+        max-height: 100%;
+        margin-top: 60px;
+        border-radius: 0px;
+        padding: 15px;
+    }
+
     .unique-screenshot-placeholder,
     .unique-meeting-image {
-        width: 100%;
+        width: 93%;
         height: 150px;
     }
 
@@ -1019,7 +1083,7 @@
     .unique-textarea,
     .unique-input,
     .unique-dropdown {
-        padding: 10px 15px;
+        padding: 15px 20px;
         font-size: 14px;
     }
     
@@ -1029,5 +1093,9 @@
     
     .unique-dropdown {
         height: 38px;
+    }
+
+    .confirm-modal {
+        width: 90%;
     }
 }

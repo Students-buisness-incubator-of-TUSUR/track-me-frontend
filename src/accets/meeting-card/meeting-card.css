@@ -383,7 +383,8 @@
 .unique-task,
 .unique-input,
 .unique-dropdown,
-.unique-link {
+.unique-link,
+.bbb-link-input {
     flex: 1 1 auto;      /* сохраняем гибкость */
      max-width: 800px; 
      font-family: 'Montserrat', sans-serif;
@@ -978,6 +979,103 @@
 /* Стиль для неактивной кнопки (когда одна уже выбрана) */
 .unique-status-button.hidden {
     display: none;
+}
+
+.bbb-button-wrapper {
+  text-align: center;
+}
+
+.bbb-join-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #2c5aa0; /* Официальный цвет BBB */
+  color: white;
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 600;
+  font-size: 20px;
+  padding: 12px 30px;
+  border: none;
+  border-radius: 70px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  height: 40px;
+  margin: 10px;
+}
+
+.bbb-join-button:hover:not(:disabled) {
+  background: #25467a;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+}
+
+.bbb-join-button:active {
+  transform: translateY(0);
+}
+
+.bbb-join-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.bbb-input-section {
+  margin: 24px 0;
+  display: flex;
+  flex-direction: row;
+}
+
+.bbb-link-input {
+  font-size: 20px;
+  padding: 20px 30px;
+  border-radius: 70px;
+  color:black;
+  border: none;
+  max-height: 20px;
+  font-weight: 300;
+  display: block;
+  word-break: break-all;
+  white-space: normal;
+}
+
+.bbb-link-input:focus {
+  border-color: #8338eb;
+  box-shadow: 0 0 0 4px rgba(131, 56, 235, 0.1);
+}
+
+.bbb-link-input::placeholder {
+  color: #aaa;
+  font-style: italic;
+}
+
+.bbb-join-icon-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  margin-left: 5px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+  background-color: #e8f5e9;
+}
+
+.bbb-join-icon-button:hover {
+  background-color: #e8f5e9; /* Светло-зелёный фон при наведении */
+}
+
+.bbb-join-icon-button:focus {
+  outline: 2px solid #66bb6a;
+  outline-offset: 2px;
+}
+
+.bbb-join-icon {
+  width: 36px;
+  height: 36px;
+  object-fit: cover;
+  /* Зелёный цвет через filter */
 }
 
 /* Адаптивные стили для кнопок статуса */

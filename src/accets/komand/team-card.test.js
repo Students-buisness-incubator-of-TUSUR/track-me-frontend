@@ -209,7 +209,7 @@ describe('TeamCard basic interactions', () => {
     expect(screen.getByRole('button', { name: /Сохранить/i })).toBeInTheDocument();
   });
 
-  
+
 
   test('tracker input readonly', async () => {
     require('react-router-dom').__setSearch('');
@@ -292,24 +292,24 @@ describe('Stream info & date formatting', () => {
   });
 
   test('shows stream name, count and formatted dates', async () => {
-  require('react-router-dom').__setSearch('');
-  require('react-router-dom').__setState({ streamId: 1 });
-  
-  await act(async () => {
-    render(
-      <MemoryRouter initialEntries={['/team-card/42']}>
-        <Routes><Route path="/team-card/:id" element={<TeamCard />} /></Routes>
-      </MemoryRouter>
-    );
-  });
-  
-  // Wait for stream info to load
-  const streamName = await screen.findByText('MyStream');
-expect(streamName).toBeInTheDocument();
+    require('react-router-dom').__setSearch('');
+    require('react-router-dom').__setState({ streamId: 1 });
 
-  expect(screen.getByText('5')).toBeInTheDocument();
-  expect(screen.getByText('01.03.2025 - 10.03.2025')).toBeInTheDocument();
-});
+    await act(async () => {
+      render(
+        <MemoryRouter initialEntries={['/team-card/42']}>
+          <Routes><Route path="/team-card/:id" element={<TeamCard />} /></Routes>
+        </MemoryRouter>
+      );
+    });
+
+    // Wait for stream info to load
+    const streamName = await screen.findByText('MyStream');
+    expect(streamName).toBeInTheDocument();
+
+    expect(screen.getByText('5')).toBeInTheDocument();
+    expect(screen.getByText('01.03.2025 - 10.03.2025')).toBeInTheDocument();
+  });
 
 });
 
@@ -329,338 +329,214 @@ describe('Tracker full name & localStorage fallback', () => {
     expect(await screen.findByDisplayValue('Admin FullName')).toBeInTheDocument();
   });
   test('если поток не найден, бросается ошибка', async () => {
-  const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-  
-  global.fetch = jest.fn((url) => {
-    // Simulate failure to fetch team card
-    if (url.includes('/api/v1/admin/team-cards') || url.includes('/api/v1/team-cards')) {
-      return Promise.resolve({
-        ok: false,
-        status: 500,
-        json: () => Promise.resolve({}),
-      });
-    }
-    if (url.includes('/api/v1/streams?page=0')) {
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({ content: [] }), // No streams available
-      });
-    }
-    if (url.includes('/api/v1/streams/nti-markets')) {
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve([{ id: 10, displayName: 'OldMarket' }]),
-      });
-    }
-    if (url.endsWith('/api/v1/users/reduxUser/info')) {
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({ fullName: 'Admin FullName' }),
-      });
-    }
-    return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [], totalPages: 1 }) });
-  });
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
 
-  await act(async () => {
-    render(
-      <MemoryRouter initialEntries={['/team-card/42']}>
-        <Routes><Route path="/team-card/:id" element={<TeamCard />} /></Routes>
-      </MemoryRouter>
-    );
-  });
-
-  await waitFor(() => {
-    expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringContaining('поиске карточки команды'),
-      expect.any(Error)
-    );
-  }, { timeout: 2000 });
-
-  consoleSpy.mockRestore();
-});
-test('handleApiError вызывается при ошибке загрузки встреч', async () => {
-  global.fetch = jest.fn((url) => {
-    if (url.includes('/api/v1/meetings')) {
-      return Promise.resolve({ ok: false, status: 500 });
-    }
-    return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
-
-  });
-
-  const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-  await act(async () => {
-    render(
-      <MemoryRouter initialEntries={['/team-card/42']}>
-        <Routes><Route path="/team-card/:id" element={<TeamCard />} /></Routes>
-      </MemoryRouter>
-    );
-  });
-  expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('загрузке встреч'), expect.any(Error));
-  consoleSpy.mockRestore();
-});
-test('ошибка загрузки трекеров вызывает обработку ошибки', async () => {
-  redux.useSelector.mockImplementation(() => ({
-    user: { username: 'reduxUser', roles: ['ADMIN'] }
-  }));
-
-  global.fetch = jest.fn((url) => {
-    if (url.includes('/api/v1/users/trackers')) {
-      return Promise.resolve({ ok: false, status: 500 });
-    }
-    return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
-
-  });
-
-  const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-  await act(async () => {
-    render(
-      <MemoryRouter initialEntries={['/team-card/42']}>
-        <Routes><Route path="/team-card/:id" element={<TeamCard />} /></Routes>
-      </MemoryRouter>
-    );
-  });
-  expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('загрузке трекеров'), expect.any(Error));
-  consoleSpy.mockRestore();
-});
-test('handleSave выбрасывает ошибку при незаполненных обязательных полях (console)', async () => {
-  const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-  require('react-router-dom').__setSearch('?edit=true');
-  await act(async () => {
-    render(
-      <MemoryRouter initialEntries={['/team-card/42?edit=true']}>
-        <Routes><Route path="/team-card/:id" element={<TeamCard />} /></Routes>
-      </MemoryRouter>
-    );
-  });
-
-  fireEvent.change(screen.getByPlaceholderText(/Карточка команды/i), { target: { value: '' } });
-  fireEvent.change(screen.getByPlaceholderText(/Описание карточки/i), { target: { value: '' } });
-
-  fireEvent.click(screen.getByRole('button', { name: /Сохранить/i }));
-
-  await waitFor(() => {
-    expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringContaining('сохранении карточки'),
-      expect.any(Error)
-    );
-  });
-  consoleSpy.mockRestore();
-});
-test('ошибка при удалении карточки вызывает handleApiError', async () => {
-  const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {}); // ⬅️ добавлено
-
-  global.fetch = jest.fn((url, options) => {
-    if (options?.method === 'DELETE') {
-      return Promise.resolve({ ok: false, status: 500 });
-    }
-    return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
-
-  });
-
-  window.confirm = jest.fn(() => true); // подтверждение деактивации
-
-  require('react-router-dom').__setSearch('');
-  await act(async () => {
-    render(
-      <MemoryRouter initialEntries={['/team-card/42']}>
-        <Routes><Route path="/team-card/:id" element={<TeamCard />} /></Routes>
-      </MemoryRouter>
-    );
-  });
-
-  fireEvent.click(screen.getByRole('button', { name: /Редактировать/i }));
-  fireEvent.click(screen.getByRole('button', { name: /Деактивировать/i }));
-
-  await waitFor(() =>
-    expect(consoleSpy).toHaveBeenCalledWith( // ⬅️ заменено с console.error
-      expect.stringContaining('удалении карточки'),
-      expect.any(Error)
-    )
-  );
-
-  consoleSpy.mockRestore(); // ⬅️ не забудь очистить
-});
-test('выбор TRL через клавишу Enter вызывает handleTRLSelect', async () => {
-  require('react-router-dom').__setSearch('?edit=true');
-
-  await act(async () => {
-    render(
-      <MemoryRouter initialEntries={['/team-card/42?edit=true']}>
-        <Routes><Route path="/team-card/:id" element={<TeamCard />} /></Routes>
-      </MemoryRouter>
-    );
-  });
-
-  // Клик по отображаемому текущему TRL (например, "0-2")
-  fireEvent.click(screen.getByText('0-2'));
-
-  // Получение кнопки TRL уровня (например, "3-5") и имитация клавиши
-  const trlButton = screen.getByRole('button', { name: '3-5' });
-  fireEvent.keyDown(trlButton, { key: 'Enter' });
-
-  // Проверка, что TRL изменился
-  expect(screen.getByText('3-5')).toBeInTheDocument();
-});
-
-test('handleSave заменяет username на объектный, если он найден в trackers', async () => {
-  require('react-router-dom').__setSearch('?edit=true');
-
-  redux.useSelector.mockImplementation(() => ({
-    user: { username: 'reduxUser', roles: ['ADMIN'] }
-  }));
-
-  const patchSpy = jest.fn((url, options) => {
-    const body = JSON.parse(options.body);
-    expect(url).toContain('username=realUser'); // важно: именно username, а не id
-    return Promise.resolve({
-      ok: true,
-      json: () => Promise.resolve({
-        ...body,
-        username: 'realUser'
-      })
+    global.fetch = jest.fn((url) => {
+      // Simulate failure to fetch team card
+      if (url.includes('/api/v1/admin/team-cards') || url.includes('/api/v1/team-cards')) {
+        return Promise.resolve({
+          ok: false,
+          status: 500,
+          json: () => Promise.resolve({}),
+        });
+      }
+      if (url.includes('/api/v1/streams?page=0')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ content: [] }), // No streams available
+        });
+      }
+      if (url.includes('/api/v1/streams/nti-markets')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([{ id: 10, displayName: 'OldMarket' }]),
+        });
+      }
+      if (url.endsWith('/api/v1/users/reduxUser/info')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ fullName: 'Admin FullName' }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [], totalPages: 1 }) });
     });
-  });
 
-  global.fetch = jest.fn((url, options = {}) => {
-    if (url.includes('/api/v1/users/trackers')) {
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({
-          content: [{ id: 99, username: 'realUser', fullName: 'Имя', enabled: true }]
-        })
-      });
-    }
-
-    if (options.method === 'PATCH') {
-      return patchSpy(url, options);
-    }
-
-    if (url.includes('/api/v1/admin/team-cards')) {
-    return Promise.resolve({
-      ok: true,
-      json: () => Promise.resolve({
-        content: [{
-          id: 42,
-          name: 'OldName',
-          description: 'OldDesc',
-          ntiMarkets: [{ id: 10, displayName: 'OldMarket' }],
-          readinessLevel: '0-2',
-          stream: { id: 999 },
-          username: 'reduxUser'
-        }]
-      })
+    await act(async () => {
+      render(
+        <MemoryRouter initialEntries={['/team-card/42']}>
+          <Routes><Route path="/team-card/:id" element={<TeamCard />} /></Routes>
+        </MemoryRouter>
+      );
     });
-  }
 
-    if (url.includes('/api/v1/streams/nti-markets')) {
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve([
-          { id: 10, displayName: 'OldMarket' },
-          { id: 20, displayName: 'NewMarket' }
-        ])
-      });
-    }
+    await waitFor(() => {
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('поиске карточки команды'),
+        expect.any(Error)
+      );
+    }, { timeout: 2000 });
 
-    if (url.includes('/api/v1/streams')) {
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({
-          content: [{ id: 1, name: 'MyStream', startDate: '2025-03-01T00:00:00Z', endDate: '2025-03-10T00:00:00Z' }]
-        })
-      });
-    }
-
-    return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [], totalPages: 1 }) });
+    consoleSpy.mockRestore();
   });
+  test('handleApiError вызывается при ошибке загрузки встреч', async () => {
+    global.fetch = jest.fn((url) => {
+      if (url.includes('/api/v1/meetings')) {
+        return Promise.resolve({ ok: false, status: 500 });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
 
-  await act(async () => {
-    render(
-      <MemoryRouter initialEntries={['/team-card/42?edit=true']}>
-        <Routes><Route path="/team-card/:id" element={<TeamCard />} /></Routes>
-      </MemoryRouter>
-    );
+    });
+
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
+    await act(async () => {
+      render(
+        <MemoryRouter initialEntries={['/team-card/42']}>
+          <Routes><Route path="/team-card/:id" element={<TeamCard />} /></Routes>
+        </MemoryRouter>
+      );
+    });
+    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('загрузке встреч'), expect.any(Error));
+    consoleSpy.mockRestore();
   });
+  test('ошибка загрузки трекеров вызывает обработку ошибки', async () => {
+    redux.useSelector.mockImplementation(() => ({
+      user: { username: 'reduxUser', roles: ['ADMIN'] }
+    }));
 
-  fireEvent.change(screen.getByPlaceholderText(/Карточка команды/i), {
-    target: { value: 'TestName' }
+    global.fetch = jest.fn((url) => {
+      if (url.includes('/api/v1/users/trackers')) {
+        return Promise.resolve({ ok: false, status: 500 });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+
+    });
+
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
+    await act(async () => {
+      render(
+        <MemoryRouter initialEntries={['/team-card/42']}>
+          <Routes><Route path="/team-card/:id" element={<TeamCard />} /></Routes>
+        </MemoryRouter>
+      );
+    });
+    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('загрузке трекеров'), expect.any(Error));
+    consoleSpy.mockRestore();
   });
+  test('handleSave выбрасывает ошибку при незаполненных обязательных полях (console)', async () => {
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
+    require('react-router-dom').__setSearch('?edit=true');
+    await act(async () => {
+      render(
+        <MemoryRouter initialEntries={['/team-card/42?edit=true']}>
+          <Routes><Route path="/team-card/:id" element={<TeamCard />} /></Routes>
+        </MemoryRouter>
+      );
+    });
 
-  fireEvent.change(screen.getByPlaceholderText(/Описание карточки/i), {
-    target: { value: 'TestDesc' }
+    fireEvent.change(screen.getByPlaceholderText(/Карточка команды/i), { target: { value: '' } });
+    fireEvent.change(screen.getByPlaceholderText(/Описание карточки/i), { target: { value: '' } });
+
+    fireEvent.click(screen.getByRole('button', { name: /Сохранить/i }));
+
+    await waitFor(() => {
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('сохранении карточки'),
+        expect.any(Error)
+      );
+    });
+    consoleSpy.mockRestore();
   });
+  test('ошибка при удалении карточки вызывает handleApiError', async () => {
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { }); // ⬅️ добавлено
 
-  fireEvent.change(screen.getByPlaceholderText(/https:\/\/webinar\.tusur\.ru/i), { target: { value: 'https://test.link' } });
+    global.fetch = jest.fn((url, options) => {
+      if (options?.method === 'DELETE') {
+        return Promise.resolve({ ok: false, status: 500 });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
 
-  // Выбор трекера
-  fireEvent.change(screen.getByRole('combobox'), {
-    target: { value: 'realUser' }
-  });
+    });
 
-  // Клик по кнопке сохранения
-  fireEvent.click(screen.getByRole('button', { name: /Сохранить/i }));
+    window.confirm = jest.fn(() => true); // подтверждение деактивации
 
-  // Ожидаем, что вернулась кнопка "Редактировать"
-  await waitFor(() =>
-    expect(screen.getByRole('button', { name: /Редактировать/i })).toBeInTheDocument()
-  );
-
-  // Убедимся, что PATCH был вызван с username=realUser
-  expect(patchSpy).toHaveBeenCalled();
-});
-
-test('tooltip отображается при наведении (для TRACKER)', async () => {
-  mockUseGetUserInfo.mockReturnValue({ username: 'trackerUser', roles: ["TRACKER"] });
-
-  Storage.prototype.getItem = jest.fn(() =>
-    JSON.stringify({ username: 'trackerUser', roles: ['TRACKER'] })
-  );
-
-  require('react-router-dom').__setSearch('?edit=true');
-
-  await act(async () => {
-    render(
-      <MemoryRouter initialEntries={['/team-card/42?edit=true']}>
-        <Routes><Route path="/team-card/:id" element={<TeamCard />} /></Routes>
-      </MemoryRouter>
-    );
-  });
-
-  const dropdown = screen.getByText('MyStream'); // Изменено с /Поток/ на 'MyStream'
-  fireEvent.mouseEnter(dropdown);
-  expect(await screen.findByText(/Трекер не может редактировать/i)).toBeInTheDocument();
-  fireEvent.mouseLeave(dropdown);
-  expect(screen.queryByText(/Трекер не может редактировать/i)).not.toBeInTheDocument();
-});
-
-
-test('если selectedStreamId не задан, используется streamInfo.id', async () => {
-  require('react-router-dom').__setState({ streamId: 1 });
-
-  await act(async () => {
-    render(
-      <MemoryRouter initialEntries={['/team-card/42']}>
-        <Routes><Route path="/team-card/:id" element={<TeamCard />} /></Routes>
-      </MemoryRouter>
-    );
-  });
-
-  expect(await screen.findByText('MyStream')).toBeInTheDocument();
-
-});
-
-describe('Additional coverage (manual lines)', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
     require('react-router-dom').__setSearch('');
-    require('react-router-dom').__setState({});
+    await act(async () => {
+      render(
+        <MemoryRouter initialEntries={['/team-card/42']}>
+          <Routes><Route path="/team-card/:id" element={<TeamCard />} /></Routes>
+        </MemoryRouter>
+      );
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Редактировать/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Деактивировать/i }));
+
+    await waitFor(() =>
+      expect(consoleSpy).toHaveBeenCalledWith( // ⬅️ заменено с console.error
+        expect.stringContaining('удалении карточки'),
+        expect.any(Error)
+      )
+    );
+
+    consoleSpy.mockRestore(); // ⬅️ не забудь очистить
+  });
+  test('выбор TRL через клавишу Enter вызывает handleTRLSelect', async () => {
+    require('react-router-dom').__setSearch('?edit=true');
+
+    await act(async () => {
+      render(
+        <MemoryRouter initialEntries={['/team-card/42?edit=true']}>
+          <Routes><Route path="/team-card/:id" element={<TeamCard />} /></Routes>
+        </MemoryRouter>
+      );
+    });
+
+    // Клик по отображаемому текущему TRL (например, "0-2")
+    fireEvent.click(screen.getByText('0-2'));
+
+    // Получение кнопки TRL уровня (например, "3-5") и имитация клавиши
+    const trlButton = screen.getByRole('button', { name: '3-5' });
+    fireEvent.keyDown(trlButton, { key: 'Enter' });
+
+    // Проверка, что TRL изменился
+    expect(screen.getByText('3-5')).toBeInTheDocument();
   });
 
-  test('Показывает "Загрузка данных о потоке...", пока streamInfo ещё null', async () => {
-  global.fetch = jest.fn((url) => {
-    if (url.includes('/api/v1/admin/team-cards') || url.includes('/api/v1/team-cards')) {
-      return new Promise(resolve => setTimeout(() => 
-        resolve({
+  test('handleSave заменяет username на объектный, если он найден в trackers', async () => {
+    require('react-router-dom').__setSearch('?edit=true');
+
+    redux.useSelector.mockImplementation(() => ({
+      user: { username: 'reduxUser', roles: ['ADMIN'] }
+    }));
+
+    const patchSpy = jest.fn((url, options) => {
+      const body = JSON.parse(options.body);
+      expect(url).toContain('username=realUser'); // важно: именно username, а не id
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({
+          ...body,
+          username: 'realUser'
+        })
+      });
+    });
+
+    global.fetch = jest.fn((url, options = {}) => {
+      if (url.includes('/api/v1/users/trackers')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            content: [{ id: 99, username: 'realUser', fullName: 'Имя', enabled: true }]
+          })
+        });
+      }
+
+      if (options.method === 'PATCH') {
+        return patchSpy(url, options);
+      }
+
+      if (url.includes('/api/v1/admin/team-cards')) {
+        return Promise.resolve({
           ok: true,
           json: () => Promise.resolve({
             content: [{
@@ -669,116 +545,240 @@ describe('Additional coverage (manual lines)', () => {
               description: 'OldDesc',
               ntiMarkets: [{ id: 10, displayName: 'OldMarket' }],
               readinessLevel: '0-2',
-              streams: [{ id: 1, name: 'MyStream' }]
-            }],
-            totalPages: 1
+              stream: { id: 999 },
+              username: 'reduxUser'
+            }]
           })
-        }), 100)
-      );
-    }
-    if (url.includes('/api/v1/streams?page=0&size=150')) {
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({
-          content: [{
-            id: 1,
-            name: 'MyStream',
-            startDate: '2025-03-01T00:00:00Z',
-            endDate: '2025-03-10T00:00:00Z'
-          }]
-        })
-      });
-    }
-    if (url.includes('/api/v1/streams/nti-markets')) {
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve([{ id: 10, displayName: 'OldMarket' }])
-      });
-    }
-    if (url.endsWith('/api/v1/users/reduxUser/info')) {
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({ fullName: 'Admin FullName' })
-      });
-    }
-    return Promise.resolve({
-      ok: true,
-      json: () => Promise.resolve({ content: [], totalPages: 1 })
+        });
+      }
+
+      if (url.includes('/api/v1/streams/nti-markets')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            { id: 10, displayName: 'OldMarket' },
+            { id: 20, displayName: 'NewMarket' }
+          ])
+        });
+      }
+
+      if (url.includes('/api/v1/streams')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            content: [{ id: 1, name: 'MyStream', startDate: '2025-03-01T00:00:00Z', endDate: '2025-03-10T00:00:00Z' }]
+          })
+        });
+      }
+
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [], totalPages: 1 }) });
     });
-  });
 
-  await act(async () => {
-    render(
-      <MemoryRouter initialEntries={['/team-card/42']}>
-        <Routes><Route path="/team-card/:id" element={<TeamCard />} /></Routes>
-      </MemoryRouter>
-    );
-  });
-
-  // Check loading message is present initially
-  expect(screen.getByText('Загрузка данных о потоке...')).toBeInTheDocument();
-
-  // Wait for data to load and message to disappear
-  await waitFor(() => {
-    expect(screen.queryByText('Загрузка данных о потоке...')).not.toBeInTheDocument();
-    expect(screen.getByText('MyStream')).toBeInTheDocument();
-  }, { timeout: 200 }); // Increased timeout to account for 100ms delay
-});
-  test('При клике вне блока .dropdown-block дропдауны NTI/TRL закрываются', async () => {
-    // включаем режим редактирования, чтобы dropdown заработали
-    require('react-router-dom').__setSearch('?edit=true');
     await act(async () => {
       render(
         <MemoryRouter initialEntries={['/team-card/42?edit=true']}>
-          <Routes>
-            <Route path="/team-card/:id" element={<TeamCard />} />
-          </Routes>
+          <Routes><Route path="/team-card/:id" element={<TeamCard />} /></Routes>
         </MemoryRouter>
       );
     });
 
-    // Открываем NTI-список (меню появляются как <button>)
-    fireEvent.click(screen.getByText(/OldMarket|Рынки НТИ/));
+    fireEvent.change(screen.getByPlaceholderText(/Карточка команды/i), {
+      target: { value: 'TestName' }
+    });
 
-    expect(screen.getAllByText((text) => text.includes('OldMarket'))
-.length).toBeGreaterThanOrEqual(1);
+    fireEvent.change(screen.getByPlaceholderText(/Описание карточки/i), {
+      target: { value: 'TestDesc' }
+    });
 
-    // Открываем TRL-список
-    fireEvent.click(screen.getByText('0-2'));
-    expect(screen.getAllByRole('button', { name: '3-5' }).length).toBeGreaterThanOrEqual(1);
+    fireEvent.change(screen.getByPlaceholderText(/https:\/\/webinar\.tusur\.ru/i), { target: { value: 'https://test.link' } });
 
-    // Кликаем вне dropdown
-    fireEvent.mouseDown(document.body);
+    // Выбор трекера
+    fireEvent.change(screen.getByRole('combobox'), {
+      target: { value: 'realUser' }
+    });
 
-    // После клика вне оба списка должны закрыться (ни одной кнопки-элемента меню не остаётся)
-    expect(screen.queryAllByRole('button', { name: 'OldMarket' })).toHaveLength(0);
-    expect(screen.queryAllByRole('button', { name: '3-5' })).toHaveLength(0);
+    // Клик по кнопке сохранения
+    fireEvent.click(screen.getByRole('button', { name: /Сохранить/i }));
+
+    // Ожидаем, что вернулась кнопка "Редактировать"
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /Редактировать/i })).toBeInTheDocument()
+    );
+
+    // Убедимся, что PATCH был вызван с username=realUser
+    expect(patchSpy).toHaveBeenCalled();
+  });
+
+  test('tooltip отображается при наведении (для TRACKER)', async () => {
+    mockUseGetUserInfo.mockReturnValue({ username: 'trackerUser', roles: ["TRACKER"] });
+
+    Storage.prototype.getItem = jest.fn(() =>
+      JSON.stringify({ username: 'trackerUser', roles: ['TRACKER'] })
+    );
+
+    require('react-router-dom').__setSearch('?edit=true');
+
+    await act(async () => {
+      render(
+        <MemoryRouter initialEntries={['/team-card/42?edit=true']}>
+          <Routes><Route path="/team-card/:id" element={<TeamCard />} /></Routes>
+        </MemoryRouter>
+      );
+    });
+
+    const dropdown = screen.getByText('MyStream'); // Изменено с /Поток/ на 'MyStream'
+    fireEvent.mouseEnter(dropdown);
+    expect(await screen.findByText(/Трекер не может редактировать/i)).toBeInTheDocument();
+    fireEvent.mouseLeave(dropdown);
+    expect(screen.queryByText(/Трекер не может редактировать/i)).not.toBeInTheDocument();
   });
 
 
-  test('handleDeactivate: если confirm отклонён, fetch и navigate не вызываются', async () => {
-    window.confirm = jest.fn(() => false);
-    const fetchSpy = jest.spyOn(global, 'fetch');
+  test('если selectedStreamId не задан, используется streamInfo.id', async () => {
+    require('react-router-dom').__setState({ streamId: 1 });
+
     await act(async () => {
       render(
         <MemoryRouter initialEntries={['/team-card/42']}>
-          <Routes>
-            <Route path="/team-card/:id" element={<TeamCard />} />
-          </Routes>
+          <Routes><Route path="/team-card/:id" element={<TeamCard />} /></Routes>
         </MemoryRouter>
       );
     });
-    fireEvent.click(screen.getByRole('button', { name: /Редактировать/i }));
-    fireEvent.click(screen.getByRole('button', { name: /Деактивировать/i }));
-    expect(fetchSpy).not.toHaveBeenCalledWith(
-      expect.stringContaining('/api/v1/admin/team-card'),
-      expect.objectContaining({ method: 'DELETE' })
-    );
-    expect(mockedNavigate).not.toHaveBeenCalledWith('/team-cards');
-    fetchSpy.mockRestore();
+
+    expect(await screen.findByText('MyStream')).toBeInTheDocument();
+
   });
-});
-test('TRACKER branch uses /account/info for fullName', async () => {
+
+  describe('Additional coverage (manual lines)', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+      require('react-router-dom').__setSearch('');
+      require('react-router-dom').__setState({});
+    });
+
+    test('Показывает "Загрузка данных о потоке...", пока streamInfo ещё null', async () => {
+      global.fetch = jest.fn((url) => {
+        if (url.includes('/api/v1/admin/team-cards') || url.includes('/api/v1/team-cards')) {
+          return new Promise(resolve => setTimeout(() =>
+            resolve({
+              ok: true,
+              json: () => Promise.resolve({
+                content: [{
+                  id: 42,
+                  name: 'OldName',
+                  description: 'OldDesc',
+                  ntiMarkets: [{ id: 10, displayName: 'OldMarket' }],
+                  readinessLevel: '0-2',
+                  streams: [{ id: 1, name: 'MyStream' }]
+                }],
+                totalPages: 1
+              })
+            }), 100)
+          );
+        }
+        if (url.includes('/api/v1/streams?page=0&size=150')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({
+              content: [{
+                id: 1,
+                name: 'MyStream',
+                startDate: '2025-03-01T00:00:00Z',
+                endDate: '2025-03-10T00:00:00Z'
+              }]
+            })
+          });
+        }
+        if (url.includes('/api/v1/streams/nti-markets')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve([{ id: 10, displayName: 'OldMarket' }])
+          });
+        }
+        if (url.endsWith('/api/v1/users/reduxUser/info')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ fullName: 'Admin FullName' })
+          });
+        }
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ content: [], totalPages: 1 })
+        });
+      });
+
+      await act(async () => {
+        render(
+          <MemoryRouter initialEntries={['/team-card/42']}>
+            <Routes><Route path="/team-card/:id" element={<TeamCard />} /></Routes>
+          </MemoryRouter>
+        );
+      });
+
+      // Check loading message is present initially
+      expect(screen.getByText('Загрузка данных о потоке...')).toBeInTheDocument();
+
+      // Wait for data to load and message to disappear
+      await waitFor(() => {
+        expect(screen.queryByText('Загрузка данных о потоке...')).not.toBeInTheDocument();
+        expect(screen.getByText('MyStream')).toBeInTheDocument();
+      }, { timeout: 200 }); // Increased timeout to account for 100ms delay
+    });
+    test('При клике вне блока .dropdown-block дропдауны NTI/TRL закрываются', async () => {
+      // включаем режим редактирования, чтобы dropdown заработали
+      require('react-router-dom').__setSearch('?edit=true');
+      await act(async () => {
+        render(
+          <MemoryRouter initialEntries={['/team-card/42?edit=true']}>
+            <Routes>
+              <Route path="/team-card/:id" element={<TeamCard />} />
+            </Routes>
+          </MemoryRouter>
+        );
+      });
+
+      // Открываем NTI-список (меню появляются как <button>)
+      fireEvent.click(screen.getByText(/OldMarket|Рынки НТИ/));
+
+      expect(screen.getAllByText((text) => text.includes('OldMarket'))
+        .length).toBeGreaterThanOrEqual(1);
+
+      // Открываем TRL-список
+      fireEvent.click(screen.getByText('0-2'));
+      expect(screen.getAllByRole('button', { name: '3-5' }).length).toBeGreaterThanOrEqual(1);
+
+      // Кликаем вне dropdown
+      fireEvent.mouseDown(document.body);
+
+      // После клика вне оба списка должны закрыться (ни одной кнопки-элемента меню не остаётся)
+      expect(screen.queryAllByRole('button', { name: 'OldMarket' })).toHaveLength(0);
+      expect(screen.queryAllByRole('button', { name: '3-5' })).toHaveLength(0);
+    });
+
+
+    test('handleDeactivate: если confirm отклонён, fetch и navigate не вызываются', async () => {
+      window.confirm = jest.fn(() => false);
+      const fetchSpy = jest.spyOn(global, 'fetch');
+      await act(async () => {
+        render(
+          <MemoryRouter initialEntries={['/team-card/42']}>
+            <Routes>
+              <Route path="/team-card/:id" element={<TeamCard />} />
+            </Routes>
+          </MemoryRouter>
+        );
+      });
+      fireEvent.click(screen.getByRole('button', { name: /Редактировать/i }));
+      fireEvent.click(screen.getByRole('button', { name: /Деактивировать/i }));
+      expect(fetchSpy).not.toHaveBeenCalledWith(
+        expect.stringContaining('/api/v1/admin/team-card'),
+        expect.objectContaining({ method: 'DELETE' })
+      );
+      expect(mockedNavigate).not.toHaveBeenCalledWith('/team-cards');
+      fetchSpy.mockRestore();
+    });
+  });
+  test('TRACKER branch uses /account/info for fullName', async () => {
     const RR = require('react-router-dom');
     RR.__setSearch('');
     // Ставим роль TRACKER
@@ -842,34 +842,34 @@ test('TRACKER branch uses /account/info for fullName', async () => {
   });
 
   test('console.error on fetch team-cards error', async () => {
-  const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-  const RR = require('react-router-dom');
-  RR.__setSearch('');
-  
-  global.fetch = jest.fn((url) => {
-    if (url.includes('/api/v1/admin/team-cards')) {
-      return Promise.resolve({ ok: false, status: 500 });
-    }
-    return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [], totalPages: 1 }) });
-  });
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
+    const RR = require('react-router-dom');
+    RR.__setSearch('');
 
-  await act(async () => {
-    render(
-      <MemoryRouter initialEntries={['/team-card/42']}>
-        <Routes><Route path="/team-card/:id" element={<TeamCard />} /></Routes>
-      </MemoryRouter>
+    global.fetch = jest.fn((url) => {
+      if (url.includes('/api/v1/admin/team-cards')) {
+        return Promise.resolve({ ok: false, status: 500 });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [], totalPages: 1 }) });
+    });
+
+    await act(async () => {
+      render(
+        <MemoryRouter initialEntries={['/team-card/42']}>
+          <Routes><Route path="/team-card/:id" element={<TeamCard />} /></Routes>
+        </MemoryRouter>
+      );
+    });
+
+    expect(consoleSpy).toHaveBeenCalledWith(
+      expect.stringContaining('поиске карточки команды'),
+      expect.any(Error)
     );
+    consoleSpy.mockRestore();
   });
-  
-  expect(consoleSpy).toHaveBeenCalledWith(
-    expect.stringContaining('поиске карточки команды'),
-    expect.any(Error)
-  );
-  consoleSpy.mockRestore();
-});
 
   test('console.error on fetch streams error', async () => {
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
     const RR = require('react-router-dom');
     RR.__setSearch('');
     redux.useSelector.mockImplementation(() => ({
@@ -900,44 +900,44 @@ test('TRACKER branch uses /account/info for fullName', async () => {
   });
 
   test('initial view displays NTI and TRL values', async () => {
-  require('react-router-dom').__setSearch('');
-  await act(async () => {
-    render(
-      <MemoryRouter initialEntries={['/team-card/42']}>
-        <Routes><Route path="/team-card/:id" element={<TeamCard />} /></Routes>
-      </MemoryRouter>
-    );
+    require('react-router-dom').__setSearch('');
+    await act(async () => {
+      render(
+        <MemoryRouter initialEntries={['/team-card/42']}>
+          <Routes><Route path="/team-card/:id" element={<TeamCard />} /></Routes>
+        </MemoryRouter>
+      );
+    });
+
+    // Check NTI market value
+    const ntiInputs = await screen.findAllByDisplayValue('OldMarket');
+    expect(ntiInputs.length).toBeGreaterThan(0);
+
+    // Check TRL value
+    const trlInput = screen.getByDisplayValue('0-2');
+    expect(trlInput).toBeInTheDocument();
   });
-  
-  // Check NTI market value
-  const ntiInputs = await screen.findAllByDisplayValue('OldMarket');
-  expect(ntiInputs.length).toBeGreaterThan(0);
-  
-  // Check TRL value
-  const trlInput = screen.getByDisplayValue('0-2');
-  expect(trlInput).toBeInTheDocument();
-});
 
   test('NTI selection via Enter key', async () => {
-  require('react-router-dom').__setSearch('?edit=true');
-  await act(async () => {
-    render(
-      <MemoryRouter initialEntries={['/team-card/42?edit=true']}>
-        <Routes><Route path="/team-card/:id" element={<TeamCard />} /></Routes>
-      </MemoryRouter>
-    );
+    require('react-router-dom').__setSearch('?edit=true');
+    await act(async () => {
+      render(
+        <MemoryRouter initialEntries={['/team-card/42?edit=true']}>
+          <Routes><Route path="/team-card/:id" element={<TeamCard />} /></Routes>
+        </MemoryRouter>
+      );
+    });
+
+    // Open NTI dropdown
+    fireEvent.click(screen.getByText(/OldMarket|Рынки НТИ/));
+
+    // Find and select NewMarket
+    const newMarketOption = await screen.findByText('NewMarket');
+    fireEvent.keyDown(newMarketOption, { key: 'Enter' });
+
+    // Verify selection
+    expect(await screen.findByText('NewMarket')).toBeInTheDocument();
   });
-  
-  // Open NTI dropdown
-  fireEvent.click(screen.getByText(/OldMarket|Рынки НТИ/));
-  
-  // Find and select NewMarket
-  const newMarketOption = await screen.findByText('NewMarket');
-  fireEvent.keyDown(newMarketOption, { key: 'Enter' });
-  
-  // Verify selection
-  expect(await screen.findByText('NewMarket')).toBeInTheDocument();
-});
 
   test('streams dropdown opens and shows options', async () => {
     require('react-router-dom').__setSearch('?edit=true');
@@ -955,24 +955,24 @@ test('TRACKER branch uses /account/info for fullName', async () => {
     expect(screen.getAllByText('MyStream').length).toBeGreaterThan(1);
   });
 
-test('нажатие на кнопку × вызывает navigate(-1)', async () => {
-  const RR = require('react-router-dom');
-  RR.__setSearch('');
-  RR.__setState({ from: '/custom-return-path' });
+  test('нажатие на кнопку × вызывает navigate(-1)', async () => {
+    const RR = require('react-router-dom');
+    RR.__setSearch('');
+    RR.__setState({ from: '/custom-return-path' });
 
-  await act(async () => {
-    render(
-      <MemoryRouter initialEntries={['/team-card/42']}>
-        <Routes><Route path="/team-card/:id" element={<TeamCard />} /></Routes>
-      </MemoryRouter>
-    );
+    await act(async () => {
+      render(
+        <MemoryRouter initialEntries={['/team-card/42']}>
+          <Routes><Route path="/team-card/:id" element={<TeamCard />} /></Routes>
+        </MemoryRouter>
+      );
+    });
+
+    const closeButton = screen.getByRole('button', { name: '×' });
+    fireEvent.click(closeButton);
+
+    expect(mockedNavigate).toHaveBeenCalledWith(-1);
   });
-
-  const closeButton = screen.getByRole('button', { name: '×' });
-  fireEvent.click(closeButton);
-
-  expect(mockedNavigate).toHaveBeenCalledWith(-1);
-});
 
 
 });
@@ -1044,8 +1044,8 @@ describe('Additional coverage (manual lines)', () => {
     });
   });
 
-  
-  
+
+
   test('NTI dropdown toggle via Enter key', async () => {
     require('react-router-dom').__setSearch('?edit=true');
     await act(async () => {
@@ -1106,7 +1106,7 @@ describe('Additional coverage (manual lines)', () => {
     });
   });
 
-  
+
 });
 describe('Additional coverage for specific lines', () => {
   beforeEach(() => {
@@ -1220,7 +1220,7 @@ describe('Additional coverage for specific lines', () => {
   // Lines 133-135, 140, 143: TRACKER fetchFullName error
   test('TRACKER fetchFullName error triggers handleApiError', async () => {
     mockUseGetUserInfo.mockReturnValue({ username: 'trackerUser', roles: ["TRACKER"] });
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
     global.fetch = jest.fn((url) => {
       if (url.endsWith('/api/v1/account/info')) {
         return Promise.resolve({ ok: false, status: 500 });
@@ -1264,7 +1264,7 @@ describe('Additional coverage for specific lines', () => {
 
   // Line 159: fetchTeamCardsCount error
   test('fetchTeamCardsCount error triggers handleApiError', async () => {
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
     global.fetch = jest.fn((url) => {
       if (url.includes('/api/v1/team-card/count')) {
         return Promise.resolve({ ok: false, status: 500 });
@@ -1304,7 +1304,7 @@ describe('Additional coverage for specific lines', () => {
   });
 
   // Lines 309-314: Team card not found
-  
+
 
   // Lines 346-356: Successful trackers fetch
   test('successfully fetches and sets active trackers', async () => {
@@ -1322,10 +1322,10 @@ describe('Additional coverage for specific lines', () => {
   });
 
   // Lines 610-630: handleSave with empty trackers
-  
+
   // Lines 660-668: handleDeactivate error
   test('handleDeactivate error triggers handleApiError', async () => {
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
     global.fetch = jest.fn((url, opts = {}) => {
       if (opts.method === 'DELETE') {
         return Promise.resolve({ ok: false, status: 500 });
@@ -1367,94 +1367,94 @@ describe('Additional coverage for specific lines', () => {
     consoleSpy.mockRestore();
   });
   test('toggles NTI market selection in editedData', async () => {
-  global.fetch = jest.fn((url, opts = {}) => {
-    if (url.includes('/api/v1/admin/team-cards')) {
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({
-          content: [{
+    global.fetch = jest.fn((url, opts = {}) => {
+      if (url.includes('/api/v1/admin/team-cards')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            content: [{
+              id: 42,
+              name: 'OldName',
+              description: 'OldDesc',
+              ntiMarkets: [{ id: 10, displayName: 'OldMarket' }],
+              readinessLevel: '0-2',
+              streams: [{ id: 1, name: 'Stream1', startDate: '2025-03-01T00:00:00Z', endDate: '2025-03-10T00:00:00Z' }],
+              username: 'reduxUser'
+            }],
+            totalPages: 1
+          })
+        });
+      }
+      if (url.includes('/api/v1/streams/nti-markets')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            { id: 10, displayName: 'OldMarket' },
+            { id: 20, displayName: 'NewMarket' }
+          ])
+        });
+      }
+      if (url.includes('/api/v1/users/trackers')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ content: [] })
+        });
+      }
+      if (opts.method === 'PATCH') {
+        const body = JSON.parse(opts.body || '{}');
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
             id: 42,
-            name: 'OldName',
-            description: 'OldDesc',
-            ntiMarkets: [{ id: 10, displayName: 'OldMarket' }],
-            readinessLevel: '0-2',
-            streams: [{ id: 1, name: 'Stream1', startDate: '2025-03-01T00:00:00Z', endDate: '2025-03-10T00:00:00Z' }],
+            name: body.name || 'OldName',
+            description: body.description || 'OldDesc',
+            ntiMarketIds: body.ntiMarketIds || [],
+            readinessLevel: body.readinessLevel || '0-2',
             username: 'reduxUser'
-          }],
-          totalPages: 1
-        })
-      });
-    }
-    if (url.includes('/api/v1/streams/nti-markets')) {
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve([
-          { id: 10, displayName: 'OldMarket' },
-          { id: 20, displayName: 'NewMarket' }
-        ])
-      });
-    }
-    if (url.includes('/api/v1/users/trackers')) {
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({ content: [] })
-      });
-    }
-    if (opts.method === 'PATCH') {
-      const body = JSON.parse(opts.body || '{}');
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({
-          id: 42,
-          name: body.name || 'OldName',
-          description: body.description || 'OldDesc',
-          ntiMarketIds: body.ntiMarketIds || [],
-          readinessLevel: body.readinessLevel || '0-2',
-          username: 'reduxUser'
-        })
-      });
-    }
-    return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [], totalPages: 1 }) });
+          })
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [], totalPages: 1 }) });
+    });
+
+    await act(async () => {
+      render(
+        <MemoryRouter initialEntries={['/team-card/42?edit=true']}>
+          <Routes><Route path="/team-card/:id" element={<TeamCard />} /></Routes>
+        </MemoryRouter>
+      );
+    });
+
+    // Enter edit mode
+    fireEvent.click(screen.getByRole('button', { name: /Редактировать/i }));
+
+    // Open NTI dropdown
+    fireEvent.click(screen.getByRole('button', { name: /Выбрать рынки НТИ/i }));
+
+    // Deselect OldMarket (already selected, ID 10)
+    const oldMarketLabel = await screen.findByText('OldMarket', { selector: '.data-create-team' });
+    const oldMarketCheckbox = oldMarketLabel.closest('.create-checkbox-item').querySelector('input[type="checkbox"]');
+    fireEvent.click(oldMarketCheckbox); // Should remove ID 10
+
+    // Select NewMarket (ID 20)
+    const newMarketLabel = await screen.findByText('NewMarket', { selector: '.data-create-team' });
+    const newMarketCheckbox = newMarketLabel.closest('.create-checkbox-item').querySelector('input[type="checkbox"]');
+    fireEvent.click(newMarketCheckbox); // Should add ID 20
+
+    // Fill required fields to pass validation
+    fireEvent.change(screen.getByPlaceholderText(/Карточка команды/i), { target: { value: 'TestName' } });
+    fireEvent.change(screen.getByPlaceholderText(/Описание карточки/i), { target: { value: 'TestDesc' } });
+    fireEvent.change(screen.getByPlaceholderText(/https:\/\/webinar\.tusur\.ru/i), { target: { value: 'https://test.link' } });
+
+    // Save
+    fireEvent.click(screen.getByRole('button', { name: /Сохранить/i }));
+
+    await waitFor(() => {
+      const patchCall = global.fetch.mock.calls.find(call => call[1]?.method === 'PATCH');
+      const body = JSON.parse(patchCall[1]?.body || '{}');
+      expect(body.ntiMarketIds).toEqual([20]);
+    });
   });
-
-  await act(async () => {
-    render(
-      <MemoryRouter initialEntries={['/team-card/42?edit=true']}>
-        <Routes><Route path="/team-card/:id" element={<TeamCard />} /></Routes>
-      </MemoryRouter>
-    );
-  });
-
-  // Enter edit mode
-  fireEvent.click(screen.getByRole('button', { name: /Редактировать/i }));
-
-  // Open NTI dropdown
-  fireEvent.click(screen.getByRole('button', { name: /Выбрать рынки НТИ/i }));
-
-  // Deselect OldMarket (already selected, ID 10)
-  const oldMarketLabel = await screen.findByText('OldMarket', { selector: '.data-create-team' });
-  const oldMarketCheckbox = oldMarketLabel.closest('.create-checkbox-item').querySelector('input[type="checkbox"]');
-  fireEvent.click(oldMarketCheckbox); // Should remove ID 10
-
-  // Select NewMarket (ID 20)
-  const newMarketLabel = await screen.findByText('NewMarket', { selector: '.data-create-team' });
-  const newMarketCheckbox = newMarketLabel.closest('.create-checkbox-item').querySelector('input[type="checkbox"]');
-  fireEvent.click(newMarketCheckbox); // Should add ID 20
-
-  // Fill required fields to pass validation
-  fireEvent.change(screen.getByPlaceholderText(/Карточка команды/i), { target: { value: 'TestName' } });
-  fireEvent.change(screen.getByPlaceholderText(/Описание карточки/i), { target: { value: 'TestDesc' } });
- fireEvent.change(screen.getByPlaceholderText(/https:\/\/webinar\.tusur\.ru/i), { target: { value: 'https://test.link' } });
-
-  // Save
-  fireEvent.click(screen.getByRole('button', { name: /Сохранить/i }));
-
-  await waitFor(() => {
-    const patchCall = global.fetch.mock.calls.find(call => call[1]?.method === 'PATCH');
-    const body = JSON.parse(patchCall[1]?.body || '{}');
-    expect(body.ntiMarketIds).toEqual([20]);
-  });
-});
 });
 describe('Meetings list and navigation', () => {
   // Existing test for click navigation
@@ -1473,7 +1473,7 @@ describe('Meetings list and navigation', () => {
   });
 
   // New test for Enter key navigation
-   test('navigates to meeting on Enter key press', async () => {
+  test('navigates to meeting on Enter key press', async () => {
     require('react-router-dom').__setSearch('');
     await act(async () => {
       render(
@@ -1514,8 +1514,8 @@ describe('handleSave validation', () => {
   });
 
   test('shows error when name is empty', async () => {
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
+
     await act(async () => {
       render(
         <MemoryRouter initialEntries={['/team-card/42?edit=true']}>
@@ -1525,8 +1525,8 @@ describe('handleSave validation', () => {
     });
 
     // Clear name field
-    fireEvent.change(screen.getByPlaceholderText(/Карточка команды/i), { 
-      target: { value: '' } 
+    fireEvent.change(screen.getByPlaceholderText(/Карточка команды/i), {
+      target: { value: '' }
     });
 
     fireEvent.click(screen.getByRole('button', { name: /Сохранить/i }));
@@ -1543,8 +1543,8 @@ describe('handleSave validation', () => {
   });
 
   test('shows error when description is empty', async () => {
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
+
     await act(async () => {
       render(
         <MemoryRouter initialEntries={['/team-card/42?edit=true']}>
@@ -1554,8 +1554,8 @@ describe('handleSave validation', () => {
     });
 
     // Clear description field
-    fireEvent.change(screen.getByPlaceholderText(/Описание карточки/i), { 
-      target: { value: '' } 
+    fireEvent.change(screen.getByPlaceholderText(/Описание карточки/i), {
+      target: { value: '' }
     });
 
     fireEvent.click(screen.getByRole('button', { name: /Сохранить/i }));
@@ -1570,55 +1570,8 @@ describe('handleSave validation', () => {
     });
     consoleSpy.mockRestore();
   });
-test('clicking "Запланировать" button sets showMeetingCreate to true', async () => {
-  // Рендерим компонент
-  await act(async () => {
-    render(
-      <MemoryRouter initialEntries={['/team-card/42']}>
-        <Routes><Route path="/team-card/:id" element={<TeamCard />} /></Routes>
-      </MemoryRouter>
-    );
-  });
-
-  // Проверяем, что модальное окно изначально скрыто
-  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-
-  // Находим и кликаем кнопку "Запланировать"
-  const planButton = screen.getByRole('button', { name: /Запланировать/i });
-  fireEvent.click(planButton);
-
-  // Проверяем, что модальное окно появилось
-  expect(screen.getByRole('dialog')).toBeInTheDocument();
-});
-test('closing MeetingCreate modal sets showMeetingCreate to false', async () => {
-  await act(async () => {
-    render(
-      <MemoryRouter initialEntries={['/team-card/42']}>
-        <Routes><Route path="/team-card/:id" element={<TeamCard />} /></Routes>
-      </MemoryRouter>
-    );
-  });
-
-  // Open the modal
-  const planButton = screen.getByRole('button', { name: /Запланировать/i });
-  fireEvent.click(planButton);
-
-  // Verify modal is open
-  const modal = screen.getByTestId('meeting-create-modal');
-  expect(modal).toBeInTheDocument();
-
-  // Close the modal
-  const closeButton = within(modal).getByRole('button', { name: '×' });
-  fireEvent.click(closeButton);
-
-  // Modal should be closed
-  await waitFor(() => {
-    expect(screen.queryByTestId('meeting-create-modal')).not.toBeInTheDocument();
-  });
-});
-  describe('Meeting creation modal', () => {
-  test('clicking "Запланировать" opens meeting creation modal', async () => {
-    require('react-router-dom').__setSearch('');
+  test('clicking "Запланировать" button sets showMeetingCreate to true', async () => {
+    // Рендерим компонент
     await act(async () => {
       render(
         <MemoryRouter initialEntries={['/team-card/42']}>
@@ -1627,48 +1580,16 @@ test('closing MeetingCreate modal sets showMeetingCreate to false', async () => 
       );
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /Запланировать/i }));
-    
-    expect(screen.getByTestId('meeting-create-modal')).toBeInTheDocument();
+    // Проверяем, что модальное окно изначально скрыто
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+    // Находим и кликаем кнопку "Запланировать"
+    const planButton = screen.getByRole('button', { name: /Запланировать/i });
+    fireEvent.click(planButton);
+
+    // Проверяем, что модальное окно появилось
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
-
- 
-});
-});
-describe('TRL selection', () => {
-  test('selecting TRL updates the value', async () => {
-    require('react-router-dom').__setSearch('?edit=true');
-    await act(async () => {
-      render(
-        <MemoryRouter initialEntries={['/team-card/42?edit=true']}>
-          <Routes><Route path="/team-card/:id" element={<TeamCard />} /></Routes>
-        </MemoryRouter>
-      );
-    });
-
-    fireEvent.click(screen.getByText('0-2')); // Open TRL dropdown
-    fireEvent.click(screen.getByText('3-5')); // Select new TRL
-    
-    expect(screen.getByText('3-5')).toBeInTheDocument();
-  });
-
-  // Tests for lines 441-450 (Meeting creation modal)
-describe('Meeting creation modal interactions', () => {
-  test('clicking "Запланировать" opens meeting creation modal', async () => {
-    require('react-router-dom').__setSearch('');
-    await act(async () => {
-      render(
-        <MemoryRouter initialEntries={['/team-card/42']}>
-          <Routes><Route path="/team-card/:id" element={<TeamCard />} /></Routes>
-        </MemoryRouter>
-      );
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: /Запланировать/i }));
-    
-    expect(screen.getByTestId('meeting-create-modal')).toBeInTheDocument();
-  });
-
   test('closing MeetingCreate modal sets showMeetingCreate to false', async () => {
     await act(async () => {
       render(
@@ -1695,11 +1616,27 @@ describe('Meeting creation modal interactions', () => {
       expect(screen.queryByTestId('meeting-create-modal')).not.toBeInTheDocument();
     });
   });
-});
+  describe('Meeting creation modal', () => {
+    test('clicking "Запланировать" opens meeting creation modal', async () => {
+      require('react-router-dom').__setSearch('');
+      await act(async () => {
+        render(
+          <MemoryRouter initialEntries={['/team-card/42']}>
+            <Routes><Route path="/team-card/:id" element={<TeamCard />} /></Routes>
+          </MemoryRouter>
+        );
+      });
 
-// Tests for lines 455-488 (Stream selection)
-describe('Stream selection functionality', () => {
-  test('stream dropdown opens and shows options for ADMIN', async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Запланировать/i }));
+
+      expect(screen.getByTestId('meeting-create-modal')).toBeInTheDocument();
+    });
+
+
+  });
+});
+describe('TRL selection', () => {
+  test('selecting TRL updates the value', async () => {
     require('react-router-dom').__setSearch('?edit=true');
     await act(async () => {
       render(
@@ -1709,100 +1646,163 @@ describe('Stream selection functionality', () => {
       );
     });
 
-    // Initially only one element - the toggle
-    expect(screen.getAllByText('MyStream').length).toBe(1);
-    
-    // Open stream dropdown
-    fireEvent.click(screen.getByText('MyStream'));
-    
-    // After click there should be at least one more copy from the list
-    expect(screen.getAllByText('MyStream').length).toBeGreaterThan(1);
+    fireEvent.click(screen.getByText('0-2')); // Open TRL dropdown
+    fireEvent.click(screen.getByText('3-5')); // Select new TRL
+
+    expect(screen.getByText('3-5')).toBeInTheDocument();
   });
 
-  test('stream selection is disabled for TRACKER role', async () => {
-    mockUseGetUserInfo.mockReturnValue({ username: 'trackerUser', roles: ['TRACKER'] });
+  // Tests for lines 441-450 (Meeting creation modal)
+  describe('Meeting creation modal interactions', () => {
+    test('clicking "Запланировать" opens meeting creation modal', async () => {
+      require('react-router-dom').__setSearch('');
+      await act(async () => {
+        render(
+          <MemoryRouter initialEntries={['/team-card/42']}>
+            <Routes><Route path="/team-card/:id" element={<TeamCard />} /></Routes>
+          </MemoryRouter>
+        );
+      });
 
-    require('react-router-dom').__setSearch('?edit=true');
-    await act(async () => {
-      render(
-        <MemoryRouter initialEntries={['/team-card/42?edit=true']}>
-          <Routes><Route path="/team-card/:id" element={<TeamCard />} /></Routes>
-        </MemoryRouter>
-      );
+      fireEvent.click(screen.getByRole('button', { name: /Запланировать/i }));
+
+      expect(screen.getByTestId('meeting-create-modal')).toBeInTheDocument();
     });
 
-    const streamDropdown = screen.getByText('MyStream');
-    expect(streamDropdown).toHaveStyle('cursor: not-allowed');
-    expect(streamDropdown).toHaveStyle('opacity: 0.6');
-  });
+    test('closing MeetingCreate modal sets showMeetingCreate to false', async () => {
+      await act(async () => {
+        render(
+          <MemoryRouter initialEntries={['/team-card/42']}>
+            <Routes><Route path="/team-card/:id" element={<TeamCard />} /></Routes>
+          </MemoryRouter>
+        );
+      });
 
-  test('shows tooltip for TRACKER when hovering stream dropdown', async () => {
-    mockUseGetUserInfo.mockReturnValue({ username: 'trackerUser', roles: ['TRACKER'] });
+      // Open the modal
+      const planButton = screen.getByRole('button', { name: /Запланировать/i });
+      fireEvent.click(planButton);
 
-    require('react-router-dom').__setSearch('?edit=true');
-    await act(async () => {
-      render(
-        <MemoryRouter initialEntries={['/team-card/42?edit=true']}>
-          <Routes><Route path="/team-card/:id" element={<TeamCard />} /></Routes>
-        </MemoryRouter>
-      );
-    });
+      // Verify modal is open
+      const modal = screen.getByTestId('meeting-create-modal');
+      expect(modal).toBeInTheDocument();
 
-    const streamDropdown = screen.getByText('MyStream');
-    fireEvent.mouseEnter(streamDropdown);
-    
-    expect(await screen.findByText(/Трекер не может редактировать/i)).toBeInTheDocument();
-    
-    fireEvent.mouseLeave(streamDropdown);
-    expect(screen.queryByText(/Трекер не может редактировать/i)).not.toBeInTheDocument();
-  });
-});
+      // Close the modal
+      const closeButton = within(modal).getByRole('button', { name: '×' });
+      fireEvent.click(closeButton);
 
-
-
-// Tests for lines 875-911 (Meeting date editing)
-describe('Meeting date editing', () => {
-
-  test('clicking meeting date opens date editor', async () => {
-    require('react-router-dom').__setSearch('');
-    await act(async () => {
-      render(
-        <MemoryRouter initialEntries={['/team-card/42']}>
-          <Routes><Route path="/team-card/:id" element={<TeamCard />} /></Routes>
-        </MemoryRouter>
-      );
-    });
-
-    const meetingDate = await screen.findByText(/05\.01/i);
-    fireEvent.click(meetingDate);
-    
-    expect(screen.getByRole('button', { name: /Сохранить/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Отмена/i })).toBeInTheDocument();
-  });
-
-  
-
-  test('canceling meeting date edit closes editor without changes', async () => {
-    require('react-router-dom').__setSearch('');
-    await act(async () => {
-      render(
-        <MemoryRouter initialEntries={['/team-card/42']}>
-          <Routes><Route path="/team-card/:id" element={<TeamCard />} /></Routes>
-        </MemoryRouter>
-      );
-    });
-
-    const meetingDate = await screen.findByText(/05\.01/i);
-    fireEvent.click(meetingDate);
-    
-    fireEvent.click(screen.getByRole('button', { name: /Отмена/i }));
-    
-    await waitFor(() => {
-      expect(screen.queryByRole('button', { name: /Сохранить/i })).not.toBeInTheDocument();
-      expect(screen.getByText(/05\.01/i)).toBeInTheDocument();
+      // Modal should be closed
+      await waitFor(() => {
+        expect(screen.queryByTestId('meeting-create-modal')).not.toBeInTheDocument();
+      });
     });
   });
-});
+
+  // Tests for lines 455-488 (Stream selection)
+  describe('Stream selection functionality', () => {
+    test('stream dropdown opens and shows options for ADMIN', async () => {
+      require('react-router-dom').__setSearch('?edit=true');
+      await act(async () => {
+        render(
+          <MemoryRouter initialEntries={['/team-card/42?edit=true']}>
+            <Routes><Route path="/team-card/:id" element={<TeamCard />} /></Routes>
+          </MemoryRouter>
+        );
+      });
+
+      // Initially only one element - the toggle
+      expect(screen.getAllByText('MyStream').length).toBe(1);
+
+      // Open stream dropdown
+      fireEvent.click(screen.getByText('MyStream'));
+
+      // After click there should be at least one more copy from the list
+      expect(screen.getAllByText('MyStream').length).toBeGreaterThan(1);
+    });
+
+    test('stream selection is disabled for TRACKER role', async () => {
+      mockUseGetUserInfo.mockReturnValue({ username: 'trackerUser', roles: ['TRACKER'] });
+
+      require('react-router-dom').__setSearch('?edit=true');
+      await act(async () => {
+        render(
+          <MemoryRouter initialEntries={['/team-card/42?edit=true']}>
+            <Routes><Route path="/team-card/:id" element={<TeamCard />} /></Routes>
+          </MemoryRouter>
+        );
+      });
+
+      const streamDropdown = screen.getByText('MyStream');
+      expect(streamDropdown).toHaveStyle('cursor: not-allowed');
+      expect(streamDropdown).toHaveStyle('opacity: 0.6');
+    });
+
+    test('shows tooltip for TRACKER when hovering stream dropdown', async () => {
+      mockUseGetUserInfo.mockReturnValue({ username: 'trackerUser', roles: ['TRACKER'] });
+
+      require('react-router-dom').__setSearch('?edit=true');
+      await act(async () => {
+        render(
+          <MemoryRouter initialEntries={['/team-card/42?edit=true']}>
+            <Routes><Route path="/team-card/:id" element={<TeamCard />} /></Routes>
+          </MemoryRouter>
+        );
+      });
+
+      const streamDropdown = screen.getByText('MyStream');
+      fireEvent.mouseEnter(streamDropdown);
+
+      expect(await screen.findByText(/Трекер не может редактировать/i)).toBeInTheDocument();
+
+      fireEvent.mouseLeave(streamDropdown);
+      expect(screen.queryByText(/Трекер не может редактировать/i)).not.toBeInTheDocument();
+    });
+  });
+
+
+
+  // Tests for lines 875-911 (Meeting date editing)
+  describe('Meeting date editing', () => {
+
+    test('clicking meeting date opens date editor', async () => {
+      require('react-router-dom').__setSearch('');
+      await act(async () => {
+        render(
+          <MemoryRouter initialEntries={['/team-card/42']}>
+            <Routes><Route path="/team-card/:id" element={<TeamCard />} /></Routes>
+          </MemoryRouter>
+        );
+      });
+
+      const meetingDate = await screen.findByText(/05\.01/i);
+      fireEvent.click(meetingDate);
+
+      expect(screen.getByRole('button', { name: /Сохранить/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Отмена/i })).toBeInTheDocument();
+    });
+
+
+
+    test('canceling meeting date edit closes editor without changes', async () => {
+      require('react-router-dom').__setSearch('');
+      await act(async () => {
+        render(
+          <MemoryRouter initialEntries={['/team-card/42']}>
+            <Routes><Route path="/team-card/:id" element={<TeamCard />} /></Routes>
+          </MemoryRouter>
+        );
+      });
+
+      const meetingDate = await screen.findByText(/05\.01/i);
+      fireEvent.click(meetingDate);
+
+      fireEvent.click(screen.getByRole('button', { name: /Отмена/i }));
+
+      await waitFor(() => {
+        expect(screen.queryByRole('button', { name: /Сохранить/i })).not.toBeInTheDocument();
+        expect(screen.getByText(/05\.01/i)).toBeInTheDocument();
+      });
+    });
+  });
 });
 describe('Stream selection functionality (lines 455-488)', () => {
   beforeEach(() => {
@@ -1812,102 +1812,102 @@ describe('Stream selection functionality (lines 455-488)', () => {
   });
 
   test('stream selection updates selectedStreamId on click', async () => {
-  // Обновляем мок для потоков
-  global.fetch = jest.fn((url) => {
-    if (url.includes('/api/v1/streams?page=0&size=1500')) {
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({
-          content: [
-            { 
-              id: 1, 
-              name: 'Stream1', 
-              startDate: '2025-03-01T00:00:00Z', 
-              endDate: '2025-03-10T00:00:00Z',
-              active: true 
-            },
-            { 
-              id: 2, 
-              name: 'Stream2', 
-              startDate: '2025-04-01T00:00:00Z', 
-              endDate: '2025-04-10T00:00:00Z',
-              active: true 
-            }
-          ]
-        })
-      });
-    }
-    // остальные моки остаются без изменений
-    if (url.includes('/api/v1/admin/team-cards')) {
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({
-          content: [{
-            id: 42,
-            name: 'OldName',
-            description: 'OldDesc',
-            ntiMarkets: [{ id: 10, displayName: 'OldMarket' }],
-            readinessLevel: '0-2',
-            streams: [{ 
-              id: 1, 
-              name: 'Stream1', 
-              startDate: '2025-03-01T00:00:00Z', 
-              endDate: '2025-03-10T00:00:00Z',
-              active: true 
+    // Обновляем мок для потоков
+    global.fetch = jest.fn((url) => {
+      if (url.includes('/api/v1/streams?page=0&size=1500')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            content: [
+              {
+                id: 1,
+                name: 'Stream1',
+                startDate: '2025-03-01T00:00:00Z',
+                endDate: '2025-03-10T00:00:00Z',
+                active: true
+              },
+              {
+                id: 2,
+                name: 'Stream2',
+                startDate: '2025-04-01T00:00:00Z',
+                endDate: '2025-04-10T00:00:00Z',
+                active: true
+              }
+            ]
+          })
+        });
+      }
+      // остальные моки остаются без изменений
+      if (url.includes('/api/v1/admin/team-cards')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            content: [{
+              id: 42,
+              name: 'OldName',
+              description: 'OldDesc',
+              ntiMarkets: [{ id: 10, displayName: 'OldMarket' }],
+              readinessLevel: '0-2',
+              streams: [{
+                id: 1,
+                name: 'Stream1',
+                startDate: '2025-03-01T00:00:00Z',
+                endDate: '2025-03-10T00:00:00Z',
+                active: true
+              }],
+              username: 'reduxUser'
             }],
-            username: 'reduxUser'
-          }],
-          totalPages: 1
-        })
-      });
-    }
-    return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [], totalPages: 1 }) });
-  });
+            totalPages: 1
+          })
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [], totalPages: 1 }) });
+    });
 
-  require('react-router-dom').__setSearch('?edit=true');
-  await act(async () => {
-    render(
-      <MemoryRouter initialEntries={['/team-card/42?edit=true']}>
-        <Routes><Route path="/team-card/:id" element={<TeamCard />} /></Routes>
-      </MemoryRouter>
-    );
-  });
+    require('react-router-dom').__setSearch('?edit=true');
+    await act(async () => {
+      render(
+        <MemoryRouter initialEntries={['/team-card/42?edit=true']}>
+          <Routes><Route path="/team-card/:id" element={<TeamCard />} /></Routes>
+        </MemoryRouter>
+      );
+    });
 
-  fireEvent.click(screen.getByText('Stream1')); // Open dropdown
-  fireEvent.click(screen.getByText('Stream2')); // Select Stream2
+    fireEvent.click(screen.getByText('Stream1')); // Open dropdown
+    fireEvent.click(screen.getByText('Stream2')); // Select Stream2
 
-  await waitFor(() => {
-    expect(screen.getAllByText('Stream2').length).toBe(1); // Only toggle remains
-    expect(screen.getByText('Stream2')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getAllByText('Stream2').length).toBe(1); // Only toggle remains
+      expect(screen.getByText('Stream2')).toBeInTheDocument();
+    });
   });
-});
 
   test('Stream selection via Enter key', async () => {
-  // Тот же мок с двумя потоками
-  global.fetch = jest.fn((url) => {
-    if (url.includes('/api/v1/streams?page=0&size=1500')) {
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({
-          content: [
-            { 
-              id: 1, 
-              name: 'Stream1', 
-              startDate: '2025-03-01T00:00:00Z', 
-              endDate: '2025-03-10T00:00:00Z',
-              active: true 
-            },
-            { 
-              id: 2, 
-              name: 'Stream2', 
-              startDate: '2025-04-01T00:00:00Z', 
-              endDate: '2025-04-10T00:00:00Z',
-              active: true 
-            }
-          ]
-        })
-      });
-    }
+    // Тот же мок с двумя потоками
+    global.fetch = jest.fn((url) => {
+      if (url.includes('/api/v1/streams?page=0&size=1500')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            content: [
+              {
+                id: 1,
+                name: 'Stream1',
+                startDate: '2025-03-01T00:00:00Z',
+                endDate: '2025-03-10T00:00:00Z',
+                active: true
+              },
+              {
+                id: 2,
+                name: 'Stream2',
+                startDate: '2025-04-01T00:00:00Z',
+                endDate: '2025-04-10T00:00:00Z',
+                active: true
+              }
+            ]
+          })
+        });
+      }
       if (url.includes('/api/v1/admin/team-cards')) {
         return Promise.resolve({
           ok: true,
@@ -1929,101 +1929,101 @@ describe('Stream selection functionality (lines 455-488)', () => {
     });
 
     require('react-router-dom').__setSearch('?edit=true');
-  await act(async () => {
-    render(
-      <MemoryRouter initialEntries={['/team-card/42?edit=true']}>
-        <Routes><Route path="/team-card/:id" element={<TeamCard />} /></Routes>
-      </MemoryRouter>
-    );
-  });
-
-  // Open stream dropdown
-  fireEvent.click(screen.getByText('Stream1'));
-  const streamOption = await screen.findByText('Stream2');
-
-  // Simulate Enter key on stream label
-  fireEvent.keyDown(streamOption, { key: 'Enter' });
-
-  // Verify dropdown closed and Stream2 is selected
-  await waitFor(() => {
-    expect(screen.queryAllByText('Stream2').length).toBe(1);
-    expect(screen.getByText('Stream2')).toBeInTheDocument();
-  });
-});
-
-  
-
-  describe('Saving meeting date (lines 875-882)', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-    require('react-router-dom').__setSearch('');
-    redux.useSelector.mockImplementation(() => ({
-      user: { username: 'reduxUser', roles: ['ADMIN'] }
-    }));
-    Storage.prototype.getItem = jest.fn(() =>
-      JSON.stringify({ username: 'reduxUser', roles: ['ADMIN'] })
-    );
-  });
-
-  
-
-  test('saveMeetingDate handles API error', async () => {
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    global.fetch = jest.fn((url, opts = {}) => {
-      if (url.includes('/api/v1/update-meeting/100') && opts.method === 'PATCH') {
-        return Promise.resolve({ ok: false, status: 500 });
-      }
-      if (url.includes('/api/v1/meetings')) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({
-            content: [{ id: 100, startDate: '2025-01-05T00:00:00Z', number: 2 }],
-            totalPages: 1
-          })
-        });
-      }
-      if (url.includes('/api/v1/admin/team-cards')) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({
-            content: [{
-              id: 42,
-              name: 'OldName',
-              description: 'OldDesc',
-              ntiMarkets: [{ id: 10, displayName: 'OldMarket' }],
-              readinessLevel: '0-2',
-              streams: [{ id: 1, name: 'Stream1' }],
-              username: 'reduxUser'
-            }],
-            totalPages: 1
-          })
-        });
-      }
-      return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [], totalPages: 1 }) });
-    });
-
     await act(async () => {
       render(
-        <MemoryRouter initialEntries={['/team-card/42']}>
+        <MemoryRouter initialEntries={['/team-card/42?edit=true']}>
           <Routes><Route path="/team-card/:id" element={<TeamCard />} /></Routes>
         </MemoryRouter>
       );
     });
 
-    const meetingDate = await screen.findByText(/05\.01/i);
-    fireEvent.click(meetingDate);
+    // Open stream dropdown
+    fireEvent.click(screen.getByText('Stream1'));
+    const streamOption = await screen.findByText('Stream2');
 
-    fireEvent.click(screen.getByRole('button', { name: /Сохранить/i }));
+    // Simulate Enter key on stream label
+    fireEvent.keyDown(streamOption, { key: 'Enter' });
 
+    // Verify dropdown closed and Stream2 is selected
     await waitFor(() => {
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('сохранении даты встречи'),
-        expect.any(Error)
+      expect(screen.queryAllByText('Stream2').length).toBe(1);
+      expect(screen.getByText('Stream2')).toBeInTheDocument();
+    });
+  });
+
+
+
+  describe('Saving meeting date (lines 875-882)', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+      require('react-router-dom').__setSearch('');
+      redux.useSelector.mockImplementation(() => ({
+        user: { username: 'reduxUser', roles: ['ADMIN'] }
+      }));
+      Storage.prototype.getItem = jest.fn(() =>
+        JSON.stringify({ username: 'reduxUser', roles: ['ADMIN'] })
       );
     });
-    consoleSpy.mockRestore();
+
+
+
+    test('saveMeetingDate handles API error', async () => {
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
+      global.fetch = jest.fn((url, opts = {}) => {
+        if (url.includes('/api/v1/update-meeting/100') && opts.method === 'PATCH') {
+          return Promise.resolve({ ok: false, status: 500 });
+        }
+        if (url.includes('/api/v1/meetings')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({
+              content: [{ id: 100, startDate: '2025-01-05T00:00:00Z', number: 2 }],
+              totalPages: 1
+            })
+          });
+        }
+        if (url.includes('/api/v1/admin/team-cards')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({
+              content: [{
+                id: 42,
+                name: 'OldName',
+                description: 'OldDesc',
+                ntiMarkets: [{ id: 10, displayName: 'OldMarket' }],
+                readinessLevel: '0-2',
+                streams: [{ id: 1, name: 'Stream1' }],
+                username: 'reduxUser'
+              }],
+              totalPages: 1
+            })
+          });
+        }
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [], totalPages: 1 }) });
+      });
+
+      await act(async () => {
+        render(
+          <MemoryRouter initialEntries={['/team-card/42']}>
+            <Routes><Route path="/team-card/:id" element={<TeamCard />} /></Routes>
+          </MemoryRouter>
+        );
+      });
+
+      const meetingDate = await screen.findByText(/05\.01/i);
+      fireEvent.click(meetingDate);
+
+      fireEvent.click(screen.getByRole('button', { name: /Сохранить/i }));
+
+      await waitFor(() => {
+        expect(consoleSpy).toHaveBeenCalledWith(
+          expect.stringContaining('сохранении даты встречи'),
+          expect.any(Error)
+        );
+      });
+      consoleSpy.mockRestore();
+    });
   });
-});
 });
 describe('Meeting date editing', () => {
   beforeEach(() => {
@@ -2069,8 +2069,8 @@ describe('Meeting date editing', () => {
 
   // Fixed test for line 450 (and 875): handleApiError in handleDateChange
   test('handleDateChange triggers handleApiError on invalid date', async () => {
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
+
     global.fetch = jest.fn((url) => {
       if (url.includes('/api/v1/meetings')) {
         return Promise.resolve({
@@ -2267,7 +2267,7 @@ describe('Meetings sorting functionality', () => {
     await waitFor(() => {
       const meetingTitles = screen.getAllByText(/Встреча \d+/);
       expect(meetingTitles.length).toBe(5);
-      
+
       // Проверяем порядок: 1, 2, 3, 4, 5
       expect(meetingTitles[0].textContent).toBe('Встреча 1');
       expect(meetingTitles[1].textContent).toBe('Встреча 2');
@@ -2309,7 +2309,7 @@ describe('Meetings sorting functionality', () => {
     // Проверяем, что сортировка всё равно работает, используя 0 для некорректных значений
     await waitFor(() => {
       const meetingTitles = screen.getAllByText(/Встреча/);
-      
+
       // Элемент с number="abc" будет обработан как 0
       // Элемент без number будет обработан как 0
       // Элемент с пустым number будет обработан как 0
@@ -2351,14 +2351,14 @@ describe('Meetings sorting functionality', () => {
     // Проверяем, что parseInt корректно обрабатывает строки с ведущими нулями
     await waitFor(() => {
       const meetingTitles = screen.getAllByText(/Встреча/);
-      
+
       // Ожидаемый порядок после parseInt: 1, 2, 5, 10
       // "001" -> 1, "2" -> 2, "005" -> 5, "10" -> 10
       const numbers = meetingTitles.map(title => {
         const match = title.textContent.match(/Встреча (\d+)/);
         return match ? parseInt(match[1]) : 0;
       });
-      
+
       expect(numbers).toEqual([1, 2, 5, 10]);
     });
   });
@@ -2398,7 +2398,7 @@ describe('Meetings sorting functionality', () => {
         const match = title.textContent.match(/Встреча (\d+)/);
         return match ? parseInt(match[1]) : 0;
       });
-      
+
       // Ожидаемый порядок: 50, 100, 999, 1000
       expect(numbers).toEqual([50, 100, 999, 1000]);
     });
@@ -2435,7 +2435,7 @@ describe('Meetings sorting functionality', () => {
     await waitFor(() => {
       const meetingTitles = screen.getAllByText(/Встреча 1/);
       expect(meetingTitles.length).toBe(3);
-      
+
       // Поскольку все номера равны (1), порядок должен сохраниться исходный
       // В React это обычно происходит из-за стабильной сортировки
     });
@@ -2517,13 +2517,13 @@ describe('Sorting function unit tests', () => {
       { number: '2' },
       { number: '4' }
     ];
-    
+
     const sorted = meetings.sort((a, b) => {
       const numA = parseInt(a.number) || 0;
       const numB = parseInt(b.number) || 0;
       return numA - numB; // по возрастанию
     });
-    
+
     expect(sorted.map(m => m.number)).toEqual(['1', '2', '3', '4', '5']);
   });
 });
@@ -2533,7 +2533,7 @@ describe('TeamCard Delete Meeting Functionality (Guaranteed Pass)', () => {
 
   beforeEach(() => {
     jest.spyOn(require('react-router-dom'), 'useNavigate').mockReturnValue(mockNavigate);
-    jest.spyOn(console, 'error').mockImplementation(() => {});
+    jest.spyOn(console, 'error').mockImplementation(() => { });
     global.fetch = jest.fn();
   });
 
@@ -2631,73 +2631,73 @@ describe('TeamCard Delete Meeting Functionality (Guaranteed Pass)', () => {
 });
 
 
-  test('useEffect: updates maxMeetingsCount when streamInfo changes', async () => {
-    // Render TeamCard, then update streamInfo and check maxMeetingsCount
-    global.fetch = jest.fn((url) => {
-      if (url.includes('/api/v1/admin/team-cards') || url.includes('/api/v1/team-cards')) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({
-            content: [{
-              id: 42,
-              name: 'Test',
-              description: 'Test',
-              ntiMarkets: [{ id: 10, displayName: 'OldMarket' }],
-              readinessLevel: '0-2',
-              streams: [{ id: 1, name: 'MyStream', meetingsCount: 2 }],
-              username: 'reduxUser',
-            }],
-            totalPages: 1
-          })
-        });
-      }
-      if (url.includes('/api/v1/meetings')) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({
-            content: [],
-            totalPages: 1
-          })
-        });
-      }
-      if (url.includes('/api/v1/streams?page=0&size=150')) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({
-            content: [{ id: 1, name: 'MyStream', meetingsCount: 2 }]
-          })
-        });
-      }
-      if (url.includes('/api/v1/streams/nti-markets')) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve([{ id: 10, displayName: 'OldMarket' }])
-        });
-      }
-      if (url.endsWith('/api/v1/users/reduxUser/info')) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({ fullName: 'Admin FullName' })
-        });
-      }
-      return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [], totalPages: 1 }) });
-    });
-
-    await act(async () => {
-      render(
-        <MemoryRouter initialEntries={['/team-card/42']}>
-          <Routes><Route path="/team-card/:id" element={<TeamCard />} /></Routes>
-        </MemoryRouter>
-      );
-    });
-
-    // maxMeetingsCount should be set to 2 (from streamInfo)
-    // There is no direct UI for maxMeetingsCount, so we check by trying to create meetings
-    // Try to create two meetings (should be allowed), third should error
-    // Simulate by clicking the create meeting button if it exists, or by checking error after two
-    // For now, just check that no error is shown initially
-    expect(screen.queryByText(/максимальное количество встреч/i)).not.toBeInTheDocument();
+test('useEffect: updates maxMeetingsCount when streamInfo changes', async () => {
+  // Render TeamCard, then update streamInfo and check maxMeetingsCount
+  global.fetch = jest.fn((url) => {
+    if (url.includes('/api/v1/admin/team-cards') || url.includes('/api/v1/team-cards')) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({
+          content: [{
+            id: 42,
+            name: 'Test',
+            description: 'Test',
+            ntiMarkets: [{ id: 10, displayName: 'OldMarket' }],
+            readinessLevel: '0-2',
+            streams: [{ id: 1, name: 'MyStream', meetingsCount: 2 }],
+            username: 'reduxUser',
+          }],
+          totalPages: 1
+        })
+      });
+    }
+    if (url.includes('/api/v1/meetings')) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({
+          content: [],
+          totalPages: 1
+        })
+      });
+    }
+    if (url.includes('/api/v1/streams?page=0&size=150')) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({
+          content: [{ id: 1, name: 'MyStream', meetingsCount: 2 }]
+        })
+      });
+    }
+    if (url.includes('/api/v1/streams/nti-markets')) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve([{ id: 10, displayName: 'OldMarket' }])
+      });
+    }
+    if (url.endsWith('/api/v1/users/reduxUser/info')) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ fullName: 'Admin FullName' })
+      });
+    }
+    return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [], totalPages: 1 }) });
   });
+
+  await act(async () => {
+    render(
+      <MemoryRouter initialEntries={['/team-card/42']}>
+        <Routes><Route path="/team-card/:id" element={<TeamCard />} /></Routes>
+      </MemoryRouter>
+    );
+  });
+
+  // maxMeetingsCount should be set to 2 (from streamInfo)
+  // There is no direct UI for maxMeetingsCount, so we check by trying to create meetings
+  // Try to create two meetings (should be allowed), third should error
+  // Simulate by clicking the create meeting button if it exists, or by checking error after two
+  // For now, just check that no error is shown initially
+  expect(screen.queryByText(/максимальное количество встреч/i)).not.toBeInTheDocument();
+});
 describe('deleteMeeting functionality', () => {
   const mockMeetings = [
     {
@@ -2776,125 +2776,125 @@ describe('deleteMeeting functionality', () => {
   });
 
   test('deleteMeeting: покрывает строки 567–570 при ошибке удаления', async () => {
-  const mockMeetings = [
-    { id: 100, number: 2, startDate: '2025-01-05T10:00:00Z', status: 'SCHEDULED' }
-  ];
+    const mockMeetings = [
+      { id: 100, number: 2, startDate: '2025-01-05T10:00:00Z', status: 'SCHEDULED' }
+    ];
 
-  // Мокаем все запросы
-  global.fetch = jest.fn(async (url, opts) => {
-    if (url.includes('/api/v1/meetings') && url.includes('teamCardId=42')) {
+    // Мокаем все запросы
+    global.fetch = jest.fn(async (url, opts) => {
+      if (url.includes('/api/v1/meetings') && url.includes('teamCardId=42')) {
+        return {
+          ok: true,
+          json: () => Promise.resolve({ content: mockMeetings, totalPages: 1 })
+        };
+      }
+
+      if (url.includes('/api/v1/delete-meeting/100') && opts?.method === 'DELETE') {
+        return {
+          ok: false,
+          text: () => Promise.resolve('Server error')
+        };
+      }
+
+      // Для других запросов (team-cards, stream и т.п.)
       return {
         ok: true,
-        json: () => Promise.resolve({ content: mockMeetings, totalPages: 1 })
+        json: () => Promise.resolve({})
       };
-    }
+    });
 
-    if (url.includes('/api/v1/delete-meeting/100') && opts?.method === 'DELETE') {
-      return {
-        ok: false,
-        text: () => Promise.resolve('Server error')
-      };
-    }
+    // Рендерим компонент
+    await act(async () => {
+      render(
+        <MemoryRouter initialEntries={['/team-card/42']}>
+          <Routes>
+            <Route path="/team-card/:id" element={<TeamCard />} />
+          </Routes>
+        </MemoryRouter>
+      );
+    });
 
-    // Для других запросов (team-cards, stream и т.п.)
-    return {
-      ok: true,
-      json: () => Promise.resolve({})
-    };
-  });
+    // Ждём, пока появится "Встреча 2"
+    await waitFor(() => {
+      expect(screen.getByText(/Встреча 2/i)).toBeInTheDocument();
+    });
 
-  // Рендерим компонент
-  await act(async () => {
-    render(
-      <MemoryRouter initialEntries={['/team-card/42']}>
-        <Routes>
-          <Route path="/team-card/:id" element={<TeamCard />} />
-        </Routes>
-      </MemoryRouter>
+    // Кликаем на дату встречи
+    fireEvent.click(screen.getByText('05.01'));
+
+    // Кликаем "Удалить" — открытие модалки
+    fireEvent.click(screen.getByRole('button', { name: /Удалить/i }));
+
+    // Кликаем "Удалить" в модалке — вызов deleteMeeting → catch
+    const confirmButton = screen.getByText('Удалить', { selector: 'button.yes' });
+    fireEvent.click(confirmButton);
+
+    // ✅ Ждём, пока модалка исчезнет
+    await waitFor(() => {
+      expect(screen.queryByTestId('delete-modal-overlay')).not.toBeInTheDocument();
+    }, { timeout: 3000 });
+
+    // ✅ Ждём, пока появится сообщение об ошибке
+    await waitFor(
+      () => {
+        expect(screen.getByTestId('meeting-error')).toHaveTextContent(/Не удалось удалить встречу/i);
+      },
+      { timeout: 3000 }
     );
   });
+  test('confirm-modal: onClick и onKeyDown вызывают stopPropagation (единый тест)', async () => {
+    const stopPropagationSpy = jest.spyOn(Event.prototype, 'stopPropagation');
 
-  // Ждём, пока появится "Встреча 2"
-  await waitFor(() => {
-    expect(screen.getByText(/Встреча 2/i)).toBeInTheDocument();
+    await act(async () => {
+      render(
+        <MemoryRouter initialEntries={['/team-card/42']}>
+          <Routes>
+            <Route path="/team-card/:id" element={<TeamCard />} />
+          </Routes>
+        </MemoryRouter>
+      );
+    });
+
+    // Открываем модалку удаления
+    fireEvent.click(screen.getByText('05.01'));
+    fireEvent.click(screen.getByRole('button', { name: /Удалить/i }));
+
+    const modalInner = screen.getByText('Подтвердите удаление').closest('.confirm-modal');
+    expect(modalInner).toBeInTheDocument();
+
+    // Кликаем внутри
+    fireEvent.click(modalInner);
+
+    // Проверяем, что stopPropagation был вызван хотя бы раз
+    expect(stopPropagationSpy).toHaveBeenCalled();
+
+    // Enter
+    fireEvent.keyDown(modalInner, { key: 'Enter' });
+    expect(stopPropagationSpy).toHaveBeenCalled();
+
+    // Пробел
+    fireEvent.keyDown(modalInner, { key: ' ' });
+    expect(stopPropagationSpy).toHaveBeenCalled();
+
+    // Проверяем, что модалка не закрылась
+    expect(screen.getByTestId('delete-modal-overlay')).toBeInTheDocument();
+
+    stopPropagationSpy.mockRestore();
   });
-
-  // Кликаем на дату встречи
-  fireEvent.click(screen.getByText('05.01'));
-
-  // Кликаем "Удалить" — открытие модалки
-  fireEvent.click(screen.getByRole('button', { name: /Удалить/i }));
-
-  // Кликаем "Удалить" в модалке — вызов deleteMeeting → catch
-  const confirmButton = screen.getByText('Удалить', { selector: 'button.yes' });
-  fireEvent.click(confirmButton);
-
-  // ✅ Ждём, пока модалка исчезнет
-  await waitFor(() => {
-    expect(screen.queryByTestId('delete-modal-overlay')).not.toBeInTheDocument();
-  }, { timeout: 3000 });
-
-  // ✅ Ждём, пока появится сообщение об ошибке
-  await waitFor(
-    () => {
-      expect(screen.getByTestId('meeting-error')).toHaveTextContent(/Не удалось удалить встречу/i);
-    },
-    { timeout: 3000 }
-  );
-});
-test('confirm-modal: onClick и onKeyDown вызывают stopPropagation (единый тест)', async () => {
-  const stopPropagationSpy = jest.spyOn(Event.prototype, 'stopPropagation');
-
-  await act(async () => {
-    render(
-      <MemoryRouter initialEntries={['/team-card/42']}>
-        <Routes>
-          <Route path="/team-card/:id" element={<TeamCard />} />
-        </Routes>
-      </MemoryRouter>
-    );
-  });
-
-  // Открываем модалку удаления
-  fireEvent.click(screen.getByText('05.01'));
-  fireEvent.click(screen.getByRole('button', { name: /Удалить/i }));
-
-  const modalInner = screen.getByText('Подтвердите удаление').closest('.confirm-modal');
-  expect(modalInner).toBeInTheDocument();
-
-  // Кликаем внутри
-  fireEvent.click(modalInner);
-
-  // Проверяем, что stopPropagation был вызван хотя бы раз
-  expect(stopPropagationSpy).toHaveBeenCalled();
-
-  // Enter
-  fireEvent.keyDown(modalInner, { key: 'Enter' });
-  expect(stopPropagationSpy).toHaveBeenCalled();
-
-  // Пробел
-  fireEvent.keyDown(modalInner, { key: ' ' });
-  expect(stopPropagationSpy).toHaveBeenCalled();
-
-  // Проверяем, что модалка не закрылась
-  expect(screen.getByTestId('delete-modal-overlay')).toBeInTheDocument();
-
-  stopPropagationSpy.mockRestore();
-});
 
 
 });
 
 describe('Meeting date validation errors', () => {
   let setTimeoutSpy;
-  
+
   beforeEach(() => {
     jest.clearAllMocks();
     jest.useFakeTimers();
-    
+
     // Мокаем setTimeout
     setTimeoutSpy = jest.spyOn(global, 'setTimeout');
-    
+
     require('react-router-dom').__setSearch('');
     mockUseGetUserInfo.mockReturnValue({ username: 'reduxUser', roles: ["ADMIN"] });
   });
@@ -2910,7 +2910,7 @@ describe('Meeting date validation errors', () => {
     // Мокаем validateMeetingDateChange для возврата ошибки о превышении лимита
     const dateUtils = require('../../utils/date-utils');
     const originalValidate = dateUtils.validateMeetingDateChange;
-    
+
     dateUtils.validateMeetingDateChange = jest.fn(() => ({
       isValid: false,
       errorMessage: 'Нельзя сохранить: на этой неделе уже 2 встречи',
@@ -2956,9 +2956,9 @@ describe('Meeting date validation errors', () => {
           json: () => Promise.resolve({ fullName: 'Admin FullName' })
         });
       }
-      return Promise.resolve({ 
-        ok: true, 
-        json: () => Promise.resolve({ content: [], totalPages: 1 }) 
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ content: [], totalPages: 1 })
       });
     });
 
@@ -2972,7 +2972,7 @@ describe('Meeting date validation errors', () => {
 
     // Находим и кликаем дату первой встречи (06.01)
     const meetingDate = await screen.findByText('06.01');
-    
+
     await act(async () => {
       fireEvent.click(meetingDate);
     });
@@ -2994,7 +2994,7 @@ describe('Meeting date validation errors', () => {
   test('shows validation error when saveMeetingDate is called with invalid date (exceeds weekly limit)', async () => {
     const dateUtils = require('../../utils/date-utils');
     const originalValidate = dateUtils.validateMeetingDateChange;
-    
+
     // Настраиваем мок так, чтобы:
     // 1. Первый вызов (в handleDateChange) прошел успешно
     // 2. Второй вызов (в saveMeetingDate) вернул ошибку
@@ -3006,8 +3006,8 @@ describe('Meeting date validation errors', () => {
         return { isValid: true, errorMessage: '', count: 1, monday: '2025-01-06' };
       } else {
         // Второй вызов в saveMeetingDate - ошибка
-        return { 
-          isValid: false, 
+        return {
+          isValid: false,
           errorMessage: 'Нельзя сохранить: на этой неделе уже 2 встречи',
           count: 3,
           monday: '2025-01-06'
@@ -3051,9 +3051,9 @@ describe('Meeting date validation errors', () => {
           json: () => Promise.resolve({ fullName: 'Admin FullName' })
         });
       }
-      return Promise.resolve({ 
-        ok: true, 
-        json: () => Promise.resolve({ content: [], totalPages: 1 }) 
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ content: [], totalPages: 1 })
       });
     });
 
@@ -3067,7 +3067,7 @@ describe('Meeting date validation errors', () => {
 
     // 1. Открываем редактор даты первой встречи
     const meetingDate = await screen.findByText('06.01');
-    
+
     await act(async () => {
       fireEvent.click(meetingDate);
     });
@@ -3091,7 +3091,7 @@ describe('Meeting date validation errors', () => {
 
     // 5. Проверяем, что setTimeout был вызван
     expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 5000);
-    
+
     // 6. Проверяем, что editingMeetingId был сброшен (форма редактирования закрылась)
     await waitFor(() => {
       expect(screen.queryByRole('button', { name: /Сохранить/i })).not.toBeInTheDocument();
@@ -3104,7 +3104,7 @@ describe('Meeting date validation errors', () => {
   test('covers invalid date error in handleDateChange (simpler version)', async () => {
     const dateUtils = require('../../utils/date-utils');
     const originalValidate = dateUtils.validateMeetingDateChange;
-    
+
     // Возвращаем ошибку "Некорректная дата встречи"
     dateUtils.validateMeetingDateChange = jest.fn(() => ({
       isValid: false,
@@ -3119,18 +3119,18 @@ describe('Meeting date validation errors', () => {
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve({
-            content: [{ 
-              id: 100, 
+            content: [{
+              id: 100,
               startDate: '2025-01-06T10:00:00Z', // Валидная дата
-              number: 1 
+              number: 1
             }],
             totalPages: 1
           })
         });
       }
-      return Promise.resolve({ 
-        ok: true, 
-        json: () => Promise.resolve({ content: [], totalPages: 1 }) 
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ content: [], totalPages: 1 })
       });
     });
 
@@ -3144,10 +3144,10 @@ describe('Meeting date validation errors', () => {
 
     // Находим и кликаем на дату встречи (не на саму карточку, а на элемент даты)
     // Этот клик вызовет handleDateChange
-    const meetingDateElement = await screen.findByRole('button', { 
-      name: /Изменить дату встречи 1/i 
+    const meetingDateElement = await screen.findByRole('button', {
+      name: /Изменить дату встречи 1/i
     });
-    
+
     await act(async () => {
       fireEvent.click(meetingDateElement);
     });

@@ -1564,7 +1564,14 @@ select.team-input-widget option {
     .team-card_stream-container {
         align-items: center;
     }
+
     .team-card_stream-data {
+        justify-content: center;
+    }
+
+    .team-card_deactivate-button-container {
+        display: flex;
+        align-items: center;
         justify-content: center;
     }
 }

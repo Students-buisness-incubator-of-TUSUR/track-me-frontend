@@ -918,12 +918,16 @@ const TeamCard = () => {
             </div>
           </div>
           {[adminRoleName, superadminRoleName].includes(role) && isEditing && (
-            <button
-              className="team-card_etc-button team-card_deactivate-button"
-              onClick={handleDeactivate}
+            <div
+              className="team-card_deactivate-button-container"
             >
-              Деактивировать
-            </button>
+              <button
+                className="team-card_etc-button team-card_deactivate-button"
+                onClick={handleDeactivate}
+              >
+                Деактивировать
+              </button>
+            </div>
           )}
           {streamInfo && (
             <div className="team-card_stream-container">

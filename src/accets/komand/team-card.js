@@ -8,21 +8,31 @@ import { validateMeetingDateChange } from "../../utils/date-utils";
 import Header from "../header/header";
 import { useGetUserInfo } from "../../services/util";
 import { fetchTrackers } from "../../services/requests";
+import InputBox from "../input-box/input-box";
+import { ReactComponent as CloseIcon } from '../../files/close.svg';
+import TextBox from "../text-box/text-box";
+import SelectBox from "../select-box/select-box";
+import { adminRoleName, backendURLBackend, backendURLMeeting, backendURLSSO, superadminRoleName } from "../../services/constants";
+import CheckBox from "../check-box/check-box";
 
-const backendHost = (process.env.REACT_APP_BACKEND_URI || "https://localhost:8080") + '/backend';
-const backendHost1 = (process.env.REACT_APP_BACKEND_URI || "https://localhost:8080") + '/sso';
-const backendHost2 = (process.env.REACT_APP_BACKEND_URI || "https://localhost:8080") + '/meeting';
-export const getMeetingStatusClass = (status) => {
+const backendHost = backendURLBackend;
+const backendHost1 = backendURLSSO;
+const backendHost2 = backendURLMeeting;
+
+const getMeetingStatusClass = (status) => {
   switch (status) {
     case "COMPLETED":
-      return "meeting-status-completed";
+      return "team-card_meeting-status-completed";
     case "NOT_HAPPENED":
     case "COMPLETED_AS_NOT_HAPPENED":
-      return "meeting-status-not-happened";
+      return "team-card_meeting-status-not-happened";
+    case "SCHEDULED":
+      return "team-card_meeting-status-scheduled"
     default:
-      return ""; // Для SCHEDULED оставляем без специального класса
+      return "";
   }
 };
+
 const TeamCard = () => {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -253,7 +263,6 @@ const TeamCard = () => {
         return res.json();
       })
       .then(data => {
-        console.log("Загруженные карточки:", data.content.map(card => card.id));
         const cards = data.content || [];
         setAllTeamCards(cards);
         const found = data.content?.find(card => String(card.id) === String(id));
@@ -630,133 +639,174 @@ const TeamCard = () => {
     }
   };
 
-
-
-
   return (
     <>
       <Header userRole={role} />
-      <div className="team-card-widget-container">
-        {teamData.averageGrade !== undefined && teamData.averageGrade !== null && (
-          <div className="team-rating">
-            {teamData.averageGrade.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </div>
-        )}
-        <button className="close-button-widget" onClick={() => navigate(-1)}>×</button>
-
-        <button
-          className="edit-button-widget"
-          onClick={isEditing ? handleSave : () => setIsEditing(true)}
-          disabled={!teamData || isLoading}
-        >
-          {isLoading ? "Сохранение..." : (isEditing ? "Сохранить" : "Редактировать")}
-        </button>
-
-
-        <div className="team-card-left">
-          <div className="team-card-info">
-            <span className="team-label-widget">Трекер:</span>
-            <div className="team-input-wrapper">
-              {(role === "ADMIN" || role === "SUPER_ADMIN") && isEditing ? (
-                <>
-                  <select
-                    className="team-input-widget"
-                    name="username"
-                    value={editedData.username || ""}
-                    onChange={handleChange}
-                  >
-                    <option value="">Выберите трекера</option>
-                    {Array.isArray(trackers) && trackers.map(tracker => (
-                      <option key={tracker.id} value={tracker.username}>
-                        {tracker.fullName}
-                      </option>
-                    ))}
-                  </select>
-                </>
-              ) : (
-                <>
-                  <input
-                    className="team-input-widget"
-                    value={trackerFullName || ""}
-                    readOnly
-                    placeholder="ФИО трекера"
-                  />
-                </>
-              )}
-            </div>
-            {isEditing && (
-              <img src={penIcon} alt="edit" className="team-edit-icon" />
+      {meetingError && (
+        <div className="team-card_error-message" data-testid="meeting-error">
+          {meetingError}
+        </div>
+      )}
+      <div className="team-card_main">
+        <div className="team-card_container">
+          <div className="team-card_header">
+            {teamData.averageGrade !== undefined && teamData.averageGrade !== null && (
+              <div className="team-card_team-rating">
+                {teamData.averageGrade.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </div>
             )}
+            <button
+              onClick={() => navigate(-1)}
+              className="team-card_close-button"
+            >
+              <CloseIcon />
+            </button>
+            <button
+              onClick={isEditing ? handleSave : () => setIsEditing(true)}
+              className="team-card_etc-button"
+            >
+              {isLoading ? "Сохранение..." : (isEditing ? "Сохранить" : "Редактировать")}
+            </button>
           </div>
-
-          <div className="team-card-info">
-            <span className="team-label-widget">Название команды:</span>
-            <div className="team-input-wrapper">
-              <input
-                className="team-input-widget"
-                name="name"
-                value={editedData.name || ""}
-                onChange={handleChange}
-                readOnly={!isEditing}
-                placeholder="Карточка команды"
-              />
-            </div>
-            {isEditing && (
-              <img src={penIcon} alt="edit" className="team-edit-icon" />
-            )}
-          </div>
-
-          {isEditing && (
-            <div className="team-card-info">
-              <span className="team-label-widget">Ссылка на комнату:</span>
-              <div className="team-input-wrapper">
-                <input
-                  className="team-input-widget"
-                  name="meetingRoomLink"
-                  value={editedData.meetingRoomLink || ""}
+          <div className="team-card_row">
+            <div className="team-card_fields">
+              <div className="team-card_field">
+                <p>Трекер:</p>
+                <SelectBox
+                  className="team-card_field-input"
+                  name="username"
+                  value={editedData.username || ""}
                   onChange={handleChange}
-                  placeholder="https://webinar.tusur.ru/b/abc-qwe-zxc-vbn"
+                  readOnly={!isEditing}
+                >
+                  <option value="">Выберите трекера</option>
+                  {Array.isArray(trackers) && trackers.map(tracker => (
+                    <option key={tracker.id} value={tracker.username}>
+                      {tracker.fullName}
+                    </option>
+                  ))}
+                </SelectBox>
+              </div>
+              <div className="team-card_field">
+                <p>Название команды:</p>
+                <InputBox
+                  className="team-card_field-input"
+                  name="name"
+                  value={editedData.name || ""}
+                  onChange={handleChange}
+                  readOnly={!isEditing}
                 />
               </div>
-              <img src={penIcon} alt="edit" className="team-edit-icon" />
-            </div>
-          )}
-
-          {isEditing ? (
-            role === "TRACKER" ? (
-              <div
-                className="dropdown-block"
-                onMouseEnter={() => setShowTooltip(true)}
-                onMouseLeave={() => setShowTooltip(false)}
-                style={{ position: "relative" }}
-              >
-                <div
-                  className={`dropdown-toggle editable`}
-                  style={{ cursor: "not-allowed", opacity: 0.6 }}
-                >
-                  {streamInfo?.name || "Поток"}
-                </div>
-                {showTooltip && (
-                  <div className="stream-tooltip">
-                    Трекер не может редактировать привязку к потоку
+              <div className="team-card_field">
+                <p>Рынки НТИ:</p>
+                {isEditing ? (
+                  <CheckBox
+                    className="team-card_field-nti-checkbox"
+                    title={(selectedMarket?.length > 0
+                      ? selectedMarket.slice(0, 2).map(m => m.displayName).join(", ") +
+                      (selectedMarket.length > 2 ? ` +${selectedMarket.length - 2}` : "")
+                      : "Рынки НТИ")}
+                  >
+                    {ntiMarkets.map(market => (
+                      <label key={market.id}>
+                        <input
+                          type="checkbox"
+                          checked={editedData.ntiMarketIds?.includes(market.id)}
+                          onChange={() => {
+                            setEditedData(prev => {
+                              const already = prev.ntiMarketIds?.includes(market.id);
+                              return {
+                                ...prev,
+                                ntiMarketIds: already
+                                  ? prev.ntiMarketIds.filter(id => id !== market.id)
+                                  : [...(prev.ntiMarketIds || []), market.id]
+                              };
+                            });
+                          }}
+                        />
+                        {market.displayName}
+                      </label>
+                    ))}
+                  </CheckBox>
+                ) : (
+                  <div className="team-card_field-nti-container">
+                    {(teamData.ntiMarkets || []).map((market) => (
+                      <InputBox
+                        key={market.id}
+                        className="team-card_field-nti-input"
+                        value={market.displayName}
+                        readOnly
+                      />
+                    ))}
                   </div>
                 )}
               </div>
-            ) : (
-              <div className={`dropdown-block${showStreams ? " open" : ""}`}>
-                <div
-                  className="create-dropdown-toggle"
-                  onClick={() => setShowStreams(!showStreams)}
-                >
-                  {streams.find(s => s.id === selectedStreamId)?.name || streamInfo?.name || "Поток"}
-
+              <div className="team-card_field">
+                <p>TRL:</p>
+                {isEditing ? (
+                  <CheckBox
+                    className="team-card_field-trl-checkbox"
+                    title={selectedTRL?.label || "TRL"}
+                  >
+                    {trlLevels.map(trl => (
+                      <label
+                        key={trl.id}
+                        type="button"
+                        onClick={() => handleTRLSelect(trl)}
+                      >
+                        <input
+                          type="radio"
+                          name="trl"
+                          checked={selectedTRL?.id === trl.id}
+                          onChange={() => {
+                            handleTRLSelect(trl);
+                          }}
+                        />
+                        {trl.label}
+                      </label>
+                    ))}
+                  </CheckBox>
+                ) : (
+                  <InputBox
+                    className="team-card_field-trl-input"
+                    value={selectedTRL?.label || "TRL"}
+                    readOnly
+                  />
+                )}
+              </div>
+              {isEditing && (
+                <div className="team-card_field">
+                  <p>Ссылка на комнату:</p>
+                  <InputBox
+                    className="team-card_field-input"
+                    name="meetingRoomLink"
+                    value={editedData.meetingRoomLink || ""}
+                    onChange={handleChange}
+                    readOnly={!isEditing}
+                  />
                 </div>
-                {showStreams && (
-                  <div className="create-checkbox-list">
+              )}
+              {[adminRoleName, superadminRoleName].includes(role) && isEditing && (
+                <div className="team-card_field">
+                  <p>Поток:</p>
+                  <CheckBox
+                    className="team-card_field-stream-checkbox"
+                    title={streams.find(s => s.id === selectedStreamId)?.name || streamInfo?.name || "Поток"}
+                  >
                     {streams.map(stream => (
-                      <div
+                      <label
                         key={stream.id}
-                        className="create-checkbox-item create-radio-style"
+                        tabIndex={0}
+                        onClick={() => {
+                          setSelectedStreamId(stream.id);
+                          setShowStreams(false);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            setSelectedStreamId(stream.id);
+                            setShowStreams(false);
+                          }
+                        }}
                       >
                         <input
                           type="radio"
@@ -765,392 +815,127 @@ const TeamCard = () => {
                           onChange={() => {
                             setSelectedStreamId(stream.id);
                             setShowStreams(false);
-                            // при сохранении сюда уже попадёт selectedStreamId
                           }}
                         />
-                        <label
-                          className="data-create-team"
-                          tabIndex={0}
-                          onClick={() => {
-                            setSelectedStreamId(stream.id);
-                            setShowStreams(false);
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                              setSelectedStreamId(stream.id);
-                              setShowStreams(false);
-                            }
-                          }}
-                        >
-                          {stream.name}
-                        </label>
-                      </div>
+                        {stream.name}
+                      </label>
                     ))}
-                  </div>
-                )}
+                  </CheckBox>
+                </div>
+              )}
+              <div className="team-card_field team-card_description-field">
+                <p>Описание:</p>
+                <TextBox
+                  className="team-card_field-description-input"
+                  name="description"
+                  value={editedData.description || ""}
+                  onChange={handleChange}
+                  readOnly={!isEditing}
+                  placeholder="Описание карточки"
+                />
               </div>
-            )
-          ) : null}
-
-
-
-          {isEditing ? (
-            <div className={`dropdown-block${showNTI ? " open" : ""}`}>
-              <div
-                className={`create-dropdown-toggle editable`}
-                onClick={() => setShowNTI(!showNTI)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault(); // Предотвращаем прокрутку страницы при нажатии пробела
-                    setShowNTI(!showNTI);
+            </div>
+            <div className="team-card_meetings-container">
+              <div className="team-card_meetings-list">
+                {meetings.map((meeting) => editingMeetingId === meeting.id ? (
+                  <div
+                    className={`team-card_meetings-button team-card_meeting-editing-container team-card_meeting-text ${getMeetingStatusClass(meeting.status)}`}
+                  >
+                    <input
+                      className="team-card_meeting-edit-date"
+                      type="datetime-local"
+                      value={newMeetingDate}
+                      onChange={(e) => setNewMeetingDate(e.target.value)}
+                      min={new Date().toISOString().slice(0, 16)}
+                    />
+                    <button
+                      className="team-card_meeting-edit-button team-card_meeting-edit-button-save"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        saveMeetingDate();
+                      }}
+                    >
+                      Сохранить
+                    </button>
+                    <button
+                      className="team-card_meeting-edit-button team-card_meeting-edit-button-cancel"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingMeetingId(null);
+                      }}
+                    >
+                      Отмена
+                    </button>
+                    {[adminRoleName, superadminRoleName].includes(role) && (
+                      <button
+                        className="team-card_meeting-edit-button team-card_meeting-edit-button-delete"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setMeetingToDelete(meeting.id);
+                          setShowDeleteModal(true);
+                        }}
+                        title="Удалить встречу"
+                      >
+                        Удалить
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <button
+                    className={`team-card_meetings-button team-card_meeting-text ${getMeetingStatusClass(meeting.status)}`}
+                    onClick={() => navigate(`/meeting/${meeting.id}?teamId=${id}&username=${username}`)}
+                  >
+                    <button
+                      className="team-card_meeting-date team-card_meeting-text"
+                      onClick={(e) => { e.stopPropagation(); handleDateChange(meeting.id, meeting.startDate); }}
+                    >
+                      {new Date(meeting.startDate).toLocaleDateString('ru-RU', {
+                        day: '2-digit',
+                        month: '2-digit'
+                      })}
+                    </button>
+                    <span>Встреча {meeting.number}</span>
+                  </button>
+                ))}
+              </div>
+              <button
+                className="team-card_meetings-button"
+                onClick={() => {
+                  if (checkMeetingCreation()) {
+                    setShowMeetingCreate(true);
                   }
                 }}
-                tabIndex={0} // Делаем элемент фокусируемым
-                role="button" // Указываем роль для лучшей семантики
-                aria-expanded={showNTI} // Указываем состояние выпадающего списка
-                aria-label="Выбрать рынки НТИ" // Улучшаем доступность для экранных читалок
               >
-                {(selectedMarket?.length > 0
-                  ? selectedMarket.slice(0, 2).map(m => m.displayName).join(", ") +
-                  (selectedMarket.length > 2 ? ` +${selectedMarket.length - 2}` : "")
-                  : "Рынки НТИ")}
-              </div>
-              {showNTI && (
-                <div className="create-checkbox-list">
-                  {ntiMarkets.map(market => (
-                    <div key={market.id} className="create-checkbox-item create-radio-style">
-                      <input
-                        type="checkbox"
-                        checked={editedData.ntiMarketIds?.includes(market.id)}
-                        onChange={() => {
-                          setEditedData(prev => {
-                            const already = prev.ntiMarketIds?.includes(market.id);
-                            return {
-                              ...prev,
-                              ntiMarketIds: already
-                                ? prev.ntiMarketIds.filter(id => id !== market.id)
-                                : [...(prev.ntiMarketIds || []), market.id]
-                            };
-                          });
-                        }}
-                      />
-                      <label className="data-create-team">{market.displayName}</label>
-                    </div>
-                  ))}
-                </div>
+                Запланировать
+              </button>
+              {showMeetingCreate && (
+                <MeetingCreate
+                  teamId={id}
+                  onClose={() => setShowMeetingCreate(false)}
+                  userRole={role}
+                />
               )}
-            </div>
-
-          ) : (
-            <div className="team-card-info">
-              <span className="team-label-widget">Рынки НТИ:</span>
-              <div className="team-input-list">
-                {(teamData.ntiMarkets || []).map((market) => (
-                  <input
-                    key={market.id}
-                    className="team-input-widget1"
-                    value={market.displayName}
-                    readOnly
-                    placeholder="Рынок НТИ"
-                  />
-                ))}
-
-
-              </div>
-              {isEditing && (
-                <img src={penIcon} alt="edit" className="team-edit-icon" />
-              )}
-            </div>
-          )}
-
-          {isEditing ? (
-            <div className={`dropdown-block${showTRL ? " open" : ""}`}>
-              <div
-                className={`create-dropdown-toggle ${isEditing ? 'editable' : ''}`}
-                onClick={() => isEditing && setShowTRL(!showTRL)}
-              >
-                {selectedTRL?.label || "TRL"}
-              </div>
-              {showTRL && (
-                <div className="create-checkbox-list">
-                  {trlLevels.map(trl => (
-                    <div
-                      key={trl.id}
-                      className="create-checkbox-item create-radio-style"
-                    >
-                      <input
-                        type="radio"
-                        name="trl"
-                        checked={selectedTRL?.id === trl.id}
-                        onChange={() => {
-                          handleTRLSelect(trl);
-                        }}
-                      />
-                      <button
-                        key={trl.id}
-                        type="button"
-                        className={`data-create-team`}
-                        onClick={() => handleTRLSelect(trl)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            handleTRLSelect(trl);
-                          }
-                        }}
-                      >
-                        {trl.label}
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="team-card-info">
-              <span className="team-label-widget">TRL:</span>
-              <div className="team-input-list">
-                <div className="team-input-wrapper">
-                  <input
-                    className="team-input-widget2"
-                    value={teamData.readinessLevel || ""}
-                    readOnly
-                    placeholder="TRL"
-                  />
-                </div>
-
-              </div>
-              {isEditing && (
-                <img src={penIcon} alt="edit" className="team-edit-icon" />
-              )}
-            </div>
-          )}
-
-          <div className="team-description">
-            <span className="team-description-label">Описание:</span>
-
-            <div className="team-description-wrapper">
-              <textarea
-                name="description"
-                className="team-description-input"
-                value={editedData.description || ""}
-                onChange={handleChange}
-                readOnly={!isEditing}
-                placeholder="Описание карточки"
-              />
-
             </div>
           </div>
-
-
-          {isEditing ? null : (
-            <div className="team-stream-block">
-              {streamInfo ? (
-                <div className="stream-info-block">
-                  <div className="stream-header">
-                    <span className="stream-header-label">Название потока:</span>
-                    <span className="stream-header-label">Количество команд:</span>
-                    <span className="stream-header-label">Сроки потока:</span>
-                  </div>
-                  <div className="stream-data">
-                    <span className="stream-name">{streamInfo.name}</span>
-                    <span className="stream-count">{teamCardsCount}</span>
-                    <span className="stream-dates">{formatDates(streamInfo.startDate, streamInfo.endDate)}</span>
-                  </div>
-                </div>
-              ) : (
-                <div className="stream-loading-message">Загрузка данных о потоке...</div>
-              )}
-            </div>
-          )}
-
-        </div>
-
-        <div className="right-panel">
-          <button
-            className="show-meetings-mobile-btn"
-            onClick={() => setShowMeetingsOnMobile(!showMeetingsOnMobile)}
-          >
-            {showMeetingsOnMobile ? "Скрыть встречи" : "Показать встречи"}
-          </button>
-          {/* Сообщение об ошибке */}
-          {meetingError && (
-            <div className="error-message" data-testid="meeting-error">
-              {meetingError}
-            </div>
-          )}
-          <div className={`team-meetings-block${showMeetingsOnMobile ? " show-mobile" : ""}`}>
-            <div className="team-meetings-exist">
-              {meetings.map((meeting) => (
-                <div
-                  key={meeting.id}
-                  className={`team-meeting ${getMeetingStatusClass(meeting.status)}`}
-                  onClick={(e) => {
-                    // Переход если кликнули на саму карточку или на название, но не на дату
-                    if (e.target === e.currentTarget ||
-                      e.target.classList.contains('meeting-title')) {
-                      navigate(`/meeting/${meeting.id}?teamId=${id}&username=${username}`);
-                    }
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      navigate(`/meeting/${meeting.id}?teamId=${id}&username=${username}`);
-                    }
-                  }}
-                  tabIndex={0}
-                  role="button"
-                  aria-label={`Встреча ${meeting.number} от ${new Date(meeting.startDate).toLocaleDateString('ru-RU', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric'
-                  })}`}
-                >
-                  {editingMeetingId === meeting.id ? (
-                    <div className="date-edit-container">
-                      <input
-                        type="datetime-local"
-                        value={newMeetingDate}
-                        onChange={(e) => setNewMeetingDate(e.target.value)}
-                        className="date-input"
-                        min={new Date().toISOString().slice(0, 16)} // запрет выбора прошедших дат
-                      />
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          saveMeetingDate();
-                        }}
-                        className="save-date-button"
-                      >
-                        Сохранить
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditingMeetingId(null);
-                        }}
-                        className="cancel-date-button"
-                      >
-                        Отмена
-                      </button>
-                      {(role === "ADMIN" || role === "SUPER_ADMIN") && (
-                        <button
-                          className="delete-meeting-button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setMeetingToDelete(meeting.id);
-                            setShowDeleteModal(true);
-                          }}
-                          title="Удалить встречу"
-                        >
-                          Удалить
-                        </button>
-                      )}
-                    </div>
-
-                  ) : (
-                    <>
-                      <span
-                        className="meeting-date"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDateChange(meeting.id, meeting.startDate);
-                        }}
-                        tabIndex={0} // Make it focusable
-                        role="button" // Indicate it's interactive
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.stopPropagation();
-                            handleDateChange(meeting.id, meeting.startDate);
-                          }
-                        }}
-                        aria-label={`Изменить дату встречи ${meeting.number}`}
-                      >
-                        {new Date(meeting.startDate).toLocaleDateString('ru-RU', {
-                          day: '2-digit',
-                          month: '2-digit'
-                        })}
-                      </span>
-                      <span className="meeting-title">
-                        Встреча {meeting.number || "Без номера"}
-                      </span>
-                    </>
-                  )}
-                </div>
-              ))}
-            </div>
+          {[adminRoleName, superadminRoleName].includes(role) && isEditing && (
             <button
-              className="team-meeting-add"
-              onClick={() => {
-                if (checkMeetingCreation()) {
-                  setShowMeetingCreate(true);
-                }
-              }}
+              className="team-card_etc-button team-card_deactivate-button"
+              onClick={handleDeactivate}
             >
-              Запланировать
+              Деактивировать
             </button>
-            {showMeetingCreate && (
-              <MeetingCreate
-                teamId={id}
-                onClose={() => setShowMeetingCreate(false)}
-                userRole={role}
-              />
-            )}
-          </div>
-        </div>
-        {isEditing ? (
-          <div className="red-button-container">
-            <button className="red-button-widget" onClick={handleDeactivate}>
-              <span>Деактивировать</span>
-            </button>
-          </div>
-        ) : null}
-        {showDeleteModal && (
-          <button
-            type="button"
-            className="confirm-modal-overlay"
-            onClick={() => setShowDeleteModal(false)}
-            aria-label="Закрыть модальное окно"
-            data-testid="delete-modal-overlay"
-          >
-            <div
-              className="confirm-modal"
-              onClick={(e) => e.stopPropagation()}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.stopPropagation();
-                }
-              }}
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="delete-meeting-title"
-              tabIndex={-1}
-            >
-              <h3 id="delete-meeting-title">Подтвердите удаление</h3>
-              <p>
-                Вы уверены, что хотите удалить эту встречу? <br />
-                <strong>Это действие нельзя отменить.</strong>
-              </p>
-              <div className="confirm-modal-buttons">
-                <button
-                  className="confirm-button no"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowDeleteModal(false);
-                  }}
-                >
-                  Отмена
-                </button>
-                <button
-                  className="confirm-button yes"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    deleteMeeting();
-                  }}
-                >
-                  Удалить
-                </button>
+          )}
+          {streamInfo && (
+            <div className="team-card_stream-container">
+              <span>Поток:</span>
+              <div className="team-card_stream-data">
+                <span>{streamInfo.name}</span>
+                <span>{teamCardsCount} команд</span>
+                <span>{formatDates(streamInfo.startDate, streamInfo.endDate)}</span>
               </div>
             </div>
-          </button>
-        )}
+          )}
+        </div>
       </div>
     </>
   );

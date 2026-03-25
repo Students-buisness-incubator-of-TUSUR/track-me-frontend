@@ -356,9 +356,7 @@
 }
 .meeting-create-popup {
     position: absolute;
-    right: 150px;
-    top: 60%;
-    transform: translateY(-50%);
+    bottom: 74px;
     background: white;
     border: 1px solid #ccc;
     border-radius: 8px;

@@ -1371,6 +1371,7 @@ select.team-input-widget option {
     flex-direction: column;
     justify-content: space-between;
     align-items: center;
+    position: relative;
 }
 
 .team-card_meetings-list {

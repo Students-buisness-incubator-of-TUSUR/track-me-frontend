@@ -672,6 +672,7 @@ const TeamCard = () => {
                   e.stopPropagation();
                   setShowDeleteModal(false);
                 }}
+                data-testid="close-confirm-meeting"
               >
                 Отмена
               </button>
@@ -681,6 +682,7 @@ const TeamCard = () => {
                   e.stopPropagation();
                   deleteMeeting();
                 }}
+                data-testid="confirm-delete-meeting"
               >
                 Удалить
               </button>
@@ -828,7 +830,7 @@ const TeamCard = () => {
                 </div>
               )}
               {[adminRoleName, superadminRoleName].includes(role) && isEditing && (
-                <div className="team-card_field">
+                <div className="team-card_field" data-testid="stream-field">
                   <p>Поток:</p>
                   <CheckBox
                     className="team-card_field-stream-checkbox"
@@ -913,6 +915,7 @@ const TeamCard = () => {
                           setShowDeleteModal(true);
                         }}
                         title="Удалить встречу"
+                        data-testid="delete-meeting"
                       >
                         Удалить
                       </button>

@@ -639,6 +639,55 @@ const TeamCard = () => {
           {meetingError}
         </div>
       )}
+      {showDeleteModal && (
+        <button
+          type="button"
+          className="team-card_confirm-modal-overlay"
+          onClick={() => setShowDeleteModal(false)}
+          aria-label="Закрыть модальное окно"
+          data-testid="delete-modal-overlay"
+        >
+          <div
+            className="team-card_confirm-modal"
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.stopPropagation();
+              }
+            }}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-meeting-title"
+            tabIndex={-1}
+          >
+            <h3 id="delete-meeting-title">Подтвердите удаление</h3>
+            <p>
+              Вы уверены, что хотите удалить эту встречу? <br />
+              <strong>Это действие нельзя отменить.</strong>
+            </p>
+            <div className="team-card_confirm-modal-buttons">
+              <button
+                className="team-card_confirm-button no"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowDeleteModal(false);
+                }}
+              >
+                Отмена
+              </button>
+              <button
+                className="team-card_confirm-button yes"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  deleteMeeting();
+                }}
+              >
+                Удалить
+              </button>
+            </div>
+          </div>
+        </button>
+      )}
       <div className="team-card_main">
         <div className="team-card_container">
           <div className="team-card_header">

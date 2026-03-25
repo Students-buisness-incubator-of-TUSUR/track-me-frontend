@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import "./team-card.css";
-import penIcon from "./pen.png";
 import MeetingCreate from "../meeting-card/MeetingCreate.js";
 import { getCsrfConfigForFetch } from "../../utils/csrf-utils";
 import { validateMeetingDateChange } from "../../utils/date-utils";
@@ -61,14 +60,9 @@ const TeamCard = () => {
   const [trackers, setTrackers] = useState([]);
   const forceEdit = query.get("edit") === "true";
   const [isEditing, setIsEditing] = useState(forceEdit);
-  const [showTooltip, setShowTooltip] = useState(false);
-  const [showMeetingsOnMobile, setShowMeetingsOnMobile] = useState(false);
-  const [showNTI, setShowNTI] = useState(false);
-  const [showTRL, setShowTRL] = useState(false);
   const [selectedMarket, setSelectedMarket] = useState(null);
   const [selectedTRL, setSelectedTRL] = useState(null);
   const [selectedStreamId, setSelectedStreamId] = useState(null);
-  const [showStreams, setShowStreams] = useState(false);
   const [editingMeetingId, setEditingMeetingId] = useState(null);
   const [newMeetingDate, setNewMeetingDate] = useState('');
   const [meetingError, setMeetingError] = useState("");
@@ -81,7 +75,6 @@ const TeamCard = () => {
     { id: 3, label: "6-8" },
     { id: 4, label: "9-10" },
   ], []);
-  const [trackerFullName, setTrackerFullName] = useState("");
   const [streamInfo, setStreamInfo] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [meetingToDelete, setMeetingToDelete] = useState(null);
@@ -127,15 +120,17 @@ const TeamCard = () => {
             credentials: "include"
           });
           if (!res.ok) throw new Error("Ошибка получения данных пользователя");
-          const data = await res.json();
-          setTrackerFullName(data.fullName);
+          await res.json();
+          // const data = await res.json();
+          // setTrackerFullName(data.fullName);
         } else if (role === "TRACKER") {
           const res = await fetch(`${backendHost1}/api/v1/account/info`, {
             credentials: "include"
           });
           if (!res.ok) throw new Error("Ошибка получения данных текущего пользователя");
-          const data = await res.json();
-          setTrackerFullName(data.fullName);
+          await res.json();
+          // const data = await res.json();
+          // setTrackerFullName(data.fullName);
         }
       } catch (err) {
         handleApiError(err, "загрузке ФИО трекера");
@@ -198,8 +193,6 @@ const TeamCard = () => {
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (!event.target.closest('.dropdown-block')) {
-        setShowNTI(false);
-        setShowTRL(false);
       }
     };
 
@@ -384,7 +377,6 @@ const TeamCard = () => {
 
   const handleTRLSelect = (trl) => {
     setSelectedTRL(trl);
-    setShowTRL(false);
     if (isEditing) {
       setEditedData(prev => ({ ...prev, readinessLevel: trl.label }));
     }
@@ -799,12 +791,10 @@ const TeamCard = () => {
                         tabIndex={0}
                         onClick={() => {
                           setSelectedStreamId(stream.id);
-                          setShowStreams(false);
                         }}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' || e.key === ' ') {
                             setSelectedStreamId(stream.id);
-                            setShowStreams(false);
                           }
                         }}
                       >
@@ -814,7 +804,6 @@ const TeamCard = () => {
                           checked={selectedStreamId === stream.id}
                           onChange={() => {
                             setSelectedStreamId(stream.id);
-                            setShowStreams(false);
                           }}
                         />
                         {stream.name}

@@ -792,11 +792,7 @@ const TeamCard = () => {
                     title={selectedTRL?.label || "TRL"}
                   >
                     {trlLevels.map(trl => (
-                      <label
-                        key={trl.id}
-                        type="button"
-                        onClick={() => handleTRLSelect(trl)}
-                      >
+                      <label key={trl.id}>
                         <input
                           type="radio"
                           name="trl"

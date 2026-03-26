@@ -69,14 +69,11 @@
 }
 
 .check-box_row input[type="radio"] {
-    appearance: none;
     width: 17px;
     height: 17px;
     flex-shrink: 0;
     box-sizing: border-box;
     appearance: none;
-    -webkit-appearance: none;
-    -moz-appearance: none;
     border: 1px solid var(--color-black);
     border-radius: 100%;
     background-color: transparent;
@@ -96,14 +93,11 @@
 }
 
 .check-box_row input[type="checkbox"] {
-    appearance: none;
     width: 17px;
     height: 17px;
     flex-shrink: 0;
     box-sizing: border-box;
     appearance: none;
-    -webkit-appearance: none;
-    -moz-appearance: none;
     border: 1px solid var(--color-black);
     border-radius: 4px;
     background-color: transparent;

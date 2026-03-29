@@ -351,9 +351,7 @@ const options = {
 
 
     // Фильтрация карточек по поисковому запросу
-    const filteredCards = cards.filter((card) =>
-        card.name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const filteredCards = cards;
     const visibleCards = filteredCards;
 
 
@@ -367,7 +365,6 @@ const options = {
 
     const handleSearchChange = (e) => {
         setSearchQuery(e.target.value);
-        setPage(0)
     };
 
     // Переключение отображения панели фильтров
@@ -379,10 +376,18 @@ const options = {
     const applyFilters = () => {
         const filters = [];
 
+        if (searchQuery?.length > 0) {
+            filters.push({
+                fieldName: "name",
+                type: "LIKE",
+                value: searchQuery,
+            });
+        }
+
         if (selectedTrl.length > 0) {
             filters.push({
                 fieldName: "readinessLevel",
-                type: "EQ",
+                type: "IN",
                 values: selectedTrl,
             });
         }
@@ -484,6 +489,10 @@ const options = {
                             className="Stream-search"
                             value={searchQuery}
                             onChange={handleSearchChange}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter")
+                                    applyFilters();
+                            }}
                         />
                     </div>
                 </div>
@@ -502,7 +511,7 @@ const options = {
                             <button className="Teams-header-chose-butt">Поток
                                 [{selectedStreams.length}]
                             </button>
-                            <button className="Teams-header-chose-butt">Рынки
+                            <button className="Teams-header-chose-butt">Рынок
                                 [{selectedNtiMarkets.length}]
                             </button>
                             <button className="Teams-header-chose-butt">
@@ -517,8 +526,7 @@ const options = {
                                     onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setShowCheckboxesStream(!showCheckboxesStream)}
                                 >
                                     <div className="Teams-header-chosefrom-butt-cont">
-                                        <b className="Teams-header-chosefrom-butt-label">Все
-                                            потоки</b>
+                                        <b className="Teams-header-chosefrom-butt-label">Поток</b>
                                         <div className="Teams-header-chosefrom-butt-pic"></div>
                                     </div>
                                 </div>
@@ -551,7 +559,7 @@ const options = {
                                 >
                                     <div className="Teams-header-chosefrom-butt-cont">
                                         <b className="Teams-header-chosefrom-butt-label">
-                                            Рынки Нти
+                                            Рынок
                                         </b>
                                         <div className="Teams-header-chosefrom-butt-pic"></div>
                                     </div>
@@ -796,11 +804,7 @@ const options = {
                         </div>
                     ))
                 ) : (
-                    <p>
-                        {searchQuery
-                            ? "Ничего не найдено по запросу"
-                            : "Ничего не найдено по запросу"}
-                    </p>
+                    <p>Ничего не найдено по запросу</p>
                 )}
             </div>
 

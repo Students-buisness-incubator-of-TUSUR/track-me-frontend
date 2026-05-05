@@ -349,7 +349,8 @@ const MeetingCard = () => {
                 const errorText = await response.text();
                 throw new Error(`Ошибка при удалении: ${response.status} ${errorText}`);
             }
-            navigate(`/teamcard/${teamId}?userId=${userId}`);
+            // Добавляем параметр refresh для принудительного обновления TeamCard
+            navigate(`/teamcard/${teamId}?userId=${userId}&refresh=${Date.now()}`);
         } catch (error) {
             console.error('Ошибка удаления встречи:', error);
             setError(error.message || 'Не удалось удалить встречу');

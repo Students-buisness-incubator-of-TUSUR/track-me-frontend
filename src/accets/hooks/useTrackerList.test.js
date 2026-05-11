@@ -709,4 +709,16 @@ describe('useTrackerList', () => {
     );
     expect(result.current.showLockedOnly).toBe(true);
   });
+
+  it('fetchTrackers обрабатывает ошибку сети', async () => {
+    global.fetch.mockImplementationOnce(() => Promise.reject(new Error('Network failure')));
+
+    const { result } = renderHook(() => useTrackerList(endpoint));
+      
+    await waitFor(() => {
+      expect(result.current.error).toBe('Network failure');
+      expect(result.current.trackers).toEqual([]);
+    });
+  });
+  
 });

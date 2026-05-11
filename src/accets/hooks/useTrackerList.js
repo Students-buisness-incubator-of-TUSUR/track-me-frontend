@@ -74,7 +74,7 @@ export function useTrackerList(endpoint) {
       }
 
       const data = await response.json();
-      console.log("Backend response:", data);
+      console.log("Backend response received, items:", data?.content?.length ?? data?.length ?? 0);
 
       // Функция для сортировки по активности на фронтенде
       const sortByActiveStatus = (trackers) => {
@@ -125,7 +125,8 @@ export function useTrackerList(endpoint) {
   // Остальные функции остаются без изменений
   const confirmUser = async (username) => {
     try {
-      const url = `${ssoServiceUri}/api/v1/users/enable?username=${username}`;
+      const safeUsername = encodeURIComponent(username);
+      const url = `${ssoServiceUri}/api/v1/users/enable?username=${safeUsername}`;
       const response = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json",  ...getCsrfConfigForFetch() },
@@ -147,9 +148,10 @@ export function useTrackerList(endpoint) {
   // Разблокировка или блокировка пользователя
   const toggleUserLock = async (username) => {
     try {
+      const safeUsername = encodeURIComponent(username);
       if (showLockedOnly) {
         // Разблокировка заблокированного
-        const url = `${ssoServiceUri}/api/v1/users/unlock?username=${username}`;
+        const url = `${ssoServiceUri}/api/v1/users/unlock?username=${safeUsername}`;
         const response = await fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json", ...getCsrfConfigForFetch() },
@@ -158,7 +160,7 @@ export function useTrackerList(endpoint) {
         if (!response.ok) throw new Error(response.statusText);
       } else {
         // Блокировка активного
-        const url = `${ssoServiceUri}/api/v1/users/disable?username=${username}`;
+        const url = `${ssoServiceUri}/api/v1/users/disable?username=${safeUsername}`;
         const response = await fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json", ...getCsrfConfigForFetch() },
@@ -174,36 +176,38 @@ export function useTrackerList(endpoint) {
 
   // Открыть диалог удаления (с проверкой команд)
   const handleDeleteClick = async (username) => {
-    try {
-        const response = await fetchUserTeams(username);
-        
-        if (!response.ok) throw new Error("Failed to fetch teams");
-        
-        const teams = await response.json();
-        console.log("Teams for user", username, ":", teams);
-        
-        if (teams && teams.length > 0) {
-            setAttachedTeams(teams.map(team => ({ id: team.id, name: team.name })));
-            setUserToDelete(username);
-            setShowTeamsWarning(true);
-        } else {
-            setUserToDelete(username);
-            setAttachedTeams([]);
-            setShowDeleteConfirm(true);
-        }
-    } catch (err) {
-        console.error("Error fetching user teams:", err);
-        setUserToDelete(username);
-        setAttachedTeams([]);
-        setShowDeleteConfirm(true);
-    }
+      try {
+          const safeUsername = encodeURIComponent(username);
+          const response = await fetchUserTeams(safeUsername);
+          
+          if (!response.ok) throw new Error("Failed to fetch teams");
+          
+          const teams = await response.json();
+          console.log("Teams fetched successfully, count:", teams?.length ?? 0);
+          
+          if (teams && teams.length > 0) {
+              setAttachedTeams(teams.map(team => ({ id: team.id, name: team.name })));
+              setUserToDelete(safeUsername);  // сохраняем закодированное значение
+              setShowTeamsWarning(true);
+          } else {
+              setUserToDelete(safeUsername);  // сохраняем закодированное значение
+              setAttachedTeams([]);
+              setShowDeleteConfirm(true);
+          }
+      } catch (err) {
+          console.error("Error fetching user teams:", err);
+          setUserToDelete(encodeURIComponent(username));  // сохраняем закодированное значение
+          setAttachedTeams([]);
+          setShowDeleteConfirm(true);
+      }
   };
 
   // Подтвердить удаление
   const confirmDeleteUser = async () => {
     if (!userToDelete) return;
     try {
-      const url = `${ssoServiceUri}/api/v1/users?username=${userToDelete}`;
+      const safeUsername = encodeURIComponent(userToDelete);
+      const url = `${ssoServiceUri}/api/v1/users?username=${safeUsername}`;
       const response = await fetch(url, {
         method: "DELETE",
         headers: { "Content-Type": "application/json", ...getCsrfConfigForFetch() },
@@ -275,7 +279,6 @@ export function useTrackerList(endpoint) {
     handlePrevPage,
     handlePageJump,
     fetchTrackers,
-    // Добавляем новые функции и состояния
     showLockedOnly,
     toggleShowLocked,
   };

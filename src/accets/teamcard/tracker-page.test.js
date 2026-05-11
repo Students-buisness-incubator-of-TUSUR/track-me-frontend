@@ -1466,4 +1466,52 @@ test('fetchCards добавляет фильтр по username для роли T
     expect(marketWrapper).toHaveClass('Stream-checkboxes_remove-below-border-radius');
   });
 
+  test('перезагружает карточки при visibilitychange когда страница становится видимой', async () => {
+  localStorage.setItem('user', JSON.stringify({ username: 'testuser', roles: ['TRACKER'] }));
+  localStorage.setItem('streamName', 'TestStream');
+
+  let fetchCardsCallCount = 0;
+  global.fetch = jest.fn((url) => {
+    if (url.includes('/api/v1/streams')) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({
+          content: [{ id: '1', name: 'TestStream', startDate: '2025-01-01', endDate: '2025-12-31' }],
+        }),
+      });
+    }
+    if (url.endsWith('/streams/nti-markets')) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+    }
+    if (url.includes('/team-cards')) {
+      fetchCardsCallCount++;
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ content: [], page: { totalPages: 1 } }),
+      });
+    }
+    return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [], page: { totalPages: 1 } }) });
+  });
+
+  await act(async () => {
+    render(<MemoryRouter><TrackerPage /></MemoryRouter>);
+  });
+
+  await waitFor(() => {
+    expect(fetchCardsCallCount).toBeGreaterThan(0);
+  });
+
+  const initialCalls = fetchCardsCallCount;
+
+  // Симулируем visibilitychange — страница становится видимой
+  await act(async () => {
+    Object.defineProperty(document, 'visibilityState', { value: 'visible', writable: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+
+  await waitFor(() => {
+    expect(fetchCardsCallCount).toBeGreaterThan(initialCalls);
+  });
+});
+
 });

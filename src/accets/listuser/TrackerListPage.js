@@ -9,6 +9,7 @@ import trueIcon2 from "./true2.png";
 import falseIcon2 from "./false2.png";
 import Header from "../header/header";
 import { useGetUserInfo } from "../../services/util";
+import { isValidUsername } from "../../utils/validation";
 
 function TrackerListPage({ endpoint }) {
   const {
@@ -54,6 +55,14 @@ function TrackerListPage({ endpoint }) {
     setUserRole(user.roles[0]);
   }, [user]);
 
+  // Safe action wrapper with username validation
+  const safeAction = (username, action) => {
+    if (!isValidUsername(username)) {
+      console.error("Invalid username for action", { username });
+      return;
+    }
+    action(username);
+  };
 
   const handleSearchChange = (event) => {
     setSearchQuery(event.target.value);
@@ -62,36 +71,42 @@ function TrackerListPage({ endpoint }) {
 
 
   const handleDoubleTap = (username) => {
-  const now = Date.now();
-  const timeDiff = now - lastTap.current;
-
-  if (timeDiff < 300) {
-    if (tapTimeout.current) {
-      clearTimeout(tapTimeout.current);
+    // Validate username before using
+    if (!isValidUsername(username)) {
+      console.error("Invalid username for double tap", { username });
+      return;
     }
+    
+    const now = Date.now();
+    const timeDiff = now - lastTap.current;
 
-    /* istanbul ignore if */
-    if (activeMobileMenu === username) {
-      setActiveMobileMenu(null);
-      setHoveredTracker(null);
-    }
+    if (timeDiff < 300) {
+      if (tapTimeout.current) {
+        clearTimeout(tapTimeout.current);
+      }
 
-    window.location.href = `/profile/${username}`;
-  } else {
-    tapTimeout.current = setTimeout(() => {
       /* istanbul ignore if */
       if (activeMobileMenu === username) {
         setActiveMobileMenu(null);
         setHoveredTracker(null);
-      } else {
-        setActiveMobileMenu(username);
-        setHoveredTracker(username);
       }
-    }, 300);
-  }
 
-  lastTap.current = now;
-};
+      window.location.href = `/profile/${encodeURIComponent(username)}`;
+    } else {
+      tapTimeout.current = setTimeout(() => {
+        /* istanbul ignore if */
+        if (activeMobileMenu === username) {
+          setActiveMobileMenu(null);
+          setHoveredTracker(null);
+        } else {
+          setActiveMobileMenu(username);
+          setHoveredTracker(username);
+        }
+      }, 300);
+    }
+
+    lastTap.current = now;
+  };
 
   const isMobile = () => {
     return window.innerWidth <= 768;
@@ -228,7 +243,10 @@ function TrackerListPage({ endpoint }) {
               /* istanbul ignore if */
               if (!isMobile()) {
                 if (!e.target.closest('.trackerlist-edit-panel12')) {
-                  window.location.href = `/profile/${tracker.username}`;
+                  // Validate username before navigation
+                  if (isValidUsername(tracker.username)) {
+                    window.location.href = `/profile/${encodeURIComponent(tracker.username)}`;
+                  }
                 }
               }
             }}
@@ -237,7 +255,10 @@ function TrackerListPage({ endpoint }) {
                 e.preventDefault();
                 if (!isMobile()) {
                   if (!e.target.closest('.trackerlist-edit-panel12')) {
-                    window.location.href = `/profile/${tracker.username}`;
+                    // Validate username before navigation
+                    if (isValidUsername(tracker.username)) {
+                      window.location.href = `/profile/${encodeURIComponent(tracker.username)}`;
+                    }
                   }
                 }
               }
@@ -309,7 +330,7 @@ function TrackerListPage({ endpoint }) {
                         if (!window.confirm("Вы точно хотите отключить этого пользователя?")) {
                           return;
                         }
-                        toggleUserLock(tracker.username);
+                        safeAction(tracker.username, toggleUserLock);
                         setActiveMobileMenu(null);
                       }}
                       onMouseEnter={() => setHoveredButton("cancel")}
@@ -330,7 +351,7 @@ function TrackerListPage({ endpoint }) {
                       className="confirm-button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        toggleUserLock(tracker.username);
+                        safeAction(tracker.username, toggleUserLock);
                         setActiveMobileMenu(null);
                       }}
                       onMouseEnter={() => setHoveredButton("confirm")}
@@ -349,7 +370,7 @@ function TrackerListPage({ endpoint }) {
                       className="cancel-button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleDeleteClick(tracker.username);
+                        safeAction(tracker.username, handleDeleteClick);
                         setActiveMobileMenu(null);
                       }}
                       onMouseEnter={() => setHoveredButton("cancel")}
@@ -370,7 +391,7 @@ function TrackerListPage({ endpoint }) {
                       className="confirm-button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        confirmUser(tracker.username);
+                        safeAction(tracker.username, confirmUser);
                         setActiveMobileMenu(null);
                       }}
                       onMouseEnter={() => setHoveredButton("confirm")}
@@ -392,7 +413,7 @@ function TrackerListPage({ endpoint }) {
                         if (!window.confirm("Вы точно хотите заблокировать этого пользователя?")) {
                           return;
                         }
-                        toggleUserLock(tracker.username);
+                        safeAction(tracker.username, toggleUserLock);
                         setActiveMobileMenu(null);
                       }}
                       onMouseEnter={() => setHoveredButton("cancel")}

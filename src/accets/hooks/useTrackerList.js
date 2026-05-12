@@ -1,6 +1,23 @@
 import { useEffect, useCallback, useState } from "react";
 import { getCsrfConfigForFetch } from "../../utils/csrf-utils";
 import { fetchUserTeams } from "../../services/requests";
+import { isValidUsername } from "../../utils/validation";
+
+// Allowed API paths whitelist for user operations
+const ALLOWED_USER_API_PATHS = [
+  '/api/v1/users/enable',
+  '/api/v1/users/disable',
+  '/api/v1/users/unlock',
+  '/api/v1/users'
+];
+
+// Allowed API paths whitelist for fetching trackers
+const ALLOWED_TRACKER_ENDPOINTS = [
+  '/api/v1/users/search',
+  '/api/v1/users/locked',
+  '/api/v1/users/trackers',
+  '/api/v1/users/administrators'
+];
 
 export function useTrackerList(endpoint) {
   const [trackers, setTrackers] = useState([]);
@@ -26,8 +43,37 @@ export function useTrackerList(endpoint) {
 
   const ssoServiceUri = (process.env.REACT_APP_BACKEND_URI || "http://localhost:8080") + "/sso";
 
+  // Validate and sanitize URL before making user operation request
+  const createSafeUserUrl = (path, params = {}) => {
+    if (!ALLOWED_USER_API_PATHS.includes(path)) {
+      throw new Error(`Invalid API path: ${path}`);
+    }
+    
+    const url = new URL(`${ssoServiceUri}${path}`);
+    
+    // Add validated query parameters
+    Object.entries(params).forEach(([key, value]) => {
+      if (typeof value === 'string' && value.length > 0) {
+        url.searchParams.set(key, value);
+      }
+    });
+    
+    return url.toString();
+  };
+
+  // Validate tracker endpoint
+  const validateTrackerEndpoint = (endpoint) => {
+    if (!endpoint || !ALLOWED_TRACKER_ENDPOINTS.includes(endpoint)) {
+      throw new Error(`Invalid endpoint: ${endpoint}`);
+    }
+    return endpoint;
+  };
+
   const fetchTrackers = useCallback(async (currentPage = 0, currentSize = 15, currentSearchQuery = "", showLocked = false) => {
     try {
+      // Validate endpoint
+      const validEndpoint = validateTrackerEndpoint(endpoint);
+      
       const filters = [];
       
       // Основной фильтр - всегда показываем активных пользователей
@@ -58,7 +104,7 @@ export function useTrackerList(endpoint) {
       // Добавляем сортировку по алфавиту на бэкенде
       const sortParams = "sort=fullName,asc";
 
-      const response = await fetch(`${ssoServiceUri}${endpoint}?page=${currentPage}&size=${currentSize}&${sortParams}`, {
+      const response = await fetch(`${ssoServiceUri}${validEndpoint}?page=${currentPage}&size=${currentSize}&${sortParams}`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...getCsrfConfigForFetch()},
         credentials: "include",
@@ -74,7 +120,11 @@ export function useTrackerList(endpoint) {
       }
 
       const data = await response.json();
-      console.log("Backend response received, items:", data?.content?.length ?? data?.length ?? 0);
+      // Безопасное логирование - объект вместо строки
+      console.log("Backend response received", {
+        itemCount: data?.content?.length ?? data?.length ?? 0,
+        timestamp: new Date().toISOString()
+      });
 
       // Функция для сортировки по активности на фронтенде
       const sortByActiveStatus = (trackers) => {
@@ -125,8 +175,14 @@ export function useTrackerList(endpoint) {
   // Остальные функции остаются без изменений
   const confirmUser = async (username) => {
     try {
+      // Validate username before using in URL
+      if (!isValidUsername(username)) {
+        throw new Error("Invalid username format");
+      }
+      
       const safeUsername = encodeURIComponent(username);
-      const url = `${ssoServiceUri}/api/v1/users/enable?username=${safeUsername}`;
+      const url = createSafeUserUrl('/api/v1/users/enable', { username: safeUsername });
+      
       const response = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json",  ...getCsrfConfigForFetch() },
@@ -148,10 +204,16 @@ export function useTrackerList(endpoint) {
   // Разблокировка или блокировка пользователя
   const toggleUserLock = async (username) => {
     try {
+      // Validate username before using in URL
+      if (!isValidUsername(username)) {
+        throw new Error("Invalid username format");
+      }
+      
       const safeUsername = encodeURIComponent(username);
+      
       if (showLockedOnly) {
         // Разблокировка заблокированного
-        const url = `${ssoServiceUri}/api/v1/users/unlock?username=${safeUsername}`;
+        const url = createSafeUserUrl('/api/v1/users/unlock', { username: safeUsername });
         const response = await fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json", ...getCsrfConfigForFetch() },
@@ -160,7 +222,7 @@ export function useTrackerList(endpoint) {
         if (!response.ok) throw new Error(response.statusText);
       } else {
         // Блокировка активного
-        const url = `${ssoServiceUri}/api/v1/users/disable?username=${safeUsername}`;
+        const url = createSafeUserUrl('/api/v1/users/disable', { username: safeUsername });
         const response = await fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json", ...getCsrfConfigForFetch() },
@@ -177,13 +239,22 @@ export function useTrackerList(endpoint) {
   // Открыть диалог удаления (с проверкой команд)
   const handleDeleteClick = async (username) => {
       try {
+          // Validate username
+          if (!isValidUsername(username)) {
+            throw new Error("Invalid username format");
+          }
+          
           const safeUsername = encodeURIComponent(username);
           const response = await fetchUserTeams(safeUsername);
           
           if (!response.ok) throw new Error("Failed to fetch teams");
           
           const teams = await response.json();
-          console.log("Teams fetched successfully, count:", teams?.length ?? 0);
+          // Безопасное логирование - объект вместо строки
+          console.log("Teams fetched successfully", {
+            teamCount: teams?.length ?? 0,
+            timestamp: new Date().toISOString()
+          });
           
           if (teams && teams.length > 0) {
               setAttachedTeams(teams.map(team => ({ id: team.id, name: team.name })));
@@ -206,8 +277,15 @@ export function useTrackerList(endpoint) {
   const confirmDeleteUser = async () => {
     if (!userToDelete) return;
     try {
-      const safeUsername = encodeURIComponent(userToDelete);
-      const url = `${ssoServiceUri}/api/v1/users?username=${safeUsername}`;
+      // Validate userToDelete (already encoded, decode first for validation)
+      const decodedUsername = decodeURIComponent(userToDelete);
+      if (!isValidUsername(decodedUsername)) {
+        throw new Error("Invalid username format");
+      }
+      
+      const safeUsername = encodeURIComponent(decodedUsername);
+      const url = createSafeUserUrl('/api/v1/users', { username: safeUsername });
+      
       const response = await fetch(url, {
         method: "DELETE",
         headers: { "Content-Type": "application/json", ...getCsrfConfigForFetch() },

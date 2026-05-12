@@ -16,6 +16,11 @@ jest.mock('react-redux', () => ({
   useSelector: jest.fn(),
 }));
 
+// Мок валидации username
+jest.mock('../../utils/validation', () => ({
+  isValidUsername: jest.fn(() => true),
+}));
+
 // Моки статических ресурсов
 jest.mock('./true.png', () => 'true.png');
 jest.mock('./false.png', () => 'false.png');
@@ -107,6 +112,7 @@ jest.mock('react-router-dom', () => ({
 }));
 
 const { setHoveredTracker, confirmUser, toggleUserLock, setSearchQuery, setPage } = require('../hooks/useTrackerList');
+const { isValidUsername } = require('../../utils/validation');
 
 const renderWithRouter = (ui, { route = '/' } = {}) => {
   window.history.pushState({}, 'Test page', route);
@@ -118,6 +124,7 @@ const renderWithRouter = (ui, { route = '/' } = {}) => {
 describe('TrackerListPage (объединённые тесты)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    isValidUsername.mockReturnValue(true);
   });
 
   test('рендерится и отображает заголовок', () => {
@@ -352,6 +359,7 @@ describe('TrackerListPage (объединённые тесты)', () => {
 
     const cancelButton = screen.getByAltText('Отключить');
     fireEvent.click(cancelButton);
+    expect(isValidUsername).toHaveBeenCalledWith('user1');
     expect(toggleUserLock).toHaveBeenCalledWith('user1');
   });
 
@@ -375,6 +383,7 @@ describe('TrackerListPage (объединённые тесты)', () => {
 
     const confirmBtn = screen.getByAltText('Подтвердить');
     fireEvent.click(confirmBtn);
+    expect(isValidUsername).toHaveBeenCalledWith('user2');
     expect(confirmUser).toHaveBeenCalledWith('user2');
   });
 
@@ -398,6 +407,7 @@ describe('TrackerListPage (объединённые тесты)', () => {
 
     const cancelBtn = screen.getByAltText('Отклонить');
     fireEvent.click(cancelBtn);
+    expect(isValidUsername).toHaveBeenCalledWith('user2');
     expect(toggleUserLock).toHaveBeenCalledWith('user2');
   });
 
@@ -557,6 +567,7 @@ describe('TrackerListPage (объединённые тесты)', () => {
     const TrackerListPage = require('./TrackerListPage').default;
     render(<BrowserRouter><TrackerListPage endpoint="/trackers" /></BrowserRouter>);
     fireEvent.click(screen.getByAltText('Подтвердить'));
+    expect(isValidUsername).toHaveBeenCalledWith('disabled1');
     expect(confirmUser).toHaveBeenCalledWith('disabled1');
   });
 
@@ -578,6 +589,7 @@ describe('TrackerListPage (объединённые тесты)', () => {
     const TrackerListPage = require('./TrackerListPage').default;
     render(<BrowserRouter><TrackerListPage endpoint="/trackers" /></BrowserRouter>);
     fireEvent.click(screen.getByAltText('Отклонить'));
+    expect(isValidUsername).toHaveBeenCalledWith('disabled2');
     expect(toggleUserLock).toHaveBeenCalledWith('disabled2');
   });
 });
@@ -614,6 +626,7 @@ test('клик по кнопке "Следующая страница" вызы�
 describe('TrackerListPage - Coverage for Lines 121, 139-140, 153-154, 179-180, 245-271', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    isValidUsername.mockReturnValue(true);
   });
 
   test('рендер тултипа "Оставить" при наведении на confirm для активного трекера', () => {
@@ -1057,6 +1070,7 @@ describe('Mobile Double Tap Interaction', () => {
   beforeEach(() => {
     Object.defineProperty(window, 'innerWidth', { writable: true, value: 375 });
     jest.useFakeTimers();
+    isValidUsername.mockReturnValue(true);
   });
 
   test('двойное касание открывает профиль и предотвращает одиночное открытие меню', () => {
@@ -1086,6 +1100,7 @@ describe('Mobile Double Tap Interaction', () => {
     jest.advanceTimersByTime(100);
     fireEvent.touchStart(trackerElement);
 
+    expect(isValidUsername).toHaveBeenCalledWith('mobileuser');
     expect(window.location.href).toBe('/profile/mobileuser');
     expect(setHoveredTracker).not.toHaveBeenCalledWith('mobileuser');
 
@@ -1099,6 +1114,7 @@ describe('Mobile Touch Events', () => {
   });
 
   test('одиночное касание открывает мобильное меню через 300 мс', () => {
+    isValidUsername.mockReturnValue(true);
     const setHoveredTracker = jest.fn();
     require('../hooks/useTrackerList').useTrackerList.mockReturnValue({
       trackers: [{ username: 'mobileuser', fullName: 'Mobile User', telegramId: 'mobile', enabled: true }],
@@ -1430,6 +1446,41 @@ describe('Tracker Avatar Accessibility', () => {
 describe('Coverage for lines 200-203', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    isValidUsername.mockReturnValue(true);
+    // Принудительно переопределяем мок для этого блока
+    require('../hooks/useTrackerList').useTrackerList = () => ({
+      trackers: [
+        { username: 'testuser1', fullName: 'Test User 1', telegramId: 'test1', enabled: true },
+        { username: 'testuser2', fullName: 'Test User 2', telegramId: 'test2', enabled: false },
+      ],
+      error: null,
+      searchQuery: '',
+      setSearchQuery: jest.fn(),
+      page: 0,
+      setPage: jest.fn(),
+      totalPages: 1,
+      handleNextPage: jest.fn(),
+      handlePrevPage: jest.fn(),
+      handlePageJump: jest.fn(),
+      hoveredTracker: null,
+      setHoveredTracker: jest.fn(),
+      hoveredButton: null,
+      setHoveredButton: jest.fn(),
+      trackersPerPage: 5,
+      confirmUser: jest.fn(),
+      toggleUserLock: jest.fn(),
+      handleDeleteClick: jest.fn(),
+      confirmDeleteUser: jest.fn(),
+      showDeleteConfirm: false,
+      setShowDeleteConfirm: jest.fn(),
+      showTeamsWarning: false,
+      attachedTeams: [],
+      userToDelete: null,
+      closeTeamsWarning: jest.fn(),
+      cancelTeamsWarning: jest.fn(),
+      showLockedOnly: false,
+      toggleShowLocked: jest.fn(),
+    });
   });
 
   test('Enter на карточке вызывает переход в профиль', () => {
@@ -1440,11 +1491,12 @@ describe('Coverage for lines 200-203', () => {
     
     renderWithRouter(<TrackerListPage endpoint="/trackers" />);
     
-    const card = document.querySelector('[role="button"]');
-    expect(card).toBeInTheDocument();
+    const cards = document.querySelectorAll('[role="button"]');
+    expect(cards.length).toBeGreaterThan(1);
     
-    fireEvent.keyDown(card, { key: 'Enter' });
-    expect(window.location.href).toBe('/profile/user2');
+    fireEvent.keyDown(cards[0], { key: 'Enter' });
+    expect(isValidUsername).toHaveBeenCalledWith('testuser1');
+    expect(window.location.href).toBe('/profile/testuser1');
   });
 
   test('Пробел на карточке вызывает переход в профиль', () => {
@@ -1455,11 +1507,12 @@ describe('Coverage for lines 200-203', () => {
     
     renderWithRouter(<TrackerListPage endpoint="/trackers" />);
     
-    const card = document.querySelector('[role="button"]');
-    expect(card).toBeInTheDocument();
+    const cards = document.querySelectorAll('[role="button"]');
+    expect(cards.length).toBeGreaterThan(1);
     
-    fireEvent.keyDown(card, { key: ' ' });
-    expect(window.location.href).toBe('/profile/user2');
+    fireEvent.keyDown(cards[0], { key: ' ' });
+    expect(isValidUsername).toHaveBeenCalledWith('testuser1');
+    expect(window.location.href).toBe('/profile/testuser1');
   });
 
   test('Enter на мобильном НЕ вызывает переход', () => {
@@ -1475,5 +1528,180 @@ describe('Coverage for lines 200-203', () => {
     
     fireEvent.keyDown(card, { key: 'Enter' });
     expect(window.location.href).toBe('');
+  });
+});
+
+describe('Delete confirmation modals', () => {
+  test('отображает модальное окно с командами при showTeamsWarning: true', () => {
+    require('../hooks/useTrackerList').useTrackerList = () => ({
+      trackers: [{ username: 'testuser', fullName: 'Test User', enabled: true }],
+      error: null, searchQuery: '', setSearchQuery: jest.fn(), page: 0, setPage: jest.fn(),
+      totalPages: 1, handleNextPage: jest.fn(), handlePrevPage: jest.fn(), handlePageJump: jest.fn(),
+      hoveredTracker: null, setHoveredTracker: jest.fn(), hoveredButton: null,
+      setHoveredButton: jest.fn(), trackersPerPage: 5, confirmUser: jest.fn(), toggleUserLock: jest.fn(),
+      handleDeleteClick: jest.fn(), confirmDeleteUser: jest.fn(),
+      showDeleteConfirm: false, setShowDeleteConfirm: jest.fn(),
+      showTeamsWarning: true,
+      attachedTeams: [{ id: '1', name: 'Team Alpha' }, { id: '2', name: 'Team Beta' }],
+      userToDelete: 'testuser',
+      closeTeamsWarning: jest.fn(), cancelTeamsWarning: jest.fn(),
+      showLockedOnly: false, toggleShowLocked: jest.fn(),
+    });
+
+    renderWithRouter(<TrackerListPage endpoint="/trackers" />);
+
+    expect(screen.getByText(/К данному пользователю привязаны следующие команды/)).toBeInTheDocument();
+    expect(screen.getByText('Team Alpha')).toBeInTheDocument();
+    expect(screen.getByText('Team Beta')).toBeInTheDocument();
+    expect(screen.getByText('Да, удалить')).toBeInTheDocument();
+    expect(screen.getByText('Отмена')).toBeInTheDocument();
+  });
+
+  test('отображает модальное окно подтверждения удаления при showDeleteConfirm: true', () => {
+    require('../hooks/useTrackerList').useTrackerList = () => ({
+      trackers: [{ username: 'testuser', fullName: 'Test User', enabled: true }],
+      error: null, searchQuery: '', setSearchQuery: jest.fn(), page: 0, setPage: jest.fn(),
+      totalPages: 1, handleNextPage: jest.fn(), handlePrevPage: jest.fn(), handlePageJump: jest.fn(),
+      hoveredTracker: null, setHoveredTracker: jest.fn(), hoveredButton: null,
+      setHoveredButton: jest.fn(), trackersPerPage: 5, confirmUser: jest.fn(), toggleUserLock: jest.fn(),
+      handleDeleteClick: jest.fn(), confirmDeleteUser: jest.fn(),
+      showDeleteConfirm: true, setShowDeleteConfirm: jest.fn(),
+      showTeamsWarning: false, attachedTeams: [], userToDelete: 'todelete',
+      closeTeamsWarning: jest.fn(), cancelTeamsWarning: jest.fn(),
+      showLockedOnly: false, toggleShowLocked: jest.fn(),
+    });
+
+    renderWithRouter(<TrackerListPage endpoint="/trackers" />);
+
+    expect(screen.getByText(/Вы уверены, что хотите безвозвратно удалить пользователя @todelete/)).toBeInTheDocument();
+    expect(screen.getByText('Да')).toBeInTheDocument();
+    expect(screen.getByText('Нет')).toBeInTheDocument();
+  });
+
+  test('кнопка "Нет" в модальном окне подтверждения вызывает setShowDeleteConfirm(false)', () => {
+    const setShowDeleteConfirm = jest.fn();
+    require('../hooks/useTrackerList').useTrackerList = () => ({
+      trackers: [{ username: 'testuser', fullName: 'Test User', enabled: true }],
+      error: null, searchQuery: '', setSearchQuery: jest.fn(), page: 0, setPage: jest.fn(),
+      totalPages: 1, handleNextPage: jest.fn(), handlePrevPage: jest.fn(), handlePageJump: jest.fn(),
+      hoveredTracker: null, setHoveredTracker: jest.fn(), hoveredButton: null,
+      setHoveredButton: jest.fn(), trackersPerPage: 5, confirmUser: jest.fn(), toggleUserLock: jest.fn(),
+      handleDeleteClick: jest.fn(), confirmDeleteUser: jest.fn(),
+      showDeleteConfirm: true, setShowDeleteConfirm,
+      showTeamsWarning: false, attachedTeams: [], userToDelete: 'todelete',
+      closeTeamsWarning: jest.fn(), cancelTeamsWarning: jest.fn(),
+      showLockedOnly: false, toggleShowLocked: jest.fn(),
+    });
+
+    renderWithRouter(<TrackerListPage endpoint="/trackers" />);
+    
+    fireEvent.click(screen.getByText('Нет'));
+    expect(setShowDeleteConfirm).toHaveBeenCalledWith(false);
+  });
+
+  test('кнопка "Да" в модальном окне подтверждения вызывает confirmDeleteUser', () => {
+    const confirmDeleteUser = jest.fn();
+    require('../hooks/useTrackerList').useTrackerList = () => ({
+      trackers: [{ username: 'testuser', fullName: 'Test User', enabled: true }],
+      error: null, searchQuery: '', setSearchQuery: jest.fn(), page: 0, setPage: jest.fn(),
+      totalPages: 1, handleNextPage: jest.fn(), handlePrevPage: jest.fn(), handlePageJump: jest.fn(),
+      hoveredTracker: null, setHoveredTracker: jest.fn(), hoveredButton: null,
+      setHoveredButton: jest.fn(), trackersPerPage: 5, confirmUser: jest.fn(), toggleUserLock: jest.fn(),
+      handleDeleteClick: jest.fn(), confirmDeleteUser,
+      showDeleteConfirm: true, setShowDeleteConfirm: jest.fn(),
+      showTeamsWarning: false, attachedTeams: [], userToDelete: 'todelete',
+      closeTeamsWarning: jest.fn(), cancelTeamsWarning: jest.fn(),
+      showLockedOnly: false, toggleShowLocked: jest.fn(),
+    });
+
+    renderWithRouter(<TrackerListPage endpoint="/trackers" />);
+    
+    fireEvent.click(screen.getByText('Да'));
+    expect(confirmDeleteUser).toHaveBeenCalled();
+  });
+});
+
+describe('Locked mode delete button', () => {
+  beforeEach(() => {
+    isValidUsername.mockReturnValue(true);
+  });
+
+  test('кнопка "Удалить" вызывает handleDeleteClick в режиме showLockedOnly', () => {
+    const handleDeleteClick = jest.fn();
+    require('../hooks/useTrackerList').useTrackerList = () => ({
+      trackers: [{ username: 'disabled1', fullName: 'Disabled User', enabled: false }],
+      error: null, searchQuery: '', setSearchQuery: jest.fn(), page: 0, setPage: jest.fn(),
+      totalPages: 1, handleNextPage: jest.fn(), handlePrevPage: jest.fn(), handlePageJump: jest.fn(),
+      hoveredTracker: 'disabled1', setHoveredTracker: jest.fn(), hoveredButton: 'cancel',
+      setHoveredButton: jest.fn(), trackersPerPage: 5, confirmUser: jest.fn(), toggleUserLock: jest.fn(),
+      handleDeleteClick, confirmDeleteUser: jest.fn(),
+      showDeleteConfirm: false, setShowDeleteConfirm: jest.fn(),
+      showTeamsWarning: false, attachedTeams: [], userToDelete: null,
+      closeTeamsWarning: jest.fn(), cancelTeamsWarning: jest.fn(),
+      showLockedOnly: true, toggleShowLocked: jest.fn(),
+    });
+
+    renderWithRouter(<TrackerListPage endpoint="/trackers" />);
+    
+    const deleteButton = screen.getByAltText('Удалить');
+    fireEvent.click(deleteButton);
+    expect(isValidUsername).toHaveBeenCalledWith('disabled1');
+    expect(handleDeleteClick).toHaveBeenCalledWith('disabled1');
+  });
+});
+
+describe('safeAction validation - invalid username', () => {
+  test('не вызывает toggleUserLock если username невалидный', () => {
+    isValidUsername.mockReturnValueOnce(false);
+    
+    const toggleUserLock = jest.fn();
+    require('../hooks/useTrackerList').useTrackerList = () => ({
+      trackers: [{ username: 'invalid<script>', fullName: 'Test', enabled: true }],
+      error: null, searchQuery: '', setSearchQuery: jest.fn(), page: 0, setPage: jest.fn(),
+      totalPages: 1, handleNextPage: jest.fn(), handlePrevPage: jest.fn(), handlePageJump: jest.fn(),
+      hoveredTracker: 'invalid<script>', setHoveredTracker: jest.fn(), hoveredButton: null,
+      setHoveredButton: jest.fn(), trackersPerPage: 5, confirmUser: jest.fn(), toggleUserLock,
+      handleDeleteClick: jest.fn(), confirmDeleteUser: jest.fn(),
+      showDeleteConfirm: false, setShowDeleteConfirm: jest.fn(),
+      showTeamsWarning: false, attachedTeams: [], userToDelete: null,
+      closeTeamsWarning: jest.fn(), cancelTeamsWarning: jest.fn(),
+      showLockedOnly: false, toggleShowLocked: jest.fn(),
+    });
+
+    const TrackerListPage = require('./TrackerListPage').default;
+    render(<BrowserRouter><TrackerListPage endpoint="/trackers" /></BrowserRouter>);
+
+    const cancelButton = screen.getByAltText('Отключить');
+    fireEvent.click(cancelButton);
+    
+    expect(isValidUsername).toHaveBeenCalledWith('invalid<script>');
+    expect(toggleUserLock).not.toHaveBeenCalled();
+  });
+
+  test('не вызывает handleDeleteClick если username невалидный', () => {
+    isValidUsername.mockReturnValueOnce(false);
+    
+    const handleDeleteClick = jest.fn();
+    require('../hooks/useTrackerList').useTrackerList = () => ({
+      trackers: [{ username: 'invalid\nuser', fullName: 'Test', enabled: false }],
+      error: null, searchQuery: '', setSearchQuery: jest.fn(), page: 0, setPage: jest.fn(),
+      totalPages: 1, handleNextPage: jest.fn(), handlePrevPage: jest.fn(), handlePageJump: jest.fn(),
+      hoveredTracker: 'invalid\nuser', setHoveredTracker: jest.fn(), hoveredButton: 'cancel',
+      setHoveredButton: jest.fn(), trackersPerPage: 5, confirmUser: jest.fn(), toggleUserLock: jest.fn(),
+      handleDeleteClick, confirmDeleteUser: jest.fn(),
+      showDeleteConfirm: false, setShowDeleteConfirm: jest.fn(),
+      showTeamsWarning: false, attachedTeams: [], userToDelete: null,
+      closeTeamsWarning: jest.fn(), cancelTeamsWarning: jest.fn(),
+      showLockedOnly: true, toggleShowLocked: jest.fn(),
+    });
+
+    const TrackerListPage = require('./TrackerListPage').default;
+    render(<BrowserRouter><TrackerListPage endpoint="/trackers" /></BrowserRouter>);
+
+    const deleteButton = screen.getByAltText('Удалить');
+    fireEvent.click(deleteButton);
+    
+    expect(isValidUsername).toHaveBeenCalledWith('invalid\nuser');
+    expect(handleDeleteClick).not.toHaveBeenCalled();
   });
 });

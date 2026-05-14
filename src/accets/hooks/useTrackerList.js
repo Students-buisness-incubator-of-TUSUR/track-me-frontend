@@ -43,7 +43,13 @@ export function useTrackerList(endpoint) {
 
   const ssoServiceUri = (process.env.REACT_APP_BACKEND_URI || "http://localhost:8080") + "/sso";
 
-  // Validate and sanitize URL before making user operation request
+  /**
+   * Создаёт безопасный URL с валидацией пути и параметров.
+   * URLSearchParams автоматически кодирует параметры.
+   * @param {string} path - API путь (должен быть в whitelist)
+   * @param {Object} params - параметры (передаются в сыром виде, не кодированные)
+   * @returns {string} Полный URL с закодированными параметрами
+   */
   const createSafeUserUrl = (path, params = {}) => {
     if (!ALLOWED_USER_API_PATHS.includes(path)) {
       throw new Error(`Invalid API path: ${path}`);
@@ -51,7 +57,7 @@ export function useTrackerList(endpoint) {
     
     const url = new URL(`${ssoServiceUri}${path}`);
     
-    // Add validated query parameters
+    // URLSearchParams автоматически кодирует значения
     Object.entries(params).forEach(([key, value]) => {
       if (typeof value === 'string' && value.length > 0) {
         url.searchParams.set(key, value);
@@ -172,16 +178,16 @@ export function useTrackerList(endpoint) {
     setPage(0); // Сбрасываем на первую страницу при переключении фильтра
   };
 
-  // Остальные функции остаются без изменений
+  // передаём RAW username без предварительного кодирования
   const confirmUser = async (username) => {
     try {
-      // Validate username before using in URL
+      // Validate username before using
       if (!isValidUsername(username)) {
         throw new Error("Invalid username format");
       }
       
-      const safeUsername = encodeURIComponent(username);
-      const url = createSafeUserUrl('/api/v1/users/enable', { username: safeUsername });
+      // Передаём RAW username - createSafeUserUrl сама закодирует через URLSearchParams
+      const url = createSafeUserUrl('/api/v1/users/enable', { username });
       
       const response = await fetch(url, {
         method: "POST",
@@ -201,19 +207,17 @@ export function useTrackerList(endpoint) {
     }
   };
 
-  // Разблокировка или блокировка пользователя
+  // передаём RAW username
   const toggleUserLock = async (username) => {
     try {
-      // Validate username before using in URL
+      // Validate username before using
       if (!isValidUsername(username)) {
         throw new Error("Invalid username format");
       }
       
-      const safeUsername = encodeURIComponent(username);
-      
       if (showLockedOnly) {
         // Разблокировка заблокированного
-        const url = createSafeUserUrl('/api/v1/users/unlock', { username: safeUsername });
+        const url = createSafeUserUrl('/api/v1/users/unlock', { username });
         const response = await fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json", ...getCsrfConfigForFetch() },
@@ -222,7 +226,7 @@ export function useTrackerList(endpoint) {
         if (!response.ok) throw new Error(response.statusText);
       } else {
         // Блокировка активного
-        const url = createSafeUserUrl('/api/v1/users/disable', { username: safeUsername });
+        const url = createSafeUserUrl('/api/v1/users/disable', { username });
         const response = await fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json", ...getCsrfConfigForFetch() },
@@ -236,7 +240,7 @@ export function useTrackerList(endpoint) {
     }
   };
 
-  // Открыть диалог удаления (с проверкой команд)
+  // передаём RAW username без предварительного кодирования
   const handleDeleteClick = async (username) => {
       try {
           // Validate username
@@ -244,8 +248,8 @@ export function useTrackerList(endpoint) {
             throw new Error("Invalid username format");
           }
           
-          const safeUsername = encodeURIComponent(username);
-          const response = await fetchUserTeams(safeUsername);
+          // Передаём RAW username
+          const response = await fetchUserTeams(username);
           
           if (!response.ok) throw new Error("Failed to fetch teams");
           
@@ -258,33 +262,32 @@ export function useTrackerList(endpoint) {
           
           if (teams && teams.length > 0) {
               setAttachedTeams(teams.map(team => ({ id: team.id, name: team.name })));
-              setUserToDelete(safeUsername);  // сохраняем закодированное значение
+              setUserToDelete(username);
               setShowTeamsWarning(true);
           } else {
-              setUserToDelete(safeUsername);  // сохраняем закодированное значение
+              setUserToDelete(username);
               setAttachedTeams([]);
               setShowDeleteConfirm(true);
           }
       } catch (err) {
           console.error("Error fetching user teams:", err);
-          setUserToDelete(encodeURIComponent(username));  // сохраняем закодированное значение
+          setUserToDelete(username);
           setAttachedTeams([]);
           setShowDeleteConfirm(true);
       }
   };
 
-  // Подтвердить удаление
+  // userToDelete теперь содержит RAW username
   const confirmDeleteUser = async () => {
     if (!userToDelete) return;
     try {
-      // Validate userToDelete (already encoded, decode first for validation)
-      const decodedUsername = decodeURIComponent(userToDelete);
-      if (!isValidUsername(decodedUsername)) {
+      // Validate userToDelete (теперь это RAW username)
+      if (!isValidUsername(userToDelete)) {
         throw new Error("Invalid username format");
       }
       
-      const safeUsername = encodeURIComponent(decodedUsername);
-      const url = createSafeUserUrl('/api/v1/users', { username: safeUsername });
+      // Передаём RAW username
+      const url = createSafeUserUrl('/api/v1/users', { username: userToDelete });
       
       const response = await fetch(url, {
         method: "DELETE",

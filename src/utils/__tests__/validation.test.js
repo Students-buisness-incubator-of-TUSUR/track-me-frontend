@@ -27,10 +27,17 @@ describe('isValidUsername', () => {
 
   // regex не подходит — 1 условие
   test('returns false for invalid characters', () => {
+    // Valid characters
     expect(isValidUsername('user@name')).toBe(true);
     expect(isValidUsername('user.name')).toBe(true);
     expect(isValidUsername('user-name')).toBe(true);
     expect(isValidUsername('user name')).toBe(true);
+    
+    // Invalid characters - should return false
+    expect(isValidUsername('user$name')).toBe(false);
+    expect(isValidUsername('user/name')).toBe(false);
+    expect(isValidUsername('user#name')).toBe(false);
+    expect(isValidUsername('user&name')).toBe(false);
   });
 
   // успешный — 1 условие

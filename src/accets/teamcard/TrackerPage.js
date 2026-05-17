@@ -442,6 +442,19 @@ const options = {
     }
 }, [userRole, username, streamName, fetchCards, searchParams]);
 
+    useEffect(() => {
+    const handleVisibilityChange = () => {
+        if (document.visibilityState === 'visible' && userRole && username && streamName) {
+            fetchCards([], searchParams);
+        }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+}, [userRole, username, streamName, fetchCards, searchParams]);
 
     return (
         <div className="tracker-container">

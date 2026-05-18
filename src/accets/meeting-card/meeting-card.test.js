@@ -6,7 +6,8 @@ import { createStore } from 'redux';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import MeetingCard from './meeting-card';
 
-// Utility to fill all required fields for save
+// Удалена строка const mockStore = configureStore([]); - она не нужна
+
 // Utility to fill all required fields for save
 async function fillAllRequiredFields(container) {
   // Сначала проверяем, что компонент в режиме редактирования
@@ -42,7 +43,6 @@ async function fillAllRequiredFields(container) {
   if (dropdown) {
     fireEvent.click(dropdown);
     
-    // Ждем, пока опции появятся
     await waitFor(() => {
       expect(screen.getByText('Всё ок')).toBeInTheDocument();
     }, { timeout: 3000 });
@@ -81,14 +81,14 @@ async function fillAllRequiredFields(container) {
   }
 }
 
-function getTestStore() {
-  return createStore(() => ({ user: { user: { roles: ['ADMIN'] } } }));
+// Создаёт store для теста с указанной ролью
+function getTestStore(role = 'ADMIN') {
+  return createStore(() => ({ user: { user: { roles: [role] } } }));
 }
 
 // Mock fetch globally
 global.fetch = jest.fn();
 jest.setTimeout(10000);
-
 
 // Mock CSRF utils
 jest.mock('../../utils/csrf-utils', () => ({
@@ -150,7 +150,6 @@ describe('MeetingCard Component', () => {
     mockUseLocation.mockClear();
     mockUseParams.mockClear();
     
-    // Настраиваем моки
     mockUseLocation.mockReturnValue({
       search: '?teamId=1&username=test&userId=1',
     });
@@ -224,12 +223,10 @@ describe('MeetingCard Component', () => {
     </Provider>
   );
 
-  // Ждем загрузки компонента
   await waitFor(() => {
     expect(screen.getByText('Сохранить')).toBeInTheDocument();
   }, { timeout: 3000 });
 
-  // Загружаем изображение перед заполнением полей
   const fileInput = container.querySelector('input[type="file"]');
   const file = new File(['test'], 'test.png', { type: 'image/png' });
   
@@ -243,25 +240,21 @@ describe('MeetingCard Component', () => {
     fireEvent.change(fileInput);
   });
 
-  // Ждем чтобы изображение загрузилось
   await waitFor(() => {
     expect(fileInput.files[0]).toBeDefined();
   });
 
-  // Заполняем все поля
   await fillAllRequiredFields(container);
   
-  // Нажимаем кнопку "Сохранить"
   await act(async () => {
     fireEvent.click(screen.getByText('Сохранить'));
   });
 
-  // Ожидаем 3 вызова: fetchAllMeetings + сохранение встречи + загрузка изображения
   await waitFor(() => {
-    // Измените ожидание с 2 на 3
     expect(fetchCallCount).toBe(3);
   }, { timeout: 5000 });
 });
+  
   test('handles error during image upload', async () => {
   let fetchCallCount = 0;
   
@@ -312,12 +305,10 @@ describe('MeetingCard Component', () => {
     </Provider>
   );
 
-  // Ждем загрузки компонента
   await waitFor(() => {
     expect(screen.getByText('Сохранить')).toBeInTheDocument();
   }, { timeout: 3000 });
 
-  // Загружаем изображение
   const fileInput = container.querySelector('input[type="file"]');
   const file = new File(['test'], 'test.png', { type: 'image/png' });
   
@@ -331,24 +322,21 @@ describe('MeetingCard Component', () => {
     fireEvent.change(fileInput);
   });
 
-  // Ждем немного чтобы state обновился
   await waitFor(() => {
     expect(fileInput.files[0].name).toBe('test.png');
   });
 
-  // Заполняем остальные поля
   await fillAllRequiredFields(container);
   
-  // Сохраняем
   await act(async () => {
     fireEvent.click(screen.getByText('Сохранить'));
   });
 
-  // Ожидаем 3 вызова: fetchAllMeetings + сохранение встречи + загрузка изображения
   await waitFor(() => {
     expect(fetchCallCount).toBe(3);
   }, { timeout: 5000 });
 });
+  
   test('changes text fields and updates meeting data', () => {
     render(
       <Provider store={getTestStore()}>
@@ -368,7 +356,6 @@ describe('MeetingCard Component', () => {
   });
 
 test('handles image upload', async () => {
-  // Мокаем fetch
   fetch.mockResolvedValue({
     ok: true,
     json: () => Promise.resolve({ content: [] })
@@ -396,18 +383,17 @@ test('handles image upload', async () => {
     configurable: true
   });
 
-  // Создаем spy на fireEvent.change чтобы проверить вызов
   const changeSpy = jest.spyOn(fireEvent, 'change');
   
   await act(async () => {
     fireEvent.change(fileInput);
   });
 
-  // Проверяем, что fireEvent.change был вызван
   expect(changeSpy).toHaveBeenCalledWith(fileInput);
   
   changeSpy.mockRestore();
 });
+  
   test('navigates back when close button is clicked', () => {
     render(
       <Provider store={getTestStore()}>
@@ -823,18 +809,14 @@ test('should handle image upload with FormData', async () => {
     </Provider>
   );
 
-  // Ждем загрузки компонента - для новой встречи должна быть кнопка "Сохранить"
   await waitFor(() => {
     expect(screen.getByText('Сохранить')).toBeInTheDocument();
   }, { timeout: 3000 });
 
-  // Проверяем, что это действительно "новая встреча"
   expect(screen.getByText('Новая встреча')).toBeInTheDocument();
   
-  // Заполняем все поля
   await fillAllRequiredFields(container);
   
-  // Сохраняем (используем кнопку "Сохранить", а не "Редактировать")
   await act(async () => {
     fireEvent.click(screen.getByText('Сохранить'));
   });
@@ -2108,5 +2090,141 @@ describe('MeetingCard Validation Coverage (lines 215-217)', () => {
     
     // Проверяем что было несколько вызовов fetch
     expect(callCount).toBeGreaterThan(2);
+  });
+});
+
+
+describe('MeetingCard for Super Admin', () => {
+  // Функция для создания store с нужной ролью
+  const getStoreWithRole = (role) => createStore(() => ({ user: { user: { roles: [role] } } }));
+  
+  beforeEach(() => {
+    jest.resetAllMocks();
+    mockUseLocation.mockReturnValue({
+      search: '?teamId=team123&userId=user123',
+    });
+    mockUseParams.mockReturnValue({ meetingId: '123' });
+    
+    global.fetch = jest.fn();
+    global.URL.createObjectURL = jest.fn(() => 'mock-image-url');
+  });
+
+  test('Edit button is enabled for meeting with FINALLY_COMPLETED status for super admin', async () => {
+    // Мокаем данные встречи
+    const meetingData = {
+      id: '123',
+      status: 'FINALLY_COMPLETED',
+      number: '1',
+      startDate: new Date().toISOString(),
+      tasksCurrentMeeting: 'Some tasks',
+      tasksNextMeeting: 'Next tasks',
+      teamStatus: 'OK',
+      recordLink: 'http://example.com',
+      roomLink: ''
+    };
+    
+    // Мокаем запрос списка встреч
+    global.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ content: [meetingData] }),
+    });
+    // Мокаем запрос изображения (ошибка - нет изображения)
+    global.fetch.mockRejectedValueOnce(new Error('no image'));
+    
+    render(
+      <Provider store={getStoreWithRole('SUPER_ADMIN')}>
+        <MemoryRouter initialEntries={['/meeting/123?teamId=team123&userId=user123']}>
+          <Routes>
+            <Route path="/meeting/:meetingId" element={<MeetingCard />} />
+          </Routes>
+        </MemoryRouter>
+      </Provider>
+    );
+    
+    // Ждём загрузки
+    await waitFor(() => expect(screen.getByText(/Встреча 1/i)).toBeInTheDocument());
+    
+    const editButton = screen.getByRole('button', { name: /Редактировать/i });
+    expect(editButton).not.toBeDisabled();
+  });
+  
+  test('Edit button is disabled for regular admin for FINALLY_COMPLETED meeting', async () => {
+    const meetingData = {
+      id: '123',
+      status: 'FINALLY_COMPLETED',
+      number: '1',
+      startDate: new Date().toISOString(),
+      tasksCurrentMeeting: 'Some tasks',
+      tasksNextMeeting: 'Next tasks',
+      teamStatus: 'OK',
+      recordLink: 'http://example.com',
+      roomLink: ''
+    };
+    
+    global.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ content: [meetingData] }),
+    });
+    global.fetch.mockRejectedValueOnce(new Error('no image'));
+    
+    render(
+      <Provider store={getStoreWithRole('ADMIN')}>
+        <MemoryRouter initialEntries={['/meeting/123?teamId=team123&userId=user123']}>
+          <Routes>
+            <Route path="/meeting/:meetingId" element={<MeetingCard />} />
+          </Routes>
+        </MemoryRouter>
+      </Provider>
+    );
+    
+    await waitFor(() => expect(screen.getByText(/Встреча 1/i)).toBeInTheDocument());
+    
+    const editButton = screen.getByRole('button', { name: /Редактировать/i });
+    // Для обычного админа кнопка должна быть disabled
+    expect(editButton).toBeDisabled();
+  });
+  
+  test('Fields are not locked for super admin for allowed status', async () => {
+    const meetingData = {
+      id: '123',
+      status: 'FINALLY_COMPLETED',
+      number: '1',
+      startDate: new Date().toISOString(),
+      tasksCurrentMeeting: 'Some tasks',
+      tasksNextMeeting: 'Next tasks',
+      teamStatus: 'OK',
+      recordLink: 'http://example.com',
+      roomLink: ''
+    };
+    
+    global.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ content: [meetingData] }),
+    });
+    global.fetch.mockRejectedValueOnce(new Error('no image'));
+    
+    render(
+      <Provider store={getStoreWithRole('SUPER_ADMIN')}>
+        <MemoryRouter initialEntries={['/meeting/123?teamId=team123&userId=user123']}>
+          <Routes>
+            <Route path="/meeting/:meetingId" element={<MeetingCard />} />
+          </Routes>
+        </MemoryRouter>
+      </Provider>
+    );
+    
+    await waitFor(() => expect(screen.getByText(/Встреча 1/i)).toBeInTheDocument());
+    
+    // Нажимаем редактировать
+    fireEvent.click(screen.getByText('Редактировать'));
+    
+    // Проверяем что поля ввода не disabled
+    await waitFor(() => {
+      const textareas = screen.getAllByRole('textbox');
+      expect(textareas.length).toBeGreaterThan(0);
+      textareas.forEach(textarea => {
+        expect(textarea).not.toBeDisabled();
+      });
+    });
   });
 });

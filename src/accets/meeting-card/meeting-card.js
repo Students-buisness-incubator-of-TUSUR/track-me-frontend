@@ -9,6 +9,7 @@ import { validateMeetingWeekLimit, validateMeetingDateChange } from "../../utils
 import VideoChat from "./video_chat.svg";
 import Header from "../header/header";
 
+//a
 const MeetingCard = () => {
     let backendHost = 'http://localhost/meeting';
 

@@ -49,6 +49,35 @@ const MeetingCard = () => {
     const [pendingCompletion, setPendingCompletion] = useState(null);
     const [allMeetings, setAllMeetings] = useState([]);
 
+    const reduxUser = useSelector(state => state.user?.user);
+    const [role, setRole] = useState(null);
+
+    // ========== ДЛЯ СУПЕРАДМИНИСТРАТОРА ==========
+    // Статусы, которые суперадминистратор может редактировать
+    const EDITABLE_BY_SUPER_ADMIN_STATUSES = ["FINALLY_COMPLETED", "COMPLETED_AS_NOT_HAPPENED"];
+
+    // Вспомогательная функция: можно ли редактировать встречу (учитывая роль и статус)
+    const canEdit = () => {
+        if (isNewMeeting) return true;
+        const status = meetingData.status;
+        const isCompletedStatus = status === "COMPLETED" || status === "COMPLETED_AS_NOT_HAPPENED" || status === "FINALLY_COMPLETED";
+        if (!isCompletedStatus) return true;
+        // Если статус завершённый, но пользователь суперадмин и статус в списке разрешённых
+        if (role === "SUPER_ADMIN" && EDITABLE_BY_SUPER_ADMIN_STATUSES.includes(status)) {
+            return true;
+        }
+        return false;
+    };
+
+    // Блокировка интерфейса (поля disabled)
+    const isMeetingLocked = !canEdit();
+    // ============================================
+
+    // Для отображения статуса "завершена" (только визуально, не для блокировки)
+    const isMeetingCompleted = meetingData.status === "COMPLETED" ||
+        meetingData.status === "COMPLETED_AS_NOT_HAPPENED" ||
+        meetingData.status === "FINALLY_COMPLETED";
+
     const renderTextareaSection = (name, label, value) => (
         <div className="unique-meeting-info-row">
             <span className="unique-label">{label}</span>
@@ -63,7 +92,7 @@ const MeetingCard = () => {
                             e.target.style.height = e.target.scrollHeight + 'px';
                         }}
                         className="unique-textarea"
-                        disabled={isMeetingCompleted}
+                        disabled={isMeetingLocked}
                         style={{ resize: 'none', overflow: 'hidden', minHeight: '40px' }}
                         onFocus={(e) => {
                             e.target.style.height = 'auto';
@@ -77,9 +106,6 @@ const MeetingCard = () => {
             )}
         </div>
     );
-
-    const reduxUser = useSelector(state => state.user?.user);
-    const [role, setRole] = useState(null);
 
     useEffect(() => {
         if (reduxUser) {
@@ -340,7 +366,6 @@ const MeetingCard = () => {
                 const errorText = await response.text();
                 throw new Error(`Ошибка при удалении: ${response.status} ${errorText}`);
             }
-            // Добавляем параметр refresh для принудительного обновления TeamCard
             navigate(`/teamcard/${teamId}?userId=${userId}&refresh=${Date.now()}`);
         } catch (error) {
             console.error('Ошибка удаления встречи:', error);
@@ -350,10 +375,6 @@ const MeetingCard = () => {
     };
 
     const handleEditClick = () => {
-        if (isMeetingLocked && (role === "ADMIN" || role === "SUPER_ADMIN")) {
-            setShowDeleteModal(true);
-            return;
-        }
         if (isMeetingLocked) {
             setError("Эту встречу нельзя редактировать, так как она завершена или не состоялась");
             setTimeout(() => setError(null), 5000);
@@ -380,12 +401,6 @@ const MeetingCard = () => {
             `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,toolbar=no,menubar=no,location=yes,noopener,noreferrer`
         );
     };
-
-    const isMeetingCompleted = meetingData.status === "COMPLETED" ||
-        meetingData.status === "COMPLETED_AS_NOT_HAPPENED";
-
-    const isMeetingLocked = meetingData.status === "COMPLETED" ||
-        meetingData.status === "COMPLETED_AS_NOT_HAPPENED";
 
     useEffect(() => {
         if (!teamId) return;
@@ -442,9 +457,9 @@ const MeetingCard = () => {
                     <button
                         onClick={handleEditClick}
                         className="unique-edit-button"
-                        style={{ zIndex: 10, cursor: isMeetingLocked && (role !== "ADMIN" && role !== "SUPER_ADMIN") ? 'not-allowed' : 'pointer' }}
-                        disabled={isMeetingLocked && (role !== "ADMIN" && role !== "SUPER_ADMIN")}
-                        title={isMeetingLocked ? "Нельзя редактировать" : ""}
+                        style={{ zIndex: 10, cursor: isMeetingLocked ? 'not-allowed' : 'pointer' }}
+                        disabled={isMeetingLocked}
+                        title={isMeetingLocked ? "Эту встречу нельзя редактировать" : ""}
                     >
                         Редактировать
                     </button>
@@ -548,8 +563,8 @@ const MeetingCard = () => {
                         <div className="status-dropdown-wrapper">
                             <div
                                 className="status-selected"
-                                onClick={() => !isMeetingCompleted && setShowStatusDropdown(prev => !prev)}
-                                onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && !isMeetingCompleted) setShowStatusDropdown(prev => !prev); }}
+                                onClick={() => !isMeetingLocked && setShowStatusDropdown(prev => !prev)}
+                                onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && !isMeetingLocked) setShowStatusDropdown(prev => !prev); }}
                                 tabIndex={0}
                                 role="button"
                                 aria-expanded={showStatusDropdown}
@@ -584,13 +599,13 @@ const MeetingCard = () => {
                     {isEditing ? (
                         <div
                             className="unique-image-upload"
-                            onClick={() => !isMeetingCompleted && fileInputRef.current.click()}
-                            onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && !isMeetingCompleted) fileInputRef.current.click(); }}
+                            onClick={() => !isMeetingLocked && fileInputRef.current.click()}
+                            onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && !isMeetingLocked) fileInputRef.current.click(); }}
                             tabIndex={0}
                             role="button"
                             aria-label="Загрузить изображение"
                         >
-                            <input type="file" accept="image/*" onChange={handleImageChange} className="unique-image-input" ref={fileInputRef} disabled={isMeetingCompleted} />
+                            <input type="file" accept="image/*" onChange={handleImageChange} className="unique-image-input" ref={fileInputRef} disabled={isMeetingLocked} />
                             {imagePreview
                                 ? <img src={imagePreview} alt="Превью" className="unique-meeting-image" />
                                 : <div className="unique-screenshot-placeholder"><span>Выберите изображение</span></div>
@@ -607,7 +622,7 @@ const MeetingCard = () => {
                     <span className="unique-label">Запись встречи:</span>
                     {isEditing ? (
                         <>
-                            <input type="text" name="recordLink" value={meetingData.recordLink || ''} onChange={handleChange} className="unique-input" disabled={isMeetingCompleted} />
+                            <input type="text" name="recordLink" value={meetingData.recordLink || ''} onChange={handleChange} className="unique-input" disabled={isMeetingLocked} />
                             <img src={pencilIcon} alt="Редактировать" className="edit-icon23" />
                         </>
                     ) : meetingData.recordLink ? (

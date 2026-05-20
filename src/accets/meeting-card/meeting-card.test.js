@@ -437,6 +437,7 @@ test('handles image upload', async () => {
     expect(screen.getByAltText('Превью')).toBeInTheDocument();
   });
 });
+  
   test('navigates back when close button is clicked', () => {
     render(
       <Provider store={getTestStore()}>
@@ -452,12 +453,12 @@ test('handles image upload', async () => {
     expect(mockNavigate).toHaveBeenCalled();
   });
 
-  //test('shows error message on save failure', async () => {
-  // Важно: сбрасываем мок перед тестом
-  //mockValidateMeetingWeekLimit.mockReturnValue({
-    //isValid: true,
-   // errorMessage: "",
-  //});
+  test('shows error message on save failure', async () => {
+  // Исправленный тест (был неправильный - заменён)
+  mockValidateMeetingWeekLimit.mockReturnValue({
+    isValid: true,
+    errorMessage: "",
+  });
   
   let fetchCallCount = 0;
   
@@ -485,45 +486,30 @@ test('handles image upload', async () => {
     return Promise.reject(new Error(`Unexpected URL: ${urlString}`));
   });
 
-  const changeSpy = jest.spyOn(fireEvent, 'change');
+  const { container } = render(
+    <Provider store={getTestStore()}>
+      <MemoryRouter initialEntries={['/meeting/new?teamId=1&username=test&userId=1']}>
+        <Routes>
+          <Route path="/meeting/:meetingId" element={<MeetingCard />} />
+        </Routes>
+      </MemoryRouter>
+    </Provider>
+  );
+
+  await waitFor(() => {
+    expect(screen.getByText('Сохранить')).toBeInTheDocument();
+  }, { timeout: 3000 });
+
+  await fillAllRequiredFields(container);
   
   await act(async () => {
     fireEvent.click(screen.getByText('Сохранить'));
   });
 
-  expect(changeSpy).toHaveBeenCalledWith(fileInput);
-  
-  changeSpy.mockRestore();
+  await waitFor(() => {
+    expect(screen.getByText(/Ошибка при сохранении/i)).toBeInTheDocument();
+  }, { timeout: 5000 });
 });
-  
-  //test('navigates back when close button is clicked', () => {
-    //render(
-      //<Provider store={getTestStore()}>
-       // <MemoryRouter initialEntries={['/meeting/new?teamId=1&username=test&userId=1']}>
-        //  <Routes>
-        //    <Route path="/meeting/:meetingId" element={<MeetingCard />} />
-         // </Routes>
-        //</MemoryRouter>
-      //</Provider>
-    //);
-
-    await waitFor(() => {
-      expect(screen.getByText('Сохранить')).toBeInTheDocument();
-    }, { timeout: 3000 });
-
-    const recordLinkInput = screen.getByPlaceholderText('https://example.com/record');
-    fireEvent.change(recordLinkInput, {
-      target: { name: 'recordLink', value: 'invalid-url' },
-    });
-
-    fireEvent.click(screen.getByText('Сохранить'));
-
-    await waitFor(() => {
-      expect(screen.getByText(/Введите корректный URL/i)).toBeInTheDocument();
-    });
-    expect(screen.getByText('Сохранить')).toBeDisabled();
-    expect(fetch).toHaveBeenCalledTimes(1);
-  });
 
   test('shows validation error when meeting date validation fails', async () => {
     mockValidateMeetingWeekLimit.mockReturnValueOnce({

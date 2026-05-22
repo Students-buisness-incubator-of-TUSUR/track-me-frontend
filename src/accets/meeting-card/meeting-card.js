@@ -29,7 +29,8 @@ const MeetingCard = () => {
     const [showStatusDropdown, setShowStatusDropdown] = useState(false);
     const isNewMeeting = meetingId === "new";
     const [error, setError] = useState(null);
-    const [showDateTooltip, setShowDateTooltip] = useState(false);
+    const [recordLinkError, setRecordLinkError] = useState(null);   // из develop
+    const [showDateTooltip, setShowDateTooltip] = useState(false); // из feature
     const [meetingData, setMeetingData] = useState({
         number: isNewMeeting ? "Новая встреча" : "",
         startDate: new Date().toISOString(),
@@ -53,27 +54,22 @@ const MeetingCard = () => {
     const [role, setRole] = useState(null);
 
     // ========== ДЛЯ СУПЕРАДМИНИСТРАТОРА ==========
-    // Статусы, которые суперадминистратор может редактировать
     const EDITABLE_BY_SUPER_ADMIN_STATUSES = ["FINALLY_COMPLETED", "COMPLETED_AS_NOT_HAPPENED"];
 
-    // Вспомогательная функция: можно ли редактировать встречу (учитывая роль и статус)
     const canEdit = () => {
         if (isNewMeeting) return true;
         const status = meetingData.status;
         const isCompletedStatus = status === "COMPLETED" || status === "COMPLETED_AS_NOT_HAPPENED" || status === "FINALLY_COMPLETED";
         if (!isCompletedStatus) return true;
-        // Если статус завершённый, но пользователь суперадмин и статус в списке разрешённых
         if (role === "SUPER_ADMIN" && EDITABLE_BY_SUPER_ADMIN_STATUSES.includes(status)) {
             return true;
         }
         return false;
     };
 
-    // Блокировка интерфейса (поля disabled)
     const isMeetingLocked = !canEdit();
     // ============================================
 
-    // Для отображения статуса "завершена" (только визуально, не для блокировки)
     const isMeetingCompleted = meetingData.status === "COMPLETED" ||
         meetingData.status === "COMPLETED_AS_NOT_HAPPENED" ||
         meetingData.status === "FINALLY_COMPLETED";
@@ -183,12 +179,32 @@ const MeetingCard = () => {
         imagePreview
     );
 
+    const isValidUrl = (value) => {
+        if (!value) return false;
+        try {
+            const url = new URL(value);
+            return url.protocol === 'http:' || url.protocol === 'https:';
+        } catch {
+            return false;
+        }
+    };
+
     const handleChange = (e) => {
         const { name, value } = e.target;
         setMeetingData(prev => ({
             ...prev,
             [name]: name === 'startDate' ? new Date(value).toISOString() : value
         }));
+
+        if (name === 'recordLink') {
+            if (!value) {
+                setRecordLinkError(null);
+            } else if (!isValidUrl(value)) {
+                setRecordLinkError('Введите корректный URL, начиная с http:// или https://');
+            } else {
+                setRecordLinkError(null);
+            }
+        }
     };
 
     const handleImageChange = (e) => {
@@ -214,6 +230,13 @@ const MeetingCard = () => {
             const validation = isNew
                 ? validateMeetingWeekLimit(meetingsForValidation, meetingData.startDate, true)
                 : validateMeetingDateChange(meetingsForValidation, meetingId, meetingData.startDate);
+
+            if (meetingData.recordLink && !isValidUrl(meetingData.recordLink)) {
+                setError("Поле 'Запись встречи' должно содержать корректный URL");
+                setRecordLinkError('Введите корректный URL, начиная с http:// или https://');
+                setTimeout(() => setError(null), 5000);
+                return;
+            }
 
             if (!validation.isValid) {
                 setError(validation.errorMessage);
@@ -298,8 +321,10 @@ const MeetingCard = () => {
     };
 
     const handleCompleteMeeting = async (completed) => {
+        const completeNotReadyMessage = 'Плановое время завершения встречи ещё не наступило, поэтому её невозможно завершить';
+
         if (!isMeetingDatePassed()) {
-            setError("Завершение встречи возможно только после окончания даты встречи");
+            setError(completeNotReadyMessage);
             setShowDateTooltip(true);
             setTimeout(() => { setError(null); setShowDateTooltip(false); }, 5000);
             return;
@@ -439,7 +464,12 @@ const MeetingCard = () => {
 
                 {isEditing ? (
                     <div className="edit-actions-container">
-                        <button onClick={(e) => { e.stopPropagation(); handleSave(); }} className="unique-edit-button">
+                        <button
+                            onClick={(e) => { e.stopPropagation(); handleSave(); }}
+                            className="unique-edit-button"
+                            disabled={Boolean(recordLinkError)}
+                            title={recordLinkError ? "Введите корректный URL в поле записи встречи" : "Сохранить"}
+                        >
                             Сохранить
                         </button>
                         {(role === "ADMIN" || role === "SUPER_ADMIN") && (
@@ -504,7 +534,7 @@ const MeetingCard = () => {
                                     className={`unique-status-button unique-status-completed ${meetingData.status === "COMPLETED" ? "active-status" : ""}`}
                                     title={
                                         !areAllFieldsFilled() ? "Заполните все поля перед завершением встречи"
-                                            : !isMeetingDatePassed() ? "Завершение встречи возможно только после окончания даты встречи"
+                                            : !isMeetingDatePassed() ? "Плановое время завершения встречи ещё не наступило, поэтому её невозможно завершить"
                                                 : ""
                                     }
                                 >
@@ -516,14 +546,16 @@ const MeetingCard = () => {
                                     onClick={() => { setPendingCompletion(false); setShowConfirmModal(true); }}
                                     disabled={meetingData.status === "COMPLETED_AS_NOT_HAPPENED" || !isMeetingDatePassed()}
                                     className={`unique-status-button unique-status-not-happened ${meetingData.status === "COMPLETED_AS_NOT_HAPPENED" ? "active-status" : ""}`}
-                                    title={!isMeetingDatePassed() ? "Завершение встречи возможно только после окончания даты встречи" : ""}
+                                    title={
+                                        !isMeetingDatePassed() ? "Плановое время завершения встречи ещё не наступило, поэтому её невозможно завершить" : ""
+                                    }
                                 >
                                     Не состоялась
                                 </button>
                             )}
                             {showDateTooltip && (
                                 <div className="date-tooltip">
-                                    Завершение встречи возможно только после окончания даты встречи
+                                    Плановое время завершения встречи ещё не наступило, поэтому её невозможно завершить
                                 </div>
                             )}
                         </div>
@@ -622,13 +654,29 @@ const MeetingCard = () => {
                     <span className="unique-label">Запись встречи:</span>
                     {isEditing ? (
                         <>
-                            <input type="text" name="recordLink" value={meetingData.recordLink || ''} onChange={handleChange} className="unique-input" disabled={isMeetingLocked} />
+                            <input
+                                type="url"
+                                name="recordLink"
+                                value={meetingData.recordLink || ''}
+                                onChange={handleChange}
+                                className="unique-input"
+                                disabled={isMeetingLocked}
+                                placeholder="https://example.com/record"
+                            />
                             <img src={pencilIcon} alt="Редактировать" className="edit-icon23" />
                         </>
                     ) : meetingData.recordLink ? (
                         <a href={meetingData.recordLink} target="_blank" rel="noopener noreferrer" className="unique-link">{meetingData.recordLink}</a>
                     ) : (
                         <div className="unique-link">Ссылка не указана</div>
+                    )}
+                    {isEditing && recordLinkError && (
+                        <div className="error-message" style={{
+                            backgroundColor: '#ffebee', color: '#d32f2f', padding: '6px 10px',
+                            borderRadius: '4px', marginTop: '8px', maxWidth: '100%'
+                        }}>
+                            {recordLinkError}
+                        </div>
                     )}
                 </div>
 

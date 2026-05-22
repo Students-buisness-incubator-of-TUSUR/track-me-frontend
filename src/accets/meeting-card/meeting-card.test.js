@@ -1360,7 +1360,7 @@ describe('MeetingCard Completion and Editing', () => {
     await waitFor(() => {
       const errorDiv = document.querySelector('.error-message');
       expect(errorDiv).toBeInTheDocument();
-      expect(errorDiv.textContent).toMatch(/Завершение встречи возможно только после окончания даты встречи/i);
+      expect(errorDiv.textContent).toMatch(/Плановое время завершения встречи ещё не наступило, поэтому её невозможно завершить/i);
     }, { timeout: 3000 });
 
     const patchCalled = fetch.mock.calls.some(([, opts]) => opts?.method === 'PATCH');

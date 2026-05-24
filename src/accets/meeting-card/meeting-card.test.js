@@ -2420,9 +2420,10 @@ describe('MeetingCard for Super Admin', () => {
         const fileInput = document.querySelector('input[type="file"]');
         expect(fileInput).not.toBeDisabled();
     });
+  });
 });
 
-  describe('Additional coverage for super admin and regular admin (SBI800)', () => {
+describe('Additional coverage for super admin and regular admin (SBI800)', () => {
   const getStoreWithRole = (role) => createStore(() => ({ user: { user: { roles: [role] } } }));
   beforeEach(() => {
     jest.resetAllMocks();
@@ -2490,7 +2491,45 @@ describe('MeetingCard for Super Admin', () => {
     const editButton = screen.getByRole('button', { name: /Редактировать/i });
     await waitFor(() => expect(editButton).toHaveAttribute('disabled'), { timeout: 5000 });
   });
+
+  test('Save button is disabled when recordLinkError present', async () => {
+    mockUseParams.mockReturnValue({ meetingId: 'new' });
+    global.fetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({ content: [] }) });
+    render(
+      <Provider store={createStore(() => ({ user: { user: { roles: ['SUPER_ADMIN'] } } }))}>
+        <MemoryRouter initialEntries={['/meeting/new?teamId=team123']}>
+          <Routes><Route path="/meeting/:meetingId" element={<MeetingCard />} /></Routes>
+        </MemoryRouter>
+      </Provider>
+    );
+    await waitFor(() => expect(screen.getByText('Сохранить')).toBeInTheDocument());
+    const recordLinkInput = screen.getByPlaceholderText('https://example.com/record');
+    fireEvent.change(recordLinkInput, { target: { value: 'invalid' } });
+    await waitFor(() => expect(screen.getByText(/Введите корректный URL/i)).toBeInTheDocument());
+    const saveButton = screen.getByText('Сохранить');
+    expect(saveButton).toBeDisabled();
+    fireEvent.change(recordLinkInput, { target: { value: 'http://valid.com' } });
+    await waitFor(() => expect(saveButton).not.toBeDisabled());
+  });
+
+  test('Date tooltip appears when completing meeting before date (title check)', async () => {
+    mockUseParams.mockReturnValue({ meetingId: '889' });
+    const futureMeeting = {
+      id: '889', status: 'SCHEDULED', number: '89', startDate: new Date(Date.now() + 86400000).toISOString(),
+      tasksCurrentMeeting: 'Tasks', tasksNextMeeting: 'Next', teamStatus: 'OK', recordLink: 'http://example.com', roomLink: ''
+    };
+    global.fetch.mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ content: [futureMeeting] }) });
+    global.fetch.mockRejectedValueOnce(new Error('no image'));
+    render(
+      <Provider store={createStore(() => ({ user: { user: { roles: ['ADMIN'] } } }))}>
+        <MemoryRouter initialEntries={['/meeting/889?teamId=team123']}>
+          <Routes><Route path="/meeting/:meetingId" element={<MeetingCard />} /></Routes>
+        </MemoryRouter>
+      </Provider>
+    );
+    await waitFor(() => expect(screen.getByText(/Встреча 89/i)).toBeInTheDocument());
+    const notHappenedButton = screen.getByText('Не состоялась');
+    expect(notHappenedButton).toHaveAttribute('title', 'Плановое время завершения встречи ещё не наступило, поэтому её невозможно завершить');
+  });
 });
 
-
-});

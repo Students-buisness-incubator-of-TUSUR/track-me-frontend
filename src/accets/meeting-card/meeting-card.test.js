@@ -2363,4 +2363,63 @@ describe('MeetingCard for Super Admin', () => {
       });
     });
   });
+
+  test('All input fields are editable for super admin for FINALLY_COMPLETED meeting', async () => {
+    const meetingData = {
+        id: '456',
+        number: '2',
+        status: 'FINALLY_COMPLETED',
+        startDate: new Date().toISOString(),
+        tasksCurrentMeeting: 'Some tasks',
+        tasksNextMeeting: 'Next tasks',
+        teamStatus: 'OK',
+        recordLink: 'http://example.com',
+        roomLink: ''
+    };
+    
+    // Мокаем первый запрос на получение списка встреч
+    global.fetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ content: [meetingData] }),
+    });
+    // Мокаем второй запрос на получение изображения (ошибка - нет изображения)
+    global.fetch.mockRejectedValueOnce(new Error('no image'));
+
+    render(
+        <Provider store={getStoreWithRole('SUPER_ADMIN')}>
+            <MemoryRouter initialEntries={['/meeting/456?teamId=team123&userId=user123']}>
+                <Routes>
+                    <Route path="/meeting/:meetingId" element={<MeetingCard />} />
+                </Routes>
+            </MemoryRouter>
+        </Provider>
+    );
+
+    // Ждём, пока загрузится встреча и появится кнопка "Редактировать"
+    await waitFor(() => expect(screen.getByText('Редактировать')).toBeInTheDocument());
+
+    // Нажимаем редактировать
+    fireEvent.click(screen.getByText('Редактировать'));
+
+    // Проверяем, что все поля ввода не disabled
+    await waitFor(() => {
+        const textareas = screen.getAllByRole('textbox');
+        textareas.forEach(textarea => {
+            expect(textarea).not.toBeDisabled();
+        });
+        
+        const dateInput = document.querySelector('input[type="date"]');
+        expect(dateInput).not.toBeDisabled();
+        
+        const timeInput = document.querySelector('input[type="time"]');
+        expect(timeInput).not.toBeDisabled();
+        
+        const urlInput = screen.getByPlaceholderText('https://example.com/record');
+        expect(urlInput).not.toBeDisabled();
+        
+        const fileInput = document.querySelector('input[type="file"]');
+        expect(fileInput).not.toBeDisabled();
+    });
+});
+
 });

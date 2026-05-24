@@ -2553,5 +2553,111 @@ describe('Additional coverage for super admin and regular admin (SBI800)', () =>
     expect(notHappenedButton).toHaveAttribute('title', 'Плановое время завершения встречи ещё не наступило, поэтому её невозможно завершить');
   });
 
+  // ===== Дополнительные тесты для покрытия 80% (непокрытые строки) =====
+
+describe('Extra coverage for missing lines in MeetingCard', () => {
+  const getStoreWithRole = (role) => createStore(() => ({ user: { user: { roles: [role] } } }));
+  beforeEach(() => {
+    jest.resetAllMocks();
+    mockUseLocation.mockReturnValue({ search: '?teamId=team123&userId=user123' });
+    global.fetch = jest.fn();
+    global.URL.createObjectURL = jest.fn(() => 'mock-image-url');
+  });
+
+  test('Error message appears when meeting date validation fails', async () => {
+    mockUseParams.mockReturnValue({ meetingId: 'new' });
+    const mockValidate = jest.spyOn(require('../../utils/date-utils'), 'validateMeetingWeekLimit');
+    mockValidate.mockReturnValueOnce({ isValid: false, errorMessage: 'Дата встречи недопустима' });
+    global.fetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({ content: [] }) });
+    render(
+      <Provider store={getStoreWithRole('SUPER_ADMIN')}>
+        <MemoryRouter initialEntries={['/meeting/new?teamId=team123']}>
+          <Routes><Route path="/meeting/:meetingId" element={<MeetingCard />} /></Routes>
+        </MemoryRouter>
+      </Provider>
+    );
+    await waitFor(() => expect(screen.getByText('Сохранить')).toBeInTheDocument());
+    const saveButton = screen.getByText('Сохранить');
+    fireEvent.click(saveButton);
+    await waitFor(() => {
+      expect(screen.getByText('Дата встречи недопустима')).toBeInTheDocument();
+    });
+    mockValidate.mockRestore();
+  });
+
+  test('Error when meeting data is not valid URL during save', async () => {
+  mockUseParams.mockReturnValue({ meetingId: 'new' });
+  global.fetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({ content: [] }) });
+  render(
+    <Provider store={getStoreWithRole('SUPER_ADMIN')}>
+      <MemoryRouter initialEntries={['/meeting/new?teamId=team123']}>
+        <Routes><Route path="/meeting/:meetingId" element={<MeetingCard />} /></Routes>
+      </MemoryRouter>
+    </Provider>
+  );
+  await waitFor(() => expect(screen.getByText('Сохранить')).toBeInTheDocument());
+  const recordLinkInput = screen.getByPlaceholderText('https://example.com/record');
+  fireEvent.change(recordLinkInput, { target: { value: 'invalid-url' } });
+  await waitFor(() => expect(screen.getByText(/Введите корректный URL/i)).toBeInTheDocument());
+  const saveButton = screen.getByText('Сохранить');
+  expect(saveButton).toBeDisabled();
+  // также проверка, что при сохранении с невалидной ссылкой вылезает ошибка
+  fireEvent.click(saveButton);
+  await waitFor(() => {
+    expect(screen.getByText(/Введите корректный URL/i)).toBeInTheDocument();
+  });
 });
+
+
+  test('Deleting meeting shows confirmation modal and deletes', async () => {
+  mockUseParams.mockReturnValue({ meetingId: '999' });
+  const meetingData = {
+    id: '999', status: 'SCHEDULED', number: '1', startDate: new Date().toISOString(),
+    tasksCurrentMeeting: 'Tasks', tasksNextMeeting: 'Next', teamStatus: 'OK', recordLink: 'http://example.com', roomLink: ''
+  };
+
+  // Порядок моков важен
+  // 1. GET /meetings (загрузка списка)
+  global.fetch.mockResolvedValueOnce({
+    ok: true,
+    json: () => Promise.resolve({ content: [meetingData] })
+  });
+  // 2. GET /image (изображение) – ошибка, так как его нет
+  global.fetch.mockRejectedValueOnce(new Error('no image'));
+  // 3. DELETE /delete-meeting (удаление) – успех
+  global.fetch.mockResolvedValueOnce({ ok: true });
+  // 4. После удаления может быть ещё один GET /meetings для обновления списка
+  global.fetch.mockResolvedValueOnce({
+    ok: true,
+    json: () => Promise.resolve({ content: [] })
+  });
+
+  render(
+    <Provider store={getStoreWithRole('SUPER_ADMIN')}>
+      <MemoryRouter initialEntries={['/meeting/999?teamId=team123&userId=user123']}>
+        <Routes><Route path="/meeting/:meetingId" element={<MeetingCard />} /></Routes>
+      </MemoryRouter>
+    </Provider>
+  );
+
+  await waitFor(() => expect(screen.getByText(/Встреча 1/i)).toBeInTheDocument());
+
+  fireEvent.click(screen.getByText('Редактировать'));
+  await waitFor(() => expect(screen.getByText('Удалить')).toBeInTheDocument());
+
+  fireEvent.click(screen.getByText('Удалить'));
+  await waitFor(() => expect(screen.getByTestId('delete-confirm-button')).toBeInTheDocument());
+
+  fireEvent.click(screen.getByTestId('delete-confirm-button'));
+
+  await waitFor(() => {
+    expect(mockNavigate).toHaveBeenCalledWith(expect.stringContaining('/teamcard/team123?userId=user123&refresh='));
+  });
+});
+
+});
+
+});
+
+
 

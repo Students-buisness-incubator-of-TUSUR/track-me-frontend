@@ -30,7 +30,6 @@ const MeetingCard = () => {
     const isNewMeeting = meetingId === "new";
     const [error, setError] = useState(null);
     const [recordLinkError, setRecordLinkError] = useState(null);
-    const [showDateTooltip, setShowDateTooltip] = useState(false);
     const [meetingData, setMeetingData] = useState({
         number: isNewMeeting ? "Новая встреча" : "",
         startDate: new Date().toISOString(),
@@ -330,12 +329,11 @@ const MeetingCard = () => {
     };
 
     const handleCompleteMeeting = async (completed) => {
-        const completeNotReadyMessage = 'Плановое время завершения встречи ещё не наступило, поэтому её не возможно завершить';
+        const completeNotReadyMessage = 'Плановое время завершения встречи ещё не наступило, поэтому её невозможно завершить';
 
         if (!isMeetingDatePassed()) {
             setError(completeNotReadyMessage);
-            setShowDateTooltip(true);
-            setTimeout(() => { setError(null); setShowDateTooltip(false); }, 5000);
+            setTimeout(() => setError(null), 5000);
             return;
         }
 
@@ -554,7 +552,7 @@ const MeetingCard = () => {
                                     className={`unique-status-button unique-status-completed ${meetingData.status === "COMPLETED" ? "active-status" : ""}`}
                                     title={
                                         !areAllFieldsFilled() ? "Заполните все поля перед завершением встречи"
-                                            : !isMeetingDatePassed() ? "Плановое время завершения встречи ещё не наступило, поэтому её не возможно завершить"
+                                            : !isMeetingDatePassed() ? "Плановое время завершения встречи ещё не наступило, поэтому её невозможно завершить"
                                                 : ""
                                     }
                                 >
@@ -566,51 +564,48 @@ const MeetingCard = () => {
                                     onClick={() => { setPendingCompletion(false); setShowConfirmModal(true); }}
                                     disabled={meetingData.status === "COMPLETED_AS_NOT_HAPPENED" || !isMeetingDatePassed()}
                                     className={`unique-status-button unique-status-not-happened ${meetingData.status === "COMPLETED_AS_NOT_HAPPENED" ? "active-status" : ""}`}
-                                    title={!isMeetingDatePassed() ? "Плановое время завершения встречи ещё не наступило, поэтому её не возможно завершить" : ""}
+                                    title={
+                                        !isMeetingDatePassed() ? "Плановое время завершения встречи ещё не наступило, поэтому её невозможно завершить" : ""
+                                    }
                                 >
                                     Не состоялась
                                 </button>
-                            )}
-                            {showDateTooltip && (
-                                <div className="date-tooltip">
-                                    Плановое время завершения встречи ещё не наступило, поэтому её невозможно завершить
-                                </div>
                             )}
                         </div>
                     )}
                 </div>
 
                 <div className="unique-meeting-info-row unique-date-row">
-                    <span className="unique-label">Дата и время:</span>
-                    {isEditing ? (
-                        <div className="unique-date-input-wrapper">
-                            <input
-                                type="date"
-                                name="startDate"
-                                value={meetingData.startDate ? new Date(meetingData.startDate).toISOString().split('T')[0] : ''}
-                                onChange={handleChange}
-                                className="unique-date-input"
-                                disabled={isMeetingLocked}
-                                min={new Date().toISOString().split('T')[0]}
-                            />
-                            <input
-                                type="time"
-                                name="startTime"
-                                value={meetingData.startDate ? new Date(meetingData.startDate).toISOString().slice(11, 16) : ''}
-                                onChange={handleChange}
-                                className="unique-time-input"
-                                disabled={isMeetingLocked}
-                            />
-                            <img src={pencilIcon} alt="Редактировать" style={{ marginTop: "-6px" }} className="edit-icon23" />
-                        </div>
-                    ) : (
-                        <span className="unique-meeting-date">
-                            {meetingData.startDate
-                                ? `${new Date(meetingData.startDate).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })} ${new Date(meetingData.startDate).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`
-                                : 'Не указана'}
-                        </span>
-                    )}
-                </div>
+    <span className="unique-label">Дата и время:</span>
+    {isEditing ? (
+        <div className="unique-date-input-wrapper">
+            <input
+                type="date"
+                name="startDate"
+                value={meetingData.startDate ? new Date(meetingData.startDate).toLocaleDateString('en-CA') : ''}
+                onChange={handleChange}
+                className="unique-date-input"
+                disabled={isMeetingLocked}
+                min={new Date().toISOString().split('T')[0]}
+            />
+            <input
+                type="time"
+                name="startTime"
+                value={meetingData.startDate ? new Date(meetingData.startDate).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : ''}
+                onChange={handleChange}
+                className="unique-time-input"
+                disabled={isMeetingLocked}
+            />
+            <img src={pencilIcon} alt="Редактировать" style={{ marginTop: "-6px" }} className="edit-icon23" />
+        </div>
+    ) : (
+        <span className="unique-meeting-date">
+            {meetingData.startDate
+                ? `${new Date(meetingData.startDate).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })} ${new Date(meetingData.startDate).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`
+                : 'Не указана'}
+        </span>
+    )}
+</div>
 
                 {renderTextareaSection("tasksCurrentMeeting", "Задачи к следующей встрече:", meetingData.tasksCurrentMeeting)}
                 {renderTextareaSection("tasksNextMeeting", "Выполнили задачи прошлой встречи или нет, общая информация по команде:", meetingData.tasksNextMeeting)}

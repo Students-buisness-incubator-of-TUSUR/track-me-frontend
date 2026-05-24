@@ -2531,5 +2531,27 @@ describe('Additional coverage for super admin and regular admin (SBI800)', () =>
     const notHappenedButton = screen.getByText('Не состоялась');
     expect(notHappenedButton).toHaveAttribute('title', 'Плановое время завершения встречи ещё не наступило, поэтому её невозможно завершить');
   });
+
+  test('Not happened button is disabled for future meeting with correct title', async () => {
+    mockUseParams.mockReturnValue({ meetingId: '893' });
+    const futureMeeting = {
+      id: '893', status: 'SCHEDULED', number: '93', startDate: new Date(Date.now() + 86400000).toISOString(),
+      tasksCurrentMeeting: 'Tasks', tasksNextMeeting: 'Next', teamStatus: 'OK', recordLink: 'http://example.com', roomLink: ''
+    };
+    global.fetch.mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ content: [futureMeeting] }) });
+    global.fetch.mockRejectedValueOnce(new Error('no image'));
+    render(
+      <Provider store={createStore(() => ({ user: { user: { roles: ['ADMIN'] } } }))}>
+        <MemoryRouter initialEntries={['/meeting/893?teamId=team123']}>
+          <Routes><Route path="/meeting/:meetingId" element={<MeetingCard />} /></Routes>
+        </MemoryRouter>
+      </Provider>
+    );
+    await waitFor(() => expect(screen.getByText(/Встреча 93/i)).toBeInTheDocument());
+    const notHappenedButton = screen.getByText('Не состоялась');
+    expect(notHappenedButton).toBeDisabled();
+    expect(notHappenedButton).toHaveAttribute('title', 'Плановое время завершения встречи ещё не наступило, поэтому её невозможно завершить');
+  });
+
 });
 

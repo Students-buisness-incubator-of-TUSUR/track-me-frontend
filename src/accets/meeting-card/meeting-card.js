@@ -29,8 +29,8 @@ const MeetingCard = () => {
     const [showStatusDropdown, setShowStatusDropdown] = useState(false);
     const isNewMeeting = meetingId === "new";
     const [error, setError] = useState(null);
-    const [recordLinkError, setRecordLinkError] = useState(null);   // из develop
-    const [showDateTooltip, setShowDateTooltip] = useState(false); // из feature
+    const [recordLinkError, setRecordLinkError] = useState(null);
+    const [showDateTooltip, setShowDateTooltip] = useState(false);
     const [meetingData, setMeetingData] = useState({
         number: isNewMeeting ? "Новая встреча" : "",
         startDate: new Date().toISOString(),
@@ -53,23 +53,23 @@ const MeetingCard = () => {
     const reduxUser = useSelector(state => state.user?.user);
     const [role, setRole] = useState(null);
 
-    // ========== ДЛЯ СУПЕРАДМИНИСТРАТОРА ==========
-    const EDITABLE_BY_SUPER_ADMIN_STATUSES = ["FINALLY_COMPLETED", "COMPLETED_AS_NOT_HAPPENED"];
+    // Статусы, которые суперадминистратор может редактировать
+    const EDITABLE_BY_SUPER_ADMIN_STATUSES = new Set(["FINALLY_COMPLETED", "COMPLETED_AS_NOT_HAPPENED"]);
 
     const canEdit = () => {
         if (isNewMeeting) return true;
         const status = meetingData.status;
         const isCompletedStatus = status === "COMPLETED" || status === "COMPLETED_AS_NOT_HAPPENED" || status === "FINALLY_COMPLETED";
         if (!isCompletedStatus) return true;
-        if (role === "SUPER_ADMIN" && EDITABLE_BY_SUPER_ADMIN_STATUSES.includes(status)) {
+        if (role === "SUPER_ADMIN" && EDITABLE_BY_SUPER_ADMIN_STATUSES.has(status)) {
             return true;
         }
         return false;
     };
 
     const isMeetingLocked = !canEdit();
-    // ============================================
 
+    // Визуальный статус (только для отображения)
     const isMeetingCompleted = meetingData.status === "COMPLETED" ||
         meetingData.status === "COMPLETED_AS_NOT_HAPPENED" ||
         meetingData.status === "FINALLY_COMPLETED";
@@ -191,9 +191,30 @@ const MeetingCard = () => {
 
     const handleChange = (e) => {
         const { name, value } = e.target;
+        let normalizedValue = value;
+        let fieldName = name;
+
+        if (name === 'startDate') {
+            normalizedValue = new Date(value).toISOString();
+            fieldName = 'startDate';
+        } else if (name === 'startTime') {
+            const currentDate = meetingData.startDate ? new Date(meetingData.startDate) : new Date();
+            const [hours, minutes] = value.split(':').map(Number);
+            const updatedDate = new Date(
+                currentDate.getFullYear(),
+                currentDate.getMonth(),
+                currentDate.getDate(),
+                hours,
+                minutes,
+                0, 0
+            );
+            normalizedValue = updatedDate.toISOString();
+            fieldName = 'startDate';
+        }
+
         setMeetingData(prev => ({
             ...prev,
-            [name]: name === 'startDate' ? new Date(value).toISOString() : value
+            [fieldName]: normalizedValue
         }));
 
         if (name === 'recordLink') {
@@ -563,7 +584,7 @@ const MeetingCard = () => {
                 </div>
 
                 <div className="unique-meeting-info-row unique-date-row">
-                    <span className="unique-label">Дата:</span>
+                    <span className="unique-label">Дата и время:</span>
                     {isEditing ? (
                         <div className="unique-date-input-wrapper">
                             <input
@@ -574,13 +595,21 @@ const MeetingCard = () => {
                                 className="unique-date-input"
                                 disabled={isMeetingLocked}
                                 min={new Date().toISOString().split('T')[0]}
-                            /> 
+                            />
+                            <input
+                                type="time"
+                                name="startTime"
+                                value={meetingData.startDate ? new Date(meetingData.startDate).toTimeString().slice(0,5) : ''}
+                                onChange={handleChange}
+                                className="unique-time-input"
+                                disabled={isMeetingLocked}
+                            />
                             <img src={pencilIcon} alt="Редактировать" style={{ marginTop: "-6px" }} className="edit-icon23" />
                         </div>
                     ) : (
                         <span className="unique-meeting-date">
                             {meetingData.startDate
-                                ? new Date(meetingData.startDate).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })
+                                ? `${new Date(meetingData.startDate).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })} ${new Date(meetingData.startDate).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`
                                 : 'Не указана'}
                         </span>
                     )}

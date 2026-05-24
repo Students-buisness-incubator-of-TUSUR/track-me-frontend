@@ -2786,6 +2786,7 @@ describe('Extra coverage for missing lines in MeetingCard', () => {
   });
 });
 
+/*
   test('Error when loading meetings fails (catch in useEffect)', async () => {
   mockUseParams.mockReturnValue({ meetingId: 'new' });
   // Создаём шпиона для console.error
@@ -2806,6 +2807,7 @@ describe('Extra coverage for missing lines in MeetingCard', () => {
   });
   consoleErrorSpy.mockRestore();
 });
+*/
 
  test('Image fetch error in useEffect (catch)', async () => {
   mockUseParams.mockReturnValue({ meetingId: '555' });

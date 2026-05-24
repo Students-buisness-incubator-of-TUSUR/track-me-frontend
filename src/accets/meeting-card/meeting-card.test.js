@@ -2422,4 +2422,75 @@ describe('MeetingCard for Super Admin', () => {
     });
 });
 
+  describe('Additional coverage for super admin and regular admin (SBI800)', () => {
+  const getStoreWithRole = (role) => createStore(() => ({ user: { user: { roles: [role] } } }));
+  beforeEach(() => {
+    jest.resetAllMocks();
+    mockUseLocation.mockReturnValue({ search: '?teamId=team123&userId=user123' });
+    global.fetch = jest.fn();
+    global.URL.createObjectURL = jest.fn(() => 'mock-image-url');
+  });
+
+  test('Edit button enabled for super admin for COMPLETED_AS_NOT_HAPPENED', async () => {
+    mockUseParams.mockReturnValue({ meetingId: '790' });
+    const meetingData = {
+      id: '790', status: 'COMPLETED_AS_NOT_HAPPENED', number: '7', startDate: new Date().toISOString(),
+      tasksCurrentMeeting: 'Tasks', tasksNextMeeting: 'Next', teamStatus: 'OK', recordLink: 'http://example.com', roomLink: ''
+    };
+    global.fetch.mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ content: [meetingData] }) });
+    global.fetch.mockRejectedValueOnce(new Error('no image'));
+    render(
+      <Provider store={getStoreWithRole('SUPER_ADMIN')}>
+        <MemoryRouter initialEntries={['/meeting/790?teamId=team123&userId=user123']}>
+          <Routes><Route path="/meeting/:meetingId" element={<MeetingCard />} /></Routes>
+        </MemoryRouter>
+      </Provider>
+    );
+    await waitFor(() => expect(screen.getByText(/Встреча 7/i)).toBeInTheDocument());
+    const editButton = screen.getByRole('button', { name: /Редактировать/i });
+    expect(editButton).not.toBeDisabled();
+  });
+
+  test('Edit button disabled for regular admin for COMPLETED_AS_NOT_HAPPENED', async () => {
+    mockUseParams.mockReturnValue({ meetingId: '791' });
+    const meetingData = {
+      id: '791', status: 'COMPLETED_AS_NOT_HAPPENED', number: '8', startDate: new Date().toISOString(),
+      tasksCurrentMeeting: 'Tasks', tasksNextMeeting: 'Next', teamStatus: 'OK', recordLink: 'http://example.com', roomLink: ''
+    };
+    global.fetch.mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ content: [meetingData] }) });
+    global.fetch.mockRejectedValueOnce(new Error('no image'));
+    render(
+      <Provider store={getStoreWithRole('ADMIN')}>
+        <MemoryRouter initialEntries={['/meeting/791?teamId=team123&userId=user123']}>
+          <Routes><Route path="/meeting/:meetingId" element={<MeetingCard />} /></Routes>
+        </MemoryRouter>
+      </Provider>
+    );
+    await waitFor(() => expect(screen.getByText(/Встреча 8/i)).toBeInTheDocument());
+    const editButton = screen.getByRole('button', { name: /Редактировать/i });
+    await waitFor(() => expect(editButton).toHaveAttribute('disabled'), { timeout: 5000 });
+  });
+
+  test('Edit button disabled for regular admin for FINALLY_COMPLETED (explicit)', async () => {
+    mockUseParams.mockReturnValue({ meetingId: '792' });
+    const meetingData = {
+      id: '792', status: 'FINALLY_COMPLETED', number: '9', startDate: new Date().toISOString(),
+      tasksCurrentMeeting: 'Tasks', tasksNextMeeting: 'Next', teamStatus: 'OK', recordLink: 'http://example.com', roomLink: ''
+    };
+    global.fetch.mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ content: [meetingData] }) });
+    global.fetch.mockRejectedValueOnce(new Error('no image'));
+    render(
+      <Provider store={getStoreWithRole('ADMIN')}>
+        <MemoryRouter initialEntries={['/meeting/792?teamId=team123&userId=user123']}>
+          <Routes><Route path="/meeting/:meetingId" element={<MeetingCard />} /></Routes>
+        </MemoryRouter>
+      </Provider>
+    );
+    await waitFor(() => expect(screen.getByText(/Встреча 9/i)).toBeInTheDocument());
+    const editButton = screen.getByRole('button', { name: /Редактировать/i });
+    await waitFor(() => expect(editButton).toHaveAttribute('disabled'), { timeout: 5000 });
+  });
+});
+
+
 });

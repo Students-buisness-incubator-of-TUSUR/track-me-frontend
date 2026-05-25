@@ -54,8 +54,11 @@ const MeetingCard = () => {
     const [role, setRole] = useState(null);
 
     // Статусы, которые суперадминистратор может редактировать
-    const EDITABLE_BY_SUPER_ADMIN_STATUSES = new Set(["FINALLY_COMPLETED", "COMPLETED_AS_NOT_HAPPENED"]);
-
+    //const EDITABLE_BY_SUPER_ADMIN_STATUSES = new Set(["COMPLETED", "COMPLETED_AS_NOT_HAPPENED"]); 
+    
+    //const EDITABLE_BY_SUPER_ADMIN_STATUSES = new Set(["FINALLY_COMPLETED", "COMPLETED_AS_NOT_HAPPENED"]);
+    const EDITABLE_BY_SUPER_ADMIN_STATUSES = new Set(["FINALLY_COMPLETED", "COMPLETED_AS_NOT_HAPPENED", "COMPLETED"]);
+    
     const canEdit = () => {
         if (isNewMeeting) return true;
         const status = meetingData.status;

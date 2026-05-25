@@ -49,6 +49,33 @@ const MeetingCard = () => {
     const [pendingCompletion, setPendingCompletion] = useState(null);
     const [allMeetings, setAllMeetings] = useState([]);
 
+    const reduxUser = useSelector(state => state.user?.user);
+    const [role, setRole] = useState(null);
+
+    // Статусы, которые суперадминистратор может редактировать
+    //const EDITABLE_BY_SUPER_ADMIN_STATUSES = new Set(["COMPLETED", "COMPLETED_AS_NOT_HAPPENED"]); 
+    
+    //const EDITABLE_BY_SUPER_ADMIN_STATUSES = new Set(["FINALLY_COMPLETED", "COMPLETED_AS_NOT_HAPPENED"]);
+    const EDITABLE_BY_SUPER_ADMIN_STATUSES = new Set(["FINALLY_COMPLETED", "COMPLETED_AS_NOT_HAPPENED", "COMPLETED"]);
+    
+    const canEdit = () => {
+        if (isNewMeeting) return true;
+        const status = meetingData.status;
+        const isCompletedStatus = status === "COMPLETED" || status === "COMPLETED_AS_NOT_HAPPENED" || status === "FINALLY_COMPLETED";
+        if (!isCompletedStatus) return true;
+        if (role === "SUPER_ADMIN" && EDITABLE_BY_SUPER_ADMIN_STATUSES.has(status)) {
+            return true;
+        }
+        return false;
+    };
+
+    const isMeetingLocked = !canEdit();
+
+    // Визуальный статус (только для отображения)
+    const isMeetingCompleted = meetingData.status === "COMPLETED" ||
+        meetingData.status === "COMPLETED_AS_NOT_HAPPENED" ||
+        meetingData.status === "FINALLY_COMPLETED";
+
     const renderTextareaSection = (name, label, value) => (
         <div className="unique-meeting-info-row">
             <span className="unique-label">{label}</span>
@@ -63,7 +90,7 @@ const MeetingCard = () => {
                             e.target.style.height = e.target.scrollHeight + 'px';
                         }}
                         className="unique-textarea"
-                        disabled={isMeetingCompleted}
+                        disabled={isMeetingLocked}
                         style={{ resize: 'none', overflow: 'hidden', minHeight: '40px' }}
                         onFocus={(e) => {
                             e.target.style.height = 'auto';
@@ -77,9 +104,6 @@ const MeetingCard = () => {
             )}
         </div>
     );
-
-    const reduxUser = useSelector(state => state.user?.user);
-    const [role, setRole] = useState(null);
 
     useEffect(() => {
         if (reduxUser) {
@@ -157,17 +181,6 @@ const MeetingCard = () => {
         imagePreview
     );
 
-    // const getMissingFields = () => {
-    //     const missing = [];
-    //     if (!meetingData.number) missing.push("Номер встречи");
-    //     if (!meetingData.recordLink) missing.push("Ссылка на запись");
-    //     if (!meetingData.tasksCurrentMeeting) missing.push("Задачи текущей встречи");
-    //     if (!meetingData.tasksNextMeeting) missing.push("Задачи следующей встречи");
-    //     if (!meetingData.teamStatus) missing.push("Статус команды");
-    //     if (!imagePreview) missing.push("Скриншот встречи");
-    //     return missing;
-    // };
-
     const isValidUrl = (value) => {
         if (!value) return false;
         try {
@@ -183,18 +196,20 @@ const MeetingCard = () => {
         let normalizedValue = value;
         let fieldName = name;
 
-        if (name === 'startDate' || name === 'startTime') {
+        if (name === 'startDate') {
+            normalizedValue = new Date(value).toISOString();
+            fieldName = 'startDate';
+        } else if (name === 'startTime') {
             const currentDate = meetingData.startDate ? new Date(meetingData.startDate) : new Date();
-            const updatedDate = new Date(currentDate);
-
-            if (name === 'startDate') {
-                const [year, month, day] = value.split('-').map(Number);
-                updatedDate.setFullYear(year, month - 1, day);
-            } else {
-                const [hours, minutes] = value.split(':').map(Number);
-                updatedDate.setHours(hours, minutes, 0, 0);
-            }
-
+            const [hours, minutes] = value.split(':').map(Number);
+            const updatedDate = new Date(
+                currentDate.getFullYear(),
+                currentDate.getMonth(),
+                currentDate.getDate(),
+                hours,
+                minutes,
+                0, 0
+            );
             normalizedValue = updatedDate.toISOString();
             fieldName = 'startDate';
         }
@@ -205,9 +220,9 @@ const MeetingCard = () => {
         }));
 
         if (name === 'recordLink') {
-            if (!normalizedValue) {
+            if (!value) {
                 setRecordLinkError(null);
-            } else if (!isValidUrl(normalizedValue)) {
+            } else if (!isValidUrl(value)) {
                 setRecordLinkError('Введите корректный URL, начиная с http:// или https://');
             } else {
                 setRecordLinkError(null);
@@ -398,7 +413,6 @@ const MeetingCard = () => {
                 const errorText = await response.text();
                 throw new Error(`Ошибка при удалении: ${response.status} ${errorText}`);
             }
-            // Добавляем параметр refresh для принудительного обновления TeamCard
             navigate(`/teamcard/${teamId}?userId=${userId}&refresh=${Date.now()}`);
         } catch (error) {
             console.error('Ошибка удаления встречи:', error);
@@ -408,10 +422,6 @@ const MeetingCard = () => {
     };
 
     const handleEditClick = () => {
-        if (isMeetingLocked && (role === "ADMIN" || role === "SUPER_ADMIN")) {
-            setShowDeleteModal(true);
-            return;
-        }
         if (isMeetingLocked) {
             setError("Эту встречу нельзя редактировать, так как она завершена или не состоялась");
             setTimeout(() => setError(null), 5000);
@@ -438,12 +448,6 @@ const MeetingCard = () => {
             `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,toolbar=no,menubar=no,location=yes,noopener,noreferrer`
         );
     };
-
-    const isMeetingCompleted = meetingData.status === "COMPLETED" ||
-        meetingData.status === "COMPLETED_AS_NOT_HAPPENED";
-
-    const isMeetingLocked = meetingData.status === "COMPLETED" ||
-        meetingData.status === "COMPLETED_AS_NOT_HAPPENED";
 
     useEffect(() => {
         if (!teamId) return;
@@ -505,9 +509,9 @@ const MeetingCard = () => {
                     <button
                         onClick={handleEditClick}
                         className="unique-edit-button"
-                        style={{ zIndex: 10, cursor: isMeetingLocked && (role !== "ADMIN" && role !== "SUPER_ADMIN") ? 'not-allowed' : 'pointer' }}
-                        disabled={isMeetingLocked && (role !== "ADMIN" && role !== "SUPER_ADMIN")}
-                        title={isMeetingLocked ? "Нельзя редактировать" : ""}
+                        style={{ zIndex: 10, cursor: isMeetingLocked ? 'not-allowed' : 'pointer' }}
+                        disabled={isMeetingLocked}
+                        title={isMeetingLocked ? "Эту встречу нельзя редактировать" : ""}
                     >
                         Редактировать
                     </button>
@@ -576,36 +580,36 @@ const MeetingCard = () => {
                 </div>
 
                 <div className="unique-meeting-info-row unique-date-row">
-    <span className="unique-label">Дата и время:</span>
-    {isEditing ? (
-        <div className="unique-date-input-wrapper">
-            <input
-                type="date"
-                name="startDate"
-                value={meetingData.startDate ? new Date(meetingData.startDate).toLocaleDateString('en-CA') : ''}
-                onChange={handleChange}
-                className="unique-date-input"
-                disabled={isMeetingLocked}
-                min={new Date().toISOString().split('T')[0]}
-            />
-            <input
-                type="time"
-                name="startTime"
-                value={meetingData.startDate ? new Date(meetingData.startDate).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : ''}
-                onChange={handleChange}
-                className="unique-time-input"
-                disabled={isMeetingLocked}
-            />
-            <img src={pencilIcon} alt="Редактировать" style={{ marginTop: "-6px" }} className="edit-icon23" />
-        </div>
-    ) : (
-        <span className="unique-meeting-date">
-            {meetingData.startDate
-                ? `${new Date(meetingData.startDate).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })} ${new Date(meetingData.startDate).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`
-                : 'Не указана'}
-        </span>
-    )}
-</div>
+                    <span className="unique-label">Дата и время:</span>
+                    {isEditing ? (
+                        <div className="unique-date-input-wrapper">
+                            <input
+                                type="date"
+                                name="startDate"
+                                value={meetingData.startDate ? new Date(meetingData.startDate).toISOString().split('T')[0] : ''}
+                                onChange={handleChange}
+                                className="unique-date-input"
+                                disabled={isMeetingLocked}
+                                min={new Date().toISOString().split('T')[0]}
+                            />
+                            <input
+                                type="time"
+                                name="startTime"
+                                value={meetingData.startDate ? new Date(meetingData.startDate).toTimeString().slice(0,5) : ''}
+                                onChange={handleChange}
+                                className="unique-time-input"
+                                disabled={isMeetingLocked}
+                            />
+                            <img src={pencilIcon} alt="Редактировать" style={{ marginTop: "-6px" }} className="edit-icon23" />
+                        </div>
+                    ) : (
+                        <span className="unique-meeting-date">
+                            {meetingData.startDate
+                                ? `${new Date(meetingData.startDate).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })} ${new Date(meetingData.startDate).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`
+                                : 'Не указана'}
+                        </span>
+                    )}
+                </div>
 
                 {renderTextareaSection("tasksCurrentMeeting", "Задачи к следующей встрече:", meetingData.tasksCurrentMeeting)}
                 {renderTextareaSection("tasksNextMeeting", "Выполнили задачи прошлой встречи или нет, общая информация по команде:", meetingData.tasksNextMeeting)}
@@ -616,8 +620,8 @@ const MeetingCard = () => {
                         <div className="status-dropdown-wrapper">
                             <div
                                 className="status-selected"
-                                onClick={() => !isMeetingCompleted && setShowStatusDropdown(prev => !prev)}
-                                onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && !isMeetingCompleted) setShowStatusDropdown(prev => !prev); }}
+                                onClick={() => !isMeetingLocked && setShowStatusDropdown(prev => !prev)}
+                                onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && !isMeetingLocked) setShowStatusDropdown(prev => !prev); }}
                                 tabIndex={0}
                                 role="button"
                                 aria-expanded={showStatusDropdown}
@@ -652,13 +656,13 @@ const MeetingCard = () => {
                     {isEditing ? (
                         <div
                             className="unique-image-upload"
-                            onClick={() => !isMeetingCompleted && fileInputRef.current.click()}
-                            onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && !isMeetingCompleted) fileInputRef.current.click(); }}
+                            onClick={() => !isMeetingLocked && fileInputRef.current.click()}
+                            onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && !isMeetingLocked) fileInputRef.current.click(); }}
                             tabIndex={0}
                             role="button"
                             aria-label="Загрузить изображение"
                         >
-                            <input type="file" accept="image/*" onChange={handleImageChange} className="unique-image-input" ref={fileInputRef} disabled={isMeetingCompleted} />
+                            <input type="file" accept="image/*" onChange={handleImageChange} className="unique-image-input" ref={fileInputRef} disabled={isMeetingLocked} />
                             {imagePreview
                                 ? <img src={imagePreview} alt="Превью" className="unique-meeting-image" />
                                 : <div className="unique-screenshot-placeholder"><span>Выберите изображение</span></div>
@@ -681,9 +685,8 @@ const MeetingCard = () => {
                                 value={meetingData.recordLink || ''}
                                 onChange={handleChange}
                                 className="unique-input"
-                                disabled={isMeetingCompleted}
+                                disabled={isMeetingLocked}
                                 placeholder="https://example.com/record"
-                                pattern="https?://.+"
                             />
                             <img src={pencilIcon} alt="Редактировать" className="edit-icon23" />
                         </>

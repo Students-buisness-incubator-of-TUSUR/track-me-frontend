@@ -30,7 +30,6 @@ const MeetingCard = () => {
     const isNewMeeting = meetingId === "new";
     const [error, setError] = useState(null);
     const [recordLinkError, setRecordLinkError] = useState(null);
-    const [showDateTooltip, setShowDateTooltip] = useState(false);
     const [meetingData, setMeetingData] = useState({
         number: isNewMeeting ? "Новая встреча" : "",
         startDate: new Date().toISOString(),
@@ -349,8 +348,7 @@ const MeetingCard = () => {
 
         if (!isMeetingDatePassed()) {
             setError(completeNotReadyMessage);
-            setShowDateTooltip(true);
-            setTimeout(() => { setError(null); setShowDateTooltip(false); }, 5000);
+            setTimeout(() => setError(null), 5000);
             return;
         }
 
@@ -576,11 +574,6 @@ const MeetingCard = () => {
                                 >
                                     Не состоялась
                                 </button>
-                            )}
-                            {showDateTooltip && (
-                                <div className="date-tooltip">
-                                    Плановое время завершения встречи ещё не наступило, поэтому её невозможно завершить
-                                </div>
                             )}
                         </div>
                     )}

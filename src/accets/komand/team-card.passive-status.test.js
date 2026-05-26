@@ -426,17 +426,14 @@ describe("Пассивный статус команды", () => {
 
   // Тест 5: Трекер не может создать встречу для пассивной команды
   it("показывает ошибку при попытке трекера создать встречу для пассивной команды", async () => {
-    renderTeamCard({ role: "TRACKER", passive: true });
-    await waitForLoad();
+      renderTeamCard({ role: "TRACKER", passive: true });
+      await waitForLoad();
 
-    const scheduleButton = screen.getByRole("button", { name: /запланировать/i });
-    fireEvent.click(scheduleButton);
+      const scheduleButton = screen.getByRole("button", { name: /запланировать/i });
+      fireEvent.click(scheduleButton);
 
-    await waitFor(() => {
-      const errorMessage = screen.queryByText("Нельзя создавать встречи для пассивной команды");
-      if (errorMessage) {
-        expect(errorMessage).toBeInTheDocument();
-      }
-    });
+      await waitFor(() => {
+          expect(screen.getByText("Нельзя создавать встречи для пассивной команды")).toBeInTheDocument();
+      });
   });
 });

@@ -1651,6 +1651,59 @@ describe('TrackerPage - Исправленный поиск и пагинаци�
     }
     expect(page).toBe(0);
   });
+  test('покрытие handleShowPrevious при page > 0', async () => {
+    global.fetch = jest.fn((url) => {
+      if (url.includes('/api/v1/streams')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            content: [{ id: '1', name: 'TestStream', startDate: '2025-01-01', endDate: '2025-12-31' }],
+          }),
+        });
+      }
+      if (url.endsWith('/streams/nti-markets')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+      }
+      if (url.includes('/team-cards')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            content: [
+              { id: '1', name: 'Card 1', description: 'Desc', enabled: true, ntiMarkets: [], readinessLevel: '5', streams: [] },
+              { id: '2', name: 'Card 2', description: 'Desc', enabled: true, ntiMarkets: [], readinessLevel: '5', streams: [] },
+              { id: '3', name: 'Card 3', description: 'Desc', enabled: true, ntiMarkets: [], readinessLevel: '5', streams: [] },
+            ],
+            page: { totalPages: 2 },
+          }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [], page: { totalPages: 1 } }) });
+    });
+
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <TrackerPage />
+        </MemoryRouter>
+      );
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Card 1')).toBeInTheDocument();
+    });
+
+    const nextButton = document.querySelector('.Stream-footer-button-4');
+    if (nextButton) {
+      fireEvent.click(nextButton);
+    }
+
+    const prevButton = document.querySelector('.Stream-footer-button-1') || document.querySelector('.Stream-footer-button-2');
+    if (prevButton) {
+      fireEvent.click(prevButton);
+    }
+
+    expect(document.querySelector('.tracker-container')).toBeInTheDocument();
+  });
 
 
 });

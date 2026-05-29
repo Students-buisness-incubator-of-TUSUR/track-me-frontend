@@ -1611,4 +1611,182 @@ test('fetchCards добавляет фильтр по username для роли T
   });
 });
 
+describe('TrackerPage - Исправленный поиск и пагинация', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    localStorage.clear();
+    localStorage.setItem('user', JSON.stringify({ username: 'testuser', roles: ['TRACKER'] }));
+    localStorage.setItem('userRole', 'TRACKER');
+    localStorage.setItem('streamName', 'TestStream');
+    localStorage.setItem('streamId', '1');
+    localStorage.setItem('streamSDate', '2025-01-01');
+    localStorage.setItem('streamEDate', '2025-12-31');
+
+    redux.useSelector.mockImplementation(() => ({
+      user: { username: 'testuser', roles: ['TRACKER'] },
+      roles: ['TRACKER'],
+      username: 'testuser',
+    }));
+  });
+
+  // Тест 1: Поиск через бэкенд с типом LIKE (убрали клиентскую фильтрацию)
+  test('поиск отправляется на бэкенд с типом LIKE, а не фильтруется на клиенте', async () => {
+    let capturedBody = null;
+
+    global.fetch = jest.fn((url, options) => {
+      if (url.includes('/api/v1/streams')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            content: [{ id: '1', name: 'TestStream', startDate: '2025-01-01', endDate: '2025-12-31' }],
+          }),
+        });
+      }
+      if (url.endsWith('/streams/nti-markets')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+      }
+      if (url.includes('/team-cards')) {
+        capturedBody = options?.body ? JSON.parse(options.body) : null;
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ content: [], page: { totalPages: 1 } }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [], page: { totalPages: 1 } }) });
+    });
+
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <TrackerPage />
+        </MemoryRouter>
+      );
+    });
+
+    const searchInput = await screen.findByPlaceholderText('Найти');
+    fireEvent.change(searchInput, { target: { value: 'акс' } });
+
+    const filterToggleBtn = document.querySelector('.Stream-settings-pic');
+    fireEvent.click(filterToggleBtn);
+    const applyBtn = screen.getByText('Применить');
+    fireEvent.click(applyBtn);
+
+    await waitFor(() => {
+      expect(capturedBody).not.toBeNull();
+      const nameFilter = capturedBody.filters?.find(f => f.fieldName === 'name');
+      expect(nameFilter).toBeDefined();
+      expect(nameFilter.type).toBe('LIKE');
+      expect(nameFilter.value).toBe('акс');
+    });
+  });
+
+  // Тест 2: Пагинация работает через бэкенд (не на клиенте)
+  test('пагинация работает через бэкенд: при нажатии "Вперёд" меняется page в запросе', async () => {
+    let requestedPage = null;
+
+    global.fetch = jest.fn((url, options) => {
+      const pageMatch = url.match(/page=(\d+)/);
+      requestedPage = pageMatch ? parseInt(pageMatch[1]) : 0;
+
+      if (url.includes('/api/v1/streams')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            content: [{ id: '1', name: 'TestStream', startDate: '2025-01-01', endDate: '2025-12-31' }],
+          }),
+        });
+      }
+      if (url.endsWith('/streams/nti-markets')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+      }
+      if (url.includes('/team-cards')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            content: [
+              { id: '1', name: 'Card 1', description: 'Desc 1', enabled: true, ntiMarkets: [], readinessLevel: '5', streams: [] },
+            ],
+            page: { totalPages: 3 },
+          }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [], page: { totalPages: 1 } }) });
+    });
+
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <TrackerPage />
+        </MemoryRouter>
+      );
+    });
+
+    await waitFor(() => {
+      expect(requestedPage).toBe(0);
+    });
+
+    const nextButton = await screen.findByText((content, element) => {
+      return element.classList?.contains('Stream-footer-button-4');
+    });
+
+    fireEvent.click(nextButton);
+
+    await waitFor(() => {
+      expect(requestedPage).toBe(1);
+    });
+  });
+
+  // Тест 3: Сброс страницы в 0 при новом поиске
+  test('при новом поиске страница сбрасывается на 0', async () => {
+    let requestedPage = null;
+
+    global.fetch = jest.fn((url, options) => {
+      const pageMatch = url.match(/page=(\d+)/);
+      requestedPage = pageMatch ? parseInt(pageMatch[1]) : 0;
+
+      if (url.includes('/api/v1/streams')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            content: [{ id: '1', name: 'TestStream', startDate: '2025-01-01', endDate: '2025-12-31' }],
+          }),
+        });
+      }
+      if (url.endsWith('/streams/nti-markets')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+      }
+      if (url.includes('/team-cards')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ content: [], page: { totalPages: 3 } }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [], page: { totalPages: 1 } }) });
+    });
+
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <TrackerPage />
+        </MemoryRouter>
+      );
+    });
+
+    await waitFor(() => {
+      expect(requestedPage).toBe(0);
+    });
+
+    const searchInput = screen.getByPlaceholderText('Найти');
+    fireEvent.change(searchInput, { target: { value: 'новый поиск' } });
+
+    const filterToggleBtn = document.querySelector('.Stream-settings-pic');
+    fireEvent.click(filterToggleBtn);
+    const applyBtn = screen.getByText('Применить');
+    fireEvent.click(applyBtn);
+
+    await waitFor(() => {
+      expect(requestedPage).toBe(0);
+    });
+  });
+});
 });

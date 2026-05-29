@@ -1633,5 +1633,50 @@ describe('TrackerPage - Исправленный поиск и пагинаци�
     });
   });
 
+  // Тест 4: Проверка, что filteredCards и visibleCards используют cards из бэкенда
+  test('использует cards из бэкенда для отображения карточек', async () => {
+    const mockCards = [
+      { id: '1', name: 'Card 1', description: 'Desc 1', enabled: true, ntiMarkets: [], readinessLevel: '5', streams: [] },
+      { id: '2', name: 'Card 2', description: 'Desc 2', enabled: true, ntiMarkets: [], readinessLevel: '5', streams: [] },
+    ];
+
+    global.fetch = jest.fn((url) => {
+      if (url.includes('/api/v1/streams')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            content: [{ id: '1', name: 'TestStream', startDate: '2025-01-01', endDate: '2025-12-31' }],
+          }),
+        });
+      }
+      if (url.endsWith('/streams/nti-markets')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+      }
+      if (url.includes('/team-cards')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            content: mockCards,
+            page: { totalPages: 1 },
+          }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [], page: { totalPages: 1 } }) });
+    });
+
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <TrackerPage />
+        </MemoryRouter>
+      );
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Card 1')).toBeInTheDocument();
+      expect(screen.getByText('Card 2')).toBeInTheDocument();
+    });
+  });
+
 });
 });

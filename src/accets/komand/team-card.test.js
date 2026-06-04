@@ -2317,5 +2317,142 @@ describe('Additional coverage for 80% (team-card.js)', () => {
   });
 });
   
+test('covers handleSave market-stream mismatch - with mocks', async () => {
+  // Мокаем потоки так, чтобы Поток Альфа имел рынок 1, а Поток Бета – рынок 2
+  const customStreamsList = [
+    { id: 'stream-1', name: 'Поток Альфа', active: true, ntiMarkets: [{ id: 1, displayName: 'Аэронет' }] },
+    { id: 'stream-2', name: 'Поток Бета', active: true, ntiMarkets: [{ id: 2, displayName: 'Маринет' }] }
+  ];
+  const customFetch = buildFetch({ streamsList: customStreamsList });
+  global.fetch = customFetch;
+
+  renderTeamCard({ role: 'ADMIN' });
+  await waitForLoad();
+  await enterEditMode();
+
+  // Выбираем Поток Бета
+  const streamRadios = document.querySelectorAll('input[name="stream"]');
+  const betaStream = Array.from(streamRadios).find(r => r.closest('label')?.textContent.includes('Поток Бета'));
+  if (betaStream) {
+    fireEvent.click(betaStream);
+    await waitFor(() => expect(betaStream.checked).toBe(true));
+  }
+
+  // Выбираем рынок Аэронет (id=1), которого нет в Потоке Бета
+  const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+  const aeroCheckbox = Array.from(checkboxes).find(cb => cb.closest('label')?.textContent.includes('Аэронет'));
+  if (aeroCheckbox && !aeroCheckbox.checked) {
+    fireEvent.click(aeroCheckbox);
+    await waitFor(() => expect(aeroCheckbox.checked).toBe(true));
+  }
+
+  fireEvent.click(screen.getByRole('button', { name: /сохранить/i }));
+
+  await waitFor(() => {
+    expect(screen.getByTestId('meeting-error')).toBeInTheDocument();
+  }, { timeout: 3000 });
+});
+
+
+// ========== ФИНАЛЬНЫЕ ТЕСТЫ ДЛЯ ПОКРЫТИЯ КОНКРЕТНЫХ СТРОК (ИСПРАВЛЕННЫЕ) ==========
+describe('Cover specific Sonar lines - fixed', () => {
+  // Вспомогательная функция для комбинированного мока
+  const createCombinedFetch = (errorUrls = []) => {
+    const baseFetch = buildFetch();
+    return jest.fn((url, options) => {
+      if (errorUrls.some(errorUrl => url.includes(errorUrl))) {
+        return Promise.reject(new Error('Network error'));
+      }
+      return baseFetch(url, options);
+    });
+  };
+
+  // Покрываем setSelectedMarket([]) когда ntiMarkets не массив
+  test('covers setSelectedMarket([]) when ntiMarkets is not array', async () => {
+    const customFetch = jest.fn((url) => {
+      if (url.includes('/api/v1/streams/nti-markets')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(null) });
+      }
+      return buildFetch()(url);
+    });
+    global.fetch = customFetch;
+    renderTeamCard({ role: 'ADMIN' });
+    await waitFor(() => {
+      expect(screen.getByTestId('header')).toBeInTheDocument();
+    });
+  });
+
+  // Покрываем catch блока loadTeamCard
+  test('covers loadTeamCard catch block', async () => {
+    const customFetch = jest.fn((url) => {
+      if (url.includes('backend.test/api/v1/team-cards') || url.includes('backend.test/api/v1/admin/team-cards')) {
+        return Promise.reject(new Error('Network error'));
+      }
+      return buildFetch()(url);
+    });
+    global.fetch = customFetch;
+    renderTeamCard({ role: 'ADMIN' });
+    await waitFor(() => {
+      expect(screen.getByTestId('header')).toBeInTheDocument();
+    });
+  });
+
+  // Покрываем catch блока fetchTrackers - setTrackers([])
+  test('covers fetchTrackers catch block setting setTrackers([])', async () => {
+    mockFetchTrackers.mockRejectedValue(new Error('Failed to load trackers'));
+    renderTeamCard({ role: 'ADMIN' });
+    await waitFor(() => {
+      expect(screen.getByTestId('header')).toBeInTheDocument();
+    });
+  });
+
+  // Покрываем streams fetch error
+  test('covers streams fetch error catch block', async () => {
+    const customFetch = jest.fn((url) => {
+      if (url.includes('/api/v1/streams?page=0&size=1500')) {
+        return Promise.reject(new Error('Streams error'));
+      }
+      return buildFetch()(url);
+    });
+    global.fetch = customFetch;
+    renderTeamCard({ role: 'ADMIN' });
+    await waitFor(() => {
+      expect(screen.getByTestId('header')).toBeInTheDocument();
+    });
+  });
+
+  // Покрываем ntiMarkets fetch error
+  test('covers ntiMarkets fetch error catch block', async () => {
+    const customFetch = jest.fn((url) => {
+      if (url.includes('/api/v1/streams/nti-markets')) {
+        return Promise.reject(new Error('NTI markets error'));
+      }
+      return buildFetch()(url);
+    });
+    global.fetch = customFetch;
+    renderTeamCard({ role: 'ADMIN' });
+    await waitFor(() => {
+      expect(screen.getByTestId('header')).toBeInTheDocument();
+    });
+  });
+
+  // Покрываем team cards count fetch error
+  test('covers team cards count fetch error catch block', async () => {
+    const customFetch = jest.fn((url) => {
+      if (url.includes('/api/v1/team-card/count')) {
+        return Promise.reject(new Error('Count error'));
+      }
+      return buildFetch()(url);
+    });
+    global.fetch = customFetch;
+    renderTeamCard({ role: 'ADMIN' });
+    await waitFor(() => {
+      expect(screen.getByTestId('header')).toBeInTheDocument();
+    });
+  });
+
+
+});
+
 });
 

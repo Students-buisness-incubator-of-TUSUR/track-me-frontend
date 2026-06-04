@@ -2454,5 +2454,109 @@ describe('Cover specific Sonar lines - fixed', () => {
 
 });
 
+// ========== МОДУЛЬНЫЕ ТЕСТЫ ДЛЯ ПОКРЫТИЯ КОНКРЕТНЫХ СТРОК ==========
+describe('Unit tests for uncovered functions', () => {
+  let teamCardComponent;
+  let setMeetingErrorMock;
+  let checkNtiMarketsLimit;
+  let checkNtiMarketsMatchWithStream;
+  let handleApiError;
+  let consoleErrorSpy;
+
+  beforeAll(() => {
+    // Импортируем компонент, чтобы добраться до функций (если они экспортируются)
+    // В данном случае функции объявлены внутри компонента, поэтому их можно протестировать только через экземпляр.
+    // Но мы можем проверить эффект их вызова, используя моки.
+  });
+
+  beforeEach(() => {
+    setMeetingErrorMock = jest.fn();
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+    consoleErrorSpy.mockRestore();
+  });
+
+  
+  
+
+  // 3. Тест для loadTeamCard catch
+  test('covers loadTeamCard error catch block', async () => {
+    // Мокаем fetch, чтобы он вернул ошибку при загрузке карточки
+    const customFetch = jest.fn((url) => {
+      if (url.includes('backend.test/api/v1/team-cards') || url.includes('backend.test/api/v1/admin/team-cards')) {
+        return Promise.reject(new Error('Network error'));
+      }
+      return buildFetch()(url);
+    });
+    global.fetch = customFetch;
+    renderTeamCard({ role: 'ADMIN' });
+    await waitFor(() => {
+      expect(screen.getByTestId('header')).toBeInTheDocument();
+    });
+    // Даём время на выполнение эффектов
+    await new Promise(resolve => setTimeout(resolve, 300));
+    expect(consoleErrorSpy).toHaveBeenCalled();
+  });
+
+  // 4. Тест для fetchTeamCardsCount catch
+  test('covers fetchTeamCardsCount error catch block', async () => {
+    const customFetch = jest.fn((url) => {
+      if (url.includes('/api/v1/team-card/count')) {
+        return Promise.reject(new Error('Count error'));
+      }
+      return buildFetch()(url);
+    });
+    global.fetch = customFetch;
+    renderTeamCard({ role: 'ADMIN' });
+    await waitFor(() => {
+      expect(screen.getByTestId('header')).toBeInTheDocument();
+    });
+    // Ошибка обработана, компонент не упал
+    expect(screen.getByTestId('header')).toBeInTheDocument();
+  });
+
+  // 5. Тест для fetchTrackers catch
+  test('covers fetchTrackers catch block', async () => {
+    mockFetchTrackers.mockRejectedValue(new Error('Failed to load trackers'));
+    renderTeamCard({ role: 'ADMIN' });
+    await waitFor(() => {
+      expect(screen.getByTestId('header')).toBeInTheDocument();
+    });
+  });
+
+  // 6. Тест для streams fetch error
+  test('covers streams fetch error catch block', async () => {
+    const customFetch = jest.fn((url) => {
+      if (url.includes('/api/v1/streams?page=0&size=1500')) {
+        return Promise.reject(new Error('Streams error'));
+      }
+      return buildFetch()(url);
+    });
+    global.fetch = customFetch;
+    renderTeamCard({ role: 'ADMIN' });
+    await waitFor(() => {
+      expect(screen.getByTestId('header')).toBeInTheDocument();
+    });
+  });
+
+  // 7. Тест для ntiMarkets fetch error
+  test('covers ntiMarkets fetch error catch block', async () => {
+    const customFetch = jest.fn((url) => {
+      if (url.includes('/api/v1/streams/nti-markets')) {
+        return Promise.reject(new Error('NTI markets error'));
+      }
+      return buildFetch()(url);
+    });
+    global.fetch = customFetch;
+    renderTeamCard({ role: 'ADMIN' });
+    await waitFor(() => {
+      expect(screen.getByTestId('header')).toBeInTheDocument();
+    });
+  });
+});
+
 });
 

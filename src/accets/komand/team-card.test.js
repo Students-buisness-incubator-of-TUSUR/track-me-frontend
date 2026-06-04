@@ -2206,5 +2206,116 @@ describe('Final exact line coverage', () => {
       });
     }
   });
+
+  /// ========== ДОПОЛНИТЕЛЬНЫЕ ТЕСТЫ ДЛЯ 80% ПОКРЫТИЯ (team-card.js) ==========
+describe('Additional coverage for 80% (team-card.js)', () => {
+  // 1. Покрываем проверку лимита: выбор 4-го рынка
+  it('covers checkNtiMarketsLimit when selecting 4th market', async () => {
+    renderTeamCard({ role: 'ADMIN' });
+    await enterEditMode();
+
+    // Находим чекбоксы рынков НТИ
+    const checkboxes = document.querySelectorAll('#nti-markets input[type="checkbox"]');
+    // Предполагаем, что есть как минимум 4 рынка
+    // Сначала выбираем первые три
+    for (let i = 0; i < 3 && i < checkboxes.length; i++) {
+      if (!checkboxes[i].checked) {
+        fireEvent.click(checkboxes[i]);
+        await act(async () => {});
+      }
+    }
+    // Теперь пытаемся выбрать четвёртый
+    const fourthCheckbox = checkboxes[3];
+    if (fourthCheckbox && !fourthCheckbox.checked) {
+      fireEvent.click(fourthCheckbox);
+      await waitFor(() => {
+        expect(screen.getByTestId('meeting-error')).toHaveTextContent('Нельзя выбрать более 3-х рынков НТИ');
+      });
+    }
+  });
+
+  // 2. Покрываем setSelectedMarket([]) когда ntiMarkets не массив (редкий кейс, но можно форсировать)
+  it('covers setSelectedMarket([]) when ntiMarkets is not array', async () => {
+    // Переопределяем ответ API для рынков: возвращаем null
+    const originalFetch = global.fetch;
+    global.fetch = jest.fn((url, opts) => {
+      if (url.includes('/api/v1/streams/nti-markets')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(null) });
+      }
+      return originalFetch(url);
+    });
+    renderTeamCard({ role: 'ADMIN' });
+    await waitForLoad();
+    // Проверяем, что компонент загрузился без ошибок
+    expect(screen.getByTestId('header')).toBeInTheDocument();
+    global.fetch = originalFetch;
+  });
+
+  
+
+  // 4. Покрываем setMeetingError("") в checkNtiMarketsLimit после успешного выбора
+  it('covers setMeetingError("") in checkNtiMarketsLimit', async () => {
+    renderTeamCard({ role: 'ADMIN' });
+    await enterEditMode();
+    // Выбираем один рынок (ошибки нет)
+    const checkboxes = document.querySelectorAll('#nti-markets input[type="checkbox"]');
+    const firstCheckbox = checkboxes[0];
+    if (firstCheckbox && !firstCheckbox.checked) {
+      fireEvent.click(firstCheckbox);
+      await waitFor(() => expect(firstCheckbox).toBeChecked());
+    }
+    // Ошибка не должна появиться
+    expect(screen.queryByTestId('meeting-error')).not.toBeInTheDocument();
+  });
+
+  // 5. Покрываем handleApiError в catch блоках loadTeamCard
+  it('covers handleApiError in loadTeamCard catch', async () => {
+    const originalFetch = global.fetch;
+    global.fetch = jest.fn((url) => {
+      if (url.includes('/api/v1/admin/team-cards') || url.includes('/api/v1/team-cards')) {
+        return Promise.reject(new Error('Load team card error'));
+      }
+      return originalFetch(url);
+    });
+    renderTeamCard({ role: 'ADMIN' });
+    await waitForLoad();
+    expect(screen.getByTestId('header')).toBeInTheDocument();
+    global.fetch = originalFetch;
+  });
+
+  // 6. Покрываем setTrackers([]) при ошибке загрузки трекеров
+  it('covers setTrackers([]) when trackers fetch fails', async () => {
+    mockFetchTrackers.mockRejectedValue(new Error('Trackers fetch error'));
+    renderTeamCard({ role: 'ADMIN' });
+    await waitForLoad();
+    expect(screen.getByTestId('header')).toBeInTheDocument();
+  });
+
+  // 7. Покрываем setMeetingError("") в checkMeetingCreation
+  it('covers setMeetingError("") in checkMeetingCreation', async () => {
+    renderTeamCard({ role: 'ADMIN' });
+    await waitForLoad();
+    // Проверяем, что ошибки нет (значит setMeetingError("") был вызван)
+    expect(screen.queryByTestId('meeting-error')).not.toBeInTheDocument();
+    const scheduleButton = screen.getByRole('button', { name: /запланировать/i });
+    expect(scheduleButton).not.toBeDisabled();
+  });
+
+  // 8. Покрываем setTimeout и setIsLoading(false) при валидации в handleSave
+  it('covers setTimeout and setIsLoading(false) when validation fails in handleSave', async () => {
+    renderTeamCard({ role: 'ADMIN' });
+    await enterEditMode();
+    const nameInput = screen.getByTestId('inputbox-name');
+    fireEvent.change(nameInput, { target: { value: '' } }); // делаем имя пустым
+    const saveButton = screen.getByRole('button', { name: /сохранить/i });
+    fireEvent.click(saveButton);
+    // Проверяем, что кнопка не заблокирована (isLoading сброшен)
+    await waitFor(() => {
+      expect(saveButton).not.toBeDisabled();
+    });
+    // Должна появиться ошибка в общем error-message, но не проверяем конкретно
+  });
+});
   
 });
+

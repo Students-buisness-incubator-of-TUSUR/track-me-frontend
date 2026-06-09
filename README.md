@@ -1,3 +1,39 @@
+# Track Me — Frontend
+
+Главный React-SPA сервиса **Track Me**. Раньше жил в монорепо `track-me` (`apps/frontend`) и
+был выделен в отдельный репозиторий с сохранением git-истории.
+
+Приложение общается с бэкендом **только по HTTP** через переменную окружения
+`REACT_APP_BACKEND_URI` (см. `src/services/constants.js` и `.env.local.example`). Локальной
+файловой связи с другими сервисами нет.
+
+## Быстрый старт
+
+```bash
+npm install
+cp .env.local.example .env.local   # укажите REACT_APP_BACKEND_URI
+npm start                          # http://127.0.0.1:3000
+```
+
+Сборка Docker-образа: `docker build -t track-me-frontend .` (см. `Dockerfile`).
+
+## CI
+
+`.github/workflows/ci.yml` запускает тесты с покрытием, анализ SonarCloud и сборку/публикацию
+Docker-образа в GHCR. Чтобы CI заработал после подключения remote, нужно:
+
+- подключить remote и запушить ветку (`git remote add origin …`, `git push -u origin <branch>`);
+- завести секреты репозитория: `SONAR_TOKEN` (анализ SonarCloud — без него шаги Sonar
+  пропускаются), а для публикации образа достаточно стандартного `GITHUB_TOKEN`;
+- при необходимости поправить координаты образа в монорепо `track-me`
+  (`docker/docker-compose.*.yml`, `deploy-dev.yml`) на новый пакет
+  `ghcr.io/<owner>/<repo>`.
+
+Проект Sonar уже указан в `.sonarlint/connectedMode.json`
+(`akarmanov2022_track-me_frontend`).
+
+---
+
 # Getting Started with Create React App
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).

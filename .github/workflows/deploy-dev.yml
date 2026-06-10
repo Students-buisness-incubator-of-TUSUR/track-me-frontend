@@ -1,0 +1,100 @@
+name: Deploy to DEV
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Docker image tag to deploy'
+        required: true
+        default: 'latest'
+        type: string
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [develop]
+
+permissions:
+  contents: read
+  packages: read
+
+concurrency:
+  group: deploy-dev
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    # Ручной запуск — всегда; workflow_run — только успешный CI от push (не PR)
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: dev
+    steps:
+      - name: Resolve image reference
+        id: image
+        env:
+          EVENT: ${{ github.event_name }}
+          INPUT_TAG: ${{ inputs.image_tag }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          if [[ "$EVENT" == "workflow_dispatch" ]]; then
+            TAG="$INPUT_TAG"
+          else
+            # Деплоим ровно тот коммит, образ которого собрал CI
+            TAG="$HEAD_SHA"
+          fi
+          REPO="${GITHUB_REPOSITORY,,}"
+          echo "ref=ghcr.io/$REPO:$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy frontend to DEV
+        uses: appleboy/ssh-action@v1
+        env:
+          FRONTEND_IMAGE: ${{ steps.image.outputs.ref }}
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          host: ${{ secrets.SBI_SSH_HOST }}
+          username: ${{ secrets.SBI_SSH_USERNAME }}
+          key: ${{ secrets.SBI_SSH_PRIVATE_KEY }}
+          proxy_host: bastion.tusur.ru
+          proxy_username: ${{ secrets.SBI_SSH_USERNAME }}
+          proxy_key: ${{ secrets.SBI_SSH_PRIVATE_KEY }}
+          envs: FRONTEND_IMAGE,GHCR_USER,GHCR_TOKEN
+          script: |
+            set -euo pipefail
+            cd "$HOME/track-me-dev"
+
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
+
+            # Прописать образ фронтенда в .env (идемпотентно)
+            touch .env
+            sed -i '/^FRONTEND_IMAGE=/d' .env
+            echo "FRONTEND_IMAGE=$FRONTEND_IMAGE" >> .env
+
+            docker compose pull trackme-frontend
+            docker compose up -d trackme-frontend
+            docker image prune -f
+
+      - name: Healthcheck
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SBI_SSH_HOST }}
+          username: ${{ secrets.SBI_SSH_USERNAME }}
+          key: ${{ secrets.SBI_SSH_PRIVATE_KEY }}
+          proxy_host: bastion.tusur.ru
+          proxy_username: ${{ secrets.SBI_SSH_USERNAME }}
+          proxy_key: ${{ secrets.SBI_SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+            for i in $(seq 1 24); do
+              if curl -sf http://localhost:3000 > /dev/null; then
+                echo "Frontend is up"
+                exit 0
+              fi
+              echo "Waiting for frontend... ($i/24)"
+              sleep 5
+            done
+            echo "Frontend failed healthcheck" >&2
+            exit 1

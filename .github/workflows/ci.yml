@@ -7,10 +7,10 @@ permissions:
 
 on:
   push:
-    branches: [ main, develop ]
-    tags: [ 'v*.*.*' ]
+    branches: [ master, develop ]
+    tags: [ '*.*.*' ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ master, develop ]
 
 concurrency:
   group: ci-${{ github.event.pull_request.number || github.ref }}
@@ -20,8 +20,6 @@ jobs:
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 25
-    env:
-      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -35,21 +33,18 @@ jobs:
         run: npm install
       - name: Run tests and generate coverage
         run: npm run test:coverage
-      - name: Install sonar-scanner
-        if: ${{ env.SONAR_TOKEN != '' }}
-        run: npm install -g sonar-scanner
-      - name: Run sonar-scanner
-        if: ${{ env.SONAR_TOKEN != '' }}
-        run: |
-          sonar-scanner \
-            -Dsonar.projectKey=akarmanov2022_track-me_frontend \
-            -Dsonar.organization=akarmanov2022 \
-            -Dsonar.sources=src \
-            -Dsonar.exclusions="src/**/*.test.js,src/**/*.spec.js,src/**/__tests__/**" \
-            -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info \
-            -Dsonar.host.url=https://sonarcloud.io \
-            -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
-            ${{ github.event_name == 'pull_request' && format('-Dsonar.pullrequest.key={0} -Dsonar.pullrequest.branch={1} -Dsonar.pullrequest.base={2}', github.event.pull_request.number, github.head_ref, github.base_ref) || '' }}
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarqube-scan-action@v6
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io
+        with:
+          args: >
+            -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
+            -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }}
+            -Dsonar.sources=src
+            -Dsonar.exclusions=src/**/*.test.js,src/**/*.spec.js,src/**/__tests__/**
+            -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
 
   build-push:
     needs: test
@@ -57,6 +52,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Lowercase image repository name
+        run: echo "IMAGE_REPO=${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -73,8 +70,8 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}:latest
-            ghcr.io/${{ github.repository }}:${{ github.sha }}
-            ghcr.io/${{ github.repository }}:${{ github.ref_name }}
+            ghcr.io/${{ env.IMAGE_REPO }}:latest
+            ghcr.io/${{ env.IMAGE_REPO }}:${{ github.sha }}
+            ghcr.io/${{ env.IMAGE_REPO }}:${{ github.ref_name }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

@@ -20,8 +20,6 @@ jobs:
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 25
-    env:
-      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -36,14 +34,12 @@ jobs:
       - name: Run tests and generate coverage
         run: npm run test:coverage
       - name: Install sonar-scanner
-        if: ${{ env.SONAR_TOKEN != '' }}
         run: npm install -g sonar-scanner
       - name: Run sonar-scanner
-        if: ${{ env.SONAR_TOKEN != '' }}
         run: |
           sonar-scanner \
-            -Dsonar.projectKey=akarmanov2022_track-me_frontend \
-            -Dsonar.organization=akarmanov2022 \
+            -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }} \
+            -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }} \
             -Dsonar.sources=src \
             -Dsonar.exclusions="src/**/*.test.js,src/**/*.spec.js,src/**/__tests__/**" \
             -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info \

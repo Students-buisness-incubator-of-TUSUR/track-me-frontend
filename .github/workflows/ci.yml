@@ -57,6 +57,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Lowercase image repository name
+        run: echo "IMAGE_REPO=${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -73,8 +75,8 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}:latest
-            ghcr.io/${{ github.repository }}:${{ github.sha }}
-            ghcr.io/${{ github.repository }}:${{ github.ref_name }}
+            ghcr.io/${{ env.IMAGE_REPO }}:latest
+            ghcr.io/${{ env.IMAGE_REPO }}:${{ github.sha }}
+            ghcr.io/${{ env.IMAGE_REPO }}:${{ github.ref_name }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

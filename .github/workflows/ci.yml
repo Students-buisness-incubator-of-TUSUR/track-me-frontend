@@ -7,10 +7,10 @@ permissions:
 
 on:
   push:
-    branches: [ main, develop ]
-    tags: [ 'v*.*.*' ]
+    branches: [ master, develop ]
+    tags: [ '*.*.*' ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ master, develop ]
 
 concurrency:
   group: ci-${{ github.event.pull_request.number || github.ref }}
@@ -33,23 +33,19 @@ jobs:
         run: npm install
       - name: Run tests and generate coverage
         run: npm run test:coverage
-      - name: Install sonar-scanner
-        run: npm install -g sonar-scanner
-      - name: Run sonar-scanner
+      - name: SonarCloud Scan
+        if: ${{ secrets.SONAR_TOKEN != '' }}
+        uses: SonarSource/sonarqube-scan-action@v6
         env:
-          SONAR_PROJECT_KEY: ${{ secrets.SONAR_PROJECT_KEY }}
-          SONAR_ORGANIZATION: ${{ secrets.SONAR_ORGANIZATION }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: |
-          sonar-scanner \
-            -Dsonar.projectKey=$SONAR_PROJECT_KEY \
-            -Dsonar.organization=$SONAR_ORGANIZATION \
-            -Dsonar.sources=src \
-            -Dsonar.exclusions="src/**/*.test.js,src/**/*.spec.js,src/**/__tests__/**" \
-            -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info \
-            -Dsonar.host.url=https://sonarcloud.io \
-            -Dsonar.login=$SONAR_TOKEN \
-            ${{ github.event_name == 'pull_request' && format('-Dsonar.pullrequest.key={0} -Dsonar.pullrequest.branch={1} -Dsonar.pullrequest.base={2}', github.event.pull_request.number, github.head_ref, github.base_ref) || '' }}
+          SONAR_HOST_URL: https://sonarcloud.io
+        with:
+          args: >
+            -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
+            -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }}
+            -Dsonar.sources=src
+            -Dsonar.exclusions=src/**/*.test.js,src/**/*.spec.js,src/**/__tests__/**
+            -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
 
   build-push:
     needs: test

@@ -8,8 +8,12 @@ import { MemoryRouter, createMemoryRouter, RouterProvider } from 'react-router-d
 import * as redux from 'react-redux';
 import { act } from 'react'; // Используйте act из react
 
+// Моки для scrollIntoView и scrollTo
 beforeAll(() => {
+  window.HTMLElement.prototype.scrollIntoView = jest.fn();
+  window.scrollTo = jest.fn();
 });
+
 // Мок для useNavigate и Link/ useLocation
 const mockNavigate = jest.fn();
 jest.mock('react-router-dom', () => {
@@ -287,7 +291,7 @@ describe('TrackerPage - Исправленные тесты', () => {
         state: {
           userId: 'user3',
           streamId: localStorage.getItem('streamId'),
-          from: '/teamcard',
+          from: '/',
         },
       }
     );

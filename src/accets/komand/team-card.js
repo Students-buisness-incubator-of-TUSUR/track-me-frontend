@@ -61,6 +61,7 @@ const [isTrackerDropdownOpen, setIsTrackerDropdownOpen] = useState(false);
   const passedUsername = location.state?.username;
  const query = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const from = location.state?.from || "/team-cards";
+  const previousPage = location.state?.page ?? 0;
 
   const [role, setRole] = useState(null);
   const [username, setUsername] = useState(null);
@@ -924,7 +925,13 @@ const checkNtiMarketsMatchWithStream = (streamId, marketIds) => {
               </div>
             )}
             <button
-              onClick={() => navigate(-1)}
+              onClick={() =>
+                navigate(from, {
+                  state: {
+                    restoredPage: previousPage
+                  }
+                })
+              }
               className="team-card_close-button"
             >
               <CloseIcon />

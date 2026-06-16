@@ -39,6 +39,7 @@ describe('TrackerPage - Исправленные тесты', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     localStorage.clear();
+    sessionStorage.clear();
 
     // Мок useSelector: возвращаем user с ролью TRACKER
     redux.useSelector.mockImplementation(() => ({
@@ -53,70 +54,70 @@ describe('TrackerPage - Исправленные тесты', () => {
   });
 
   test('форматирование даты отображается в заголовке потока', async () => {
-  const isoDate = '2025-06-02T00:00:00Z';
-  localStorage.setItem('streamName', 'TestStream');
-  localStorage.setItem('streamSDate', isoDate);
-  localStorage.setItem('streamEDate', isoDate);
-  localStorage.setItem('user', JSON.stringify({ username: 'testuser', roles: ['ADMIN'] }));
+    const isoDate = '2025-06-02T00:00:00Z';
+    localStorage.setItem('streamName', 'TestStream');
+    localStorage.setItem('streamSDate', isoDate);
+    localStorage.setItem('streamEDate', isoDate);
+    localStorage.setItem('user', JSON.stringify({ username: 'testuser', roles: ['ADMIN'] }));
 
-  redux.useSelector.mockImplementation(() => ({
-    user: { username: 'testuser', roles: ['ADMIN'] },
-    roles: ['ADMIN'],
-    username: 'testuser',
-  }));
+    redux.useSelector.mockImplementation(() => ({
+      user: { username: 'testuser', roles: ['ADMIN'] },
+      roles: ['ADMIN'],
+      username: 'testuser',
+    }));
 
-  global.fetch = jest.fn((url) => {
-    if (url.includes('/api/v1/admin/streams')) {
-      return Promise.resolve({
-        ok: true,
-        json: () =>
-          Promise.resolve({
-            content: [
-              {
-                id: '1',
-                name: 'TestStream',
-                startDate: isoDate,
-                endDate: isoDate,
-              },
-            ],
-          }),
-      });
-    }
-    if (url.endsWith('/streams/nti-markets')) {
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve([]),
-      });
-    }
-    if (url.includes('/team-cards')) {
+    global.fetch = jest.fn((url) => {
+      if (url.includes('/api/v1/admin/streams')) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              content: [
+                {
+                  id: '1',
+                  name: 'TestStream',
+                  startDate: isoDate,
+                  endDate: isoDate,
+                },
+              ],
+            }),
+        });
+      }
+      if (url.endsWith('/streams/nti-markets')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([]),
+        });
+      }
+      if (url.includes('/team-cards')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ content: [], page: { totalPages: 1 } }),
+        });
+      }
       return Promise.resolve({
         ok: true,
         json: () => Promise.resolve({ content: [], page: { totalPages: 1 } }),
       });
-    }
-    return Promise.resolve({
-      ok: true,
-      json: () => Promise.resolve({ content: [], page: { totalPages: 1 } }),
     });
-  });
 
-  await act(async () => {
-    render(
-      <MemoryRouter initialEntries={['/teamcard']}>
-        <TrackerPage />
-      </MemoryRouter>
+    await act(async () => {
+      render(
+        <MemoryRouter initialEntries={['/teamcard']}>
+          <TrackerPage />
+        </MemoryRouter>
+      );
+    });
+
+    const formatted = '2025.06.02';
+    await waitFor(
+      () => {
+        expect(screen.getByText(/TestStream/)).toBeInTheDocument();
+        expect(screen.getByText(new RegExp(`${formatted} - ${formatted}`))).toBeInTheDocument();
+      },
+      { timeout: 2000 }
     );
   });
-
-  const formatted = '2025.06.02';
-  await waitFor(
-    () => {
-      expect(screen.getByText(/TestStream/)).toBeInTheDocument();
-      expect(screen.getByText(new RegExp(`${formatted} - ${formatted}`))).toBeInTheDocument();
-    },
-    { timeout: 2000 }
-  );
-});
 
   test('показывает сообщение "Ничего не найдено по запросу", когда карточек нет', async () => {
     global.fetch = jest.fn((url) => {
@@ -154,74 +155,74 @@ describe('TrackerPage - Исправленные тесты', () => {
     });
   });
 
- test('рендерит карточку и проверяет её содержимое', async () => {
-  const mockCard = {
-    id: 'card1',
-    name: 'Project X',
-    description: 'Описание X',
-    enabled: true,
+  test('рендерит карточку и проверяет её содержимое', async () => {
+    const mockCard = {
+      id: 'card1',
+      name: 'Project X',
+      description: 'Описание X',
+      enabled: true,
     ntiMarkets: [{ displayName: 'NTI-One' }], // Updated to array
-    readinessLevel: '5',
-    userId: 'user1',
+      readinessLevel: '5',
+      userId: 'user1',
     streams: [{ name: 'MainStream', startDate: '2025-01-01', endDate: '2025-12-31' }], // Added stream data
-  };
+    };
 
-  global.fetch = jest.fn((url) => {
-    if (url.includes('/api/v1/streams')) {
+    global.fetch = jest.fn((url) => {
+      if (url.includes('/api/v1/streams')) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              content: [
+                {
+                  id: '1',
+                  name: 'MainStream',
+                  startDate: '2025-01-01',
+                  endDate: '2025-12-31',
+                },
+              ],
+            }),
+        });
+      }
+      if (url.endsWith('/streams/nti-markets')) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve([{ id: 'm1', name: 'NTI-One', displayName: 'NTI-One' }]),
+        });
+      }
+      if (url.includes('/team-cards')) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              content: [mockCard],
+              page: { totalPages: 1 },
+            }),
+        });
+      }
       return Promise.resolve({
         ok: true,
-        json: () =>
-          Promise.resolve({
-            content: [
-              {
-                id: '1',
-                name: 'MainStream',
-                startDate: '2025-01-01',
-                endDate: '2025-12-31',
-              },
-            ],
-          }),
+        json: () => Promise.resolve({ content: [], page: { totalPages: 1 } }),
       });
-    }
-    if (url.endsWith('/streams/nti-markets')) {
-      return Promise.resolve({
-        ok: true,
-        json: () =>
-          Promise.resolve([{ id: 'm1', name: 'NTI-One', displayName: 'NTI-One' }]),
-      });
-    }
-    if (url.includes('/team-cards')) {
-      return Promise.resolve({
-        ok: true,
-        json: () =>
-          Promise.resolve({
-            content: [mockCard],
-            page: { totalPages: 1 },
-          }),
-      });
-    }
-    return Promise.resolve({
-      ok: true,
-      json: () => Promise.resolve({ content: [], page: { totalPages: 1 } }),
     });
-  });
 
-  await act(async () => {
-    render(
-      <MemoryRouter>
-        <TrackerPage />
-      </MemoryRouter>
-    );
-  });
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <TrackerPage />
+        </MemoryRouter>
+      );
+    });
 
-  const title = await screen.findByText('Project X');
-  expect(title).toBeInTheDocument();
-  expect(screen.getByText('Описание X')).toBeInTheDocument();
+    const title = await screen.findByText('Project X');
+    expect(title).toBeInTheDocument();
+    expect(screen.getByText('Описание X')).toBeInTheDocument();
   expect(screen.getByText('Рынки НТИ: NTI-One')).toBeInTheDocument(); // Single market for this test
-  expect(screen.getByText(/TRL: 5/)).toBeInTheDocument();
-  expect(screen.getByText('Активно')).toBeInTheDocument();
-  expect(screen.getByText(/Поток: MainStream/)).toBeInTheDocument();
-});
+    expect(screen.getByText(/TRL: 5/)).toBeInTheDocument();
+    expect(screen.getByText('Активно')).toBeInTheDocument();
+    expect(screen.getByText(/Поток: MainStream/)).toBeInTheDocument();
+  });
 
   
 
@@ -297,49 +298,49 @@ describe('TrackerPage - Исправленные тесты', () => {
     );
   });
 
-  
-test('открытие и закрытие панели фильтров по клику на иконку', async () => {
-  global.fetch = jest.fn((url) => {
-    if (url.includes('/api/v1/streams')) {
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({
-          content: [
-            { id: '1', name: 'StreamA', startDate: '2025-01-01', endDate: '2025-12-31' },
-          ],
-        }),
-      });
-    }
-    if (url.endsWith('/streams/nti-markets')) {
-      return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
-    }
-    return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [], page: { totalPages: 1 } }) });
+
+  test('открытие и закрытие панели фильтров по клику на иконку', async () => {
+    global.fetch = jest.fn((url) => {
+      if (url.includes('/api/v1/streams')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            content: [
+              { id: '1', name: 'StreamA', startDate: '2025-01-01', endDate: '2025-12-31' },
+            ],
+          }),
+        });
+      }
+      if (url.endsWith('/streams/nti-markets')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [], page: { totalPages: 1 } }) });
+    });
+
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <TrackerPage />
+        </MemoryRouter>
+      );
+    });
+
+    const filterToggleBtn = document.querySelector('.Stream-settings-pic');
+    expect(filterToggleBtn).toBeInTheDocument();
+
+    fireEvent.click(filterToggleBtn);
+
+    expect(await screen.findByRole("button", { name: /Поток/ })).toBeInTheDocument();
+    expect(screen.getAllByText((t) => t.startsWith('Рынок'))[0]).toBeInTheDocument();
+    expect(screen.getAllByText((t) => t.startsWith('TRL'))[0]).toBeInTheDocument();
+    expect(screen.getAllByText((t) => t.startsWith('Год'))[0]).toBeInTheDocument();
+
+    fireEvent.click(filterToggleBtn);
+
+    await waitFor(() => {
+      expect(screen.queryByText((t) => t.startsWith('Поток'))).not.toBeInTheDocument();
+    });
   });
-
-  await act(async () => {
-    render(
-      <MemoryRouter>
-        <TrackerPage />
-      </MemoryRouter>
-    );
-  });
-
-  const filterToggleBtn = document.querySelector('.Stream-settings-pic');
-  expect(filterToggleBtn).toBeInTheDocument();
-
-  fireEvent.click(filterToggleBtn);
-
-  expect(await screen.findByRole("button", { name: /Поток/ })).toBeInTheDocument();
-  expect(screen.getAllByText((t) => t.startsWith('Рынок'))[0]).toBeInTheDocument();
-  expect(screen.getAllByText((t) => t.startsWith('TRL'))[0]).toBeInTheDocument();
-  expect(screen.getAllByText((t) => t.startsWith('Год'))[0]).toBeInTheDocument();
-
-  fireEvent.click(filterToggleBtn);
-
-  await waitFor(() => {
-    expect(screen.queryByText((t) => t.startsWith('Поток'))).not.toBeInTheDocument();
-  });
-});
 
 
   test('рейтинги и статус получают правильные css-классы (green/yellow/red + inactive)', async () => {
@@ -422,6 +423,7 @@ describe('TrackerPage - Полное покрытие', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     localStorage.clear();
+    sessionStorage.clear();
 
     // Мокаем useSelector для роли TRACKER
     redux.useSelector.mockImplementation(() => ({
@@ -436,115 +438,115 @@ describe('TrackerPage - Полное покрытие', () => {
   });
 
   // 49-50: Обработка ошибок fetch при загрузке карточек
- test('Обработка ошибок fetch для карточек (49-50)', async () => {
-  localStorage.setItem('user', JSON.stringify({ username: 'testuser', roles: ['TRACKER'] }));
-  localStorage.setItem('userRole', 'TRACKER');
-  localStorage.setItem('streamName', 'MainStream');
-  localStorage.setItem('streamId', '1');
+  test('Обработка ошибок fetch для карточек (49-50)', async () => {
+    localStorage.setItem('user', JSON.stringify({ username: 'testuser', roles: ['TRACKER'] }));
+    localStorage.setItem('userRole', 'TRACKER');
+    localStorage.setItem('streamName', 'MainStream');
+    localStorage.setItem('streamId', '1');
 
-  global.fetch = jest.fn((url) => {
-    if (url.includes('/api/v1/streams')) {
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({
-          content: [{ id: '1', name: 'MainStream', startDate: '2025-01-01', endDate: '2025-12-31' }],
-        }),
-      });
-    }
-    if (url.endsWith('/streams/nti-markets')) {
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve([]),
-      });
-    }
-    if (url.includes('/team-cards')) {
-      return Promise.reject(new Error('Network Error'));
-    }
-    return Promise.resolve({
-      ok: true,
-      json: () => Promise.resolve({ content: [], page: { totalPages: 1 } }),
-    });
-  });
-
-  await act(async () => {
-    render(
-      <MemoryRouter>
-        <TrackerPage />
-      </MemoryRouter>
-    );
-  });
-
-  await waitFor(() => {
-    expect(screen.getByText(/Ошибка при загрузке карточек/)).toBeInTheDocument();
-  }, { timeout: 2000 });
-});
-  // 85-87: Проверка отображения заголовка с датой
- test('Отображение заголовка с форматированной датой (85-87)', async () => {
-  const isoDate = '2025-06-02T00:00:00Z';
-  localStorage.setItem('streamName', 'TestStream');
-  localStorage.setItem('streamSDate', isoDate);
-  localStorage.setItem('streamEDate', isoDate);
-  localStorage.setItem('user', JSON.stringify({ username: 'testuser', roles: ['ADMIN'] }));
-  localStorage.setItem('userRole', 'ADMIN');
-
-  redux.useSelector.mockImplementation(() => ({
-    user: { username: 'testuser', roles: ['ADMIN'] },
-    roles: ['ADMIN'],
-    username: 'testuser',
-  }));
-
-  global.fetch = jest.fn((url) => {
-    if (url.includes('/api/v1/admin/streams')) {
-      return Promise.resolve({
-        ok: true,
-        json: () =>
-          Promise.resolve({
-            content: [
-              {
-                id: '1',
-                name: 'TestStream',
-                startDate: isoDate,
-                endDate: isoDate,
-              },
-            ],
+    global.fetch = jest.fn((url) => {
+      if (url.includes('/api/v1/streams')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            content: [{ id: '1', name: 'MainStream', startDate: '2025-01-01', endDate: '2025-12-31' }],
           }),
-      });
-    }
-    if (url.endsWith('/streams/nti-markets')) {
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve([]),
-      });
-    }
-    if (url.includes('/team-cards')) {
+        });
+      }
+      if (url.endsWith('/streams/nti-markets')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([]),
+        });
+      }
+      if (url.includes('/team-cards')) {
+        return Promise.reject(new Error('Network Error'));
+      }
       return Promise.resolve({
         ok: true,
         json: () => Promise.resolve({ content: [], page: { totalPages: 1 } }),
       });
-    }
-    return Promise.resolve({
-      ok: true,
-      json: () => Promise.resolve({ content: [], page: { totalPages: 1 } }),
     });
-  });
 
-  await act(async () => {
-    render(
-      <MemoryRouter initialEntries={['/teamcard']}>
-        <TrackerPage />
-      </MemoryRouter>
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <TrackerPage />
+        </MemoryRouter>
+      );
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/Ошибка при загрузке карточек/)).toBeInTheDocument();
+    }, { timeout: 2000 });
+  });
+  // 85-87: Проверка отображения заголовка с датой
+  test('Отображение заголовка с форматированной датой (85-87)', async () => {
+    const isoDate = '2025-06-02T00:00:00Z';
+    localStorage.setItem('streamName', 'TestStream');
+    localStorage.setItem('streamSDate', isoDate);
+    localStorage.setItem('streamEDate', isoDate);
+    localStorage.setItem('user', JSON.stringify({ username: 'testuser', roles: ['ADMIN'] }));
+    localStorage.setItem('userRole', 'ADMIN');
+
+    redux.useSelector.mockImplementation(() => ({
+      user: { username: 'testuser', roles: ['ADMIN'] },
+      roles: ['ADMIN'],
+      username: 'testuser',
+    }));
+
+    global.fetch = jest.fn((url) => {
+      if (url.includes('/api/v1/admin/streams')) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              content: [
+                {
+                  id: '1',
+                  name: 'TestStream',
+                  startDate: isoDate,
+                  endDate: isoDate,
+                },
+              ],
+            }),
+        });
+      }
+      if (url.endsWith('/streams/nti-markets')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([]),
+        });
+      }
+      if (url.includes('/team-cards')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ content: [], page: { totalPages: 1 } }),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ content: [], page: { totalPages: 1 } }),
+      });
+    });
+
+    await act(async () => {
+      render(
+        <MemoryRouter initialEntries={['/teamcard']}>
+          <TrackerPage />
+        </MemoryRouter>
+      );
+    });
+
+    const formatted = '2025.06.02';
+    await waitFor(
+      () => {
+        expect(screen.getByText(/TestStream/)).toBeInTheDocument();
+        expect(screen.getByText(new RegExp(`${formatted} - ${formatted}`))).toBeInTheDocument();
+      },
+      { timeout: 2000 }
     );
   });
-
-  const formatted = '2025.06.02';
-  await waitFor(
-    () => {
-      expect(screen.getByText(/TestStream/)).toBeInTheDocument();
-      expect(screen.getByText(new RegExp(`${formatted} - ${formatted}`))).toBeInTheDocument();
-    },
-    { timeout: 2000 }
-  );
-});
   // 94-96: Сообщение при отсутствии карточек
   test('Сообщение "Ничего не найдено по запросу" при пустых данных (94-96)', async () => {
     global.fetch = jest.fn(() => Promise.resolve({
@@ -584,71 +586,71 @@ describe('TrackerPage - Полное покрытие', () => {
 
   // 154-161: Фильтр по годам
   test('Фильтр по годам (154–161)', async () => {
-  global.fetch = jest.fn((url) => {
-    if (url.includes('/api/v1/streams')) {
-      return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream', startDate: '2025-01-01', endDate: '2025-12-31' }] }) });
-    }
-    if (url.endsWith('/streams/nti-markets')) {
-      return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
-    }
-    return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [], page: { totalPages: 1 } }) });
+    global.fetch = jest.fn((url) => {
+      if (url.includes('/api/v1/streams')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream', startDate: '2025-01-01', endDate: '2025-12-31' }] }) });
+      }
+      if (url.endsWith('/streams/nti-markets')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [], page: { totalPages: 1 } }) });
+    });
+
+    await act(async () => {
+      render(<MemoryRouter><TrackerPage /></MemoryRouter>);
+    });
+
+    const filterToggleBtn = document.querySelector('.Stream-settings-pic');
+    fireEvent.click(filterToggleBtn);
+
+    const yearBtn = screen.getAllByText('Год').find(el => el.closest('.Teams-header-chosefrom-butt-label'));
+    expect(yearBtn).toBeInTheDocument();
+    fireEvent.click(yearBtn);
+
+    const checkbox = screen.getByLabelText('2025');
+    fireEvent.click(checkbox);
+
+    const applyBtn = screen.getByText('Применить');
+    fireEvent.click(applyBtn);
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalled();
+    });
   });
-
-  await act(async () => {
-    render(<MemoryRouter><TrackerPage /></MemoryRouter>);
-  });
-
-  const filterToggleBtn = document.querySelector('.Stream-settings-pic');
-  fireEvent.click(filterToggleBtn);
-
-  const yearBtn = screen.getAllByText('Год').find(el => el.closest('.Teams-header-chosefrom-butt-label'));
-  expect(yearBtn).toBeInTheDocument();
-  fireEvent.click(yearBtn);
-
-  const checkbox = screen.getByLabelText('2025');
-  fireEvent.click(checkbox);
-
-  const applyBtn = screen.getByText('Применить');
-  fireEvent.click(applyBtn);
-
-  await waitFor(() => {
-    expect(global.fetch).toHaveBeenCalled();
-  });
-});
 
   // 262: Фильтр по TRL
- test('Фильтр по TRL (262)', async () => {
-  global.fetch = jest.fn((url) => {
-    if (url.includes('/api/v1/streams')) {
-      return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [] }) });
-    }
-    if (url.endsWith('/streams/nti-markets')) {
-      return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
-    }
-    return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [], page: { totalPages: 1 } }) });
+  test('Фильтр по TRL (262)', async () => {
+    global.fetch = jest.fn((url) => {
+      if (url.includes('/api/v1/streams')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [] }) });
+      }
+      if (url.endsWith('/streams/nti-markets')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [], page: { totalPages: 1 } }) });
+    });
+
+    await act(async () => {
+      render(<MemoryRouter><TrackerPage /></MemoryRouter>);
+    });
+
+    const filterToggleBtn = document.querySelector('.Stream-settings-pic');
+    fireEvent.click(filterToggleBtn);
+
+    const trlBtn = screen.getAllByText('TRL').find(el => el.closest('.Teams-header-chosefrom-butt-label'));
+    expect(trlBtn).toBeInTheDocument();
+    fireEvent.click(trlBtn);
+
+    const checkbox = screen.getByLabelText('3-5');
+    fireEvent.click(checkbox);
+
+    const applyBtn = screen.getByText('Применить');
+    fireEvent.click(applyBtn);
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalled();
+    });
   });
-
-  await act(async () => {
-    render(<MemoryRouter><TrackerPage /></MemoryRouter>);
-  });
-
-  const filterToggleBtn = document.querySelector('.Stream-settings-pic');
-  fireEvent.click(filterToggleBtn);
-
-  const trlBtn = screen.getAllByText('TRL').find(el => el.closest('.Teams-header-chosefrom-butt-label'));
-  expect(trlBtn).toBeInTheDocument();
-  fireEvent.click(trlBtn);
-
-  const checkbox = screen.getByLabelText('3-5');
-  fireEvent.click(checkbox);
-
-  const applyBtn = screen.getByText('Применить');
-  fireEvent.click(applyBtn);
-
-  await waitFor(() => {
-    expect(global.fetch).toHaveBeenCalled();
-  });
-});
 
 
 
@@ -656,37 +658,37 @@ describe('TrackerPage - Полное покрытие', () => {
 
   // 309, 313: Взаимодействие с фильтрами
   test('Выбор и сброс фильтров (309–313)', async () => {
-  global.fetch = jest.fn((url) => {
-    if (url.includes('/api/v1/streams')) {
-      return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream', startDate: '2025-01-01', endDate: '2025-12-31' }] }) });
-    }
-    if (url.endsWith('/streams/nti-markets')) {
-      return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
-    }
-    return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [], page: { totalPages: 1 } }) });
+    global.fetch = jest.fn((url) => {
+      if (url.includes('/api/v1/streams')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream', startDate: '2025-01-01', endDate: '2025-12-31' }] }) });
+      }
+      if (url.endsWith('/streams/nti-markets')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [], page: { totalPages: 1 } }) });
+    });
+
+    await act(async () => {
+      render(<MemoryRouter><TrackerPage /></MemoryRouter>);
+    });
+
+    const filterToggleBtn = document.querySelector('.Stream-settings-pic');
+    fireEvent.click(filterToggleBtn);
+
+    const yearBtn = screen.getAllByText('Год').find(el => el.closest('.Teams-header-chosefrom-butt-label'));
+    expect(yearBtn).toBeInTheDocument();
+    fireEvent.click(yearBtn);
+
+    const checkbox = screen.getByLabelText('2025');
+    fireEvent.click(checkbox);
+
+    const resetBtn = screen.getByText('Сбросить');
+    fireEvent.click(resetBtn);
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalled();
+    });
   });
-
-  await act(async () => {
-    render(<MemoryRouter><TrackerPage /></MemoryRouter>);
-  });
-
-  const filterToggleBtn = document.querySelector('.Stream-settings-pic');
-  fireEvent.click(filterToggleBtn);
-
-  const yearBtn = screen.getAllByText('Год').find(el => el.closest('.Teams-header-chosefrom-butt-label'));
-  expect(yearBtn).toBeInTheDocument();
-  fireEvent.click(yearBtn);
-
-  const checkbox = screen.getByLabelText('2025');
-  fireEvent.click(checkbox);
-
-  const resetBtn = screen.getByText('Сбросить');
-  fireEvent.click(resetBtn);
-
-  await waitFor(() => {
-    expect(global.fetch).toHaveBeenCalled();
-  });
-});
 
 
 
@@ -735,225 +737,225 @@ describe('TrackerPage - Полное покрытие', () => {
 
 
 
-test('fetchCards добавляет фильтр по username для роли TRACKER (141-161)', async () => {
-  localStorage.setItem('user', JSON.stringify({ username: 'testuser', roles: ['TRACKER'] }));
-  localStorage.setItem('streamName', 'TestStream');
+  test('fetchCards добавляет фильтр по username для роли TRACKER (141-161)', async () => {
+    localStorage.setItem('user', JSON.stringify({ username: 'testuser', roles: ['TRACKER'] }));
+    localStorage.setItem('streamName', 'TestStream');
 
-  const mockCard = {
-    id: 'card1',
-    name: 'Test Card',
-    description: 'Test Description',
-    enabled: true,
-    ntiMarkets: [{ displayName: 'Market1' }],
-    readinessLevel: '5',
-    streams: [{ name: 'TestStream', startDate: '2025-01-01', endDate: '2025-12-31' }],
-    userId: 'testuser',
-  };
-
-  global.fetch = jest.fn((url, options) => {
-    if (url.includes('/api/v1/streams')) {
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({
-          content: [{ id: '1', name: 'TestStream', startDate: '2025-01-01', endDate: '2025-12-31' }],
-        }),
-      });
-    }
-    if (url.endsWith('/streams/nti-markets')) {
-      return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
-    }
-    if (url.includes('/team-cards')) {
-      expect(options.body).toContain('"fieldName":"username"');
-      expect(options.body).toContain('"value":"testuser"');
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({
-          content: [mockCard],
-          page: { totalPages: 1 },
-        }),
-      });
-    }
-    return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [], page: { totalPages: 1 } }) });
-  });
-
-  await act(async () => {
-    render(
-      <MemoryRouter>
-        <TrackerPage />
-      </MemoryRouter>
-    );
-  });
-
-  expect(await screen.findByText('Test Card')).toBeInTheDocument();
-});
-
-
-test('fetchCards устанавливает cards и totalPages при успешном ответе (141-161)', async () => {
-  localStorage.setItem('user', JSON.stringify({ username: 'testuser', roles: ['TRACKER'] }));
-  localStorage.setItem('streamName', 'TestStream');
-
-  const mockCard = {
-    id: 'card1',
-    name: 'Test Card',
-    description: 'Test Description',
-    enabled: true,
-    ntiMarkets: [{ displayName: 'Market1' }],
-    readinessLevel: '5',
-    streams: [{ name: 'TestStream', startDate: '2025-01-01', endDate: '2025-12-31' }],
-    userId: 'testuser',
-  };
-
-  global.fetch = jest.fn((url) => {
-    if (url.includes('/api/v1/streams')) {
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({
-          content: [{ id: '1', name: 'TestStream', startDate: '2025-01-01', endDate: '2025-12-31' }],
-        }),
-      });
-    }
-    if (url.endsWith('/streams/nti-markets')) {
-      return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
-    }
-    if (url.includes('/team-cards')) {
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({
-          content: [mockCard],
-          page: { totalPages: 2 },
-        }),
-      });
-    }
-    return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [], page: { totalPages: 1 } }) });
-  });
-
-  await act(async () => {
-    render(
-      <MemoryRouter>
-        <TrackerPage />
-      </MemoryRouter>
-    );
-  });
-
-  expect(await screen.findByText('Test Card')).toBeInTheDocument();
-  expect(document.querySelector('.Stream-footer-button-4')).toBeInTheDocument(); // Кнопка пагинации
-});
-test('Рендеринг карточек с разными статусами (668-694)', async () => {
-  const mockCards = [
-    {
-      id: '1',
-      name: 'Active Card',
-      description: 'Active Description',
+    const mockCard = {
+      id: 'card1',
+      name: 'Test Card',
+      description: 'Test Description',
       enabled: true,
       ntiMarkets: [{ displayName: 'Market1' }],
-      readinessLevel: '7',
-      userId: 'user1',
-      streams: [{ name: 'Stream1', startDate: '2025-01-01', endDate: '2025-12-31' }],
-    },
-    {
-      id: '2',
-      name: 'Inactive Card',
-      description: 'Inactive Description',
-      enabled: false,
-      ntiMarkets: [{ displayName: 'Market2' }],
-      readinessLevel: '2',
-      userId: 'user2',
-      streams: [{ name: 'Stream2', startDate: '2024-01-01', endDate: '2024-12-31' }],
-    },
-  ];
+      readinessLevel: '5',
+      streams: [{ name: 'TestStream', startDate: '2025-01-01', endDate: '2025-12-31' }],
+      userId: 'testuser',
+    };
 
-  global.fetch = jest.fn((url) => {
-    if (url.includes('/api/v1/streams')) {
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({
-          content: [
-            { id: 'stream1', name: 'Stream1', startDate: '2025-01-01', endDate: '2025-12-31' },
-            { id: 'stream2', name: 'Stream2', startDate: '2024-01-01', endDate: '2024-12-31' },
-          ],
-        }),
-      });
-    }
-    if (url.endsWith('/streams/nti-markets')) {
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve([
-          { id: 'm1', name: 'Market1', displayName: 'Market1' },
-          { id: 'm2', name: 'Market2', displayName: 'Market2' },
-        ]),
-      });
-    }
-    if (url.includes('/team-cards')) {
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({
-          content: mockCards,
-          page: { totalPages: 1 },
-        }),
-      });
-    }
-    return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [], page: { totalPages: 1 } }) });
+    global.fetch = jest.fn((url, options) => {
+      if (url.includes('/api/v1/streams')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            content: [{ id: '1', name: 'TestStream', startDate: '2025-01-01', endDate: '2025-12-31' }],
+          }),
+        });
+      }
+      if (url.endsWith('/streams/nti-markets')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+      }
+      if (url.includes('/team-cards')) {
+        expect(options.body).toContain('"fieldName":"username"');
+        expect(options.body).toContain('"value":"testuser"');
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            content: [mockCard],
+            page: { totalPages: 1 },
+          }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [], page: { totalPages: 1 } }) });
+    });
+
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <TrackerPage />
+        </MemoryRouter>
+      );
+    });
+
+    expect(await screen.findByText('Test Card')).toBeInTheDocument();
   });
 
-  await act(async () => {
-    render(
-      <MemoryRouter>
-        <TrackerPage />
-      </MemoryRouter>
-    );
+
+  test('fetchCards устанавливает cards и totalPages при успешном ответе (141-161)', async () => {
+    localStorage.setItem('user', JSON.stringify({ username: 'testuser', roles: ['TRACKER'] }));
+    localStorage.setItem('streamName', 'TestStream');
+
+    const mockCard = {
+      id: 'card1',
+      name: 'Test Card',
+      description: 'Test Description',
+      enabled: true,
+      ntiMarkets: [{ displayName: 'Market1' }],
+      readinessLevel: '5',
+      streams: [{ name: 'TestStream', startDate: '2025-01-01', endDate: '2025-12-31' }],
+      userId: 'testuser',
+    };
+
+    global.fetch = jest.fn((url) => {
+      if (url.includes('/api/v1/streams')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            content: [{ id: '1', name: 'TestStream', startDate: '2025-01-01', endDate: '2025-12-31' }],
+          }),
+        });
+      }
+      if (url.endsWith('/streams/nti-markets')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+      }
+      if (url.includes('/team-cards')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            content: [mockCard],
+            page: { totalPages: 2 },
+          }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [], page: { totalPages: 1 } }) });
+    });
+
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <TrackerPage />
+        </MemoryRouter>
+      );
+    });
+
+    expect(await screen.findByText('Test Card')).toBeInTheDocument();
+  expect(document.querySelector('.Stream-footer-button-4')).toBeInTheDocument(); // Кнопка пагинации
+  });
+  test('Рендеринг карточек с разными статусами (668-694)', async () => {
+    const mockCards = [
+      {
+        id: '1',
+        name: 'Active Card',
+        description: 'Active Description',
+        enabled: true,
+        ntiMarkets: [{ displayName: 'Market1' }],
+        readinessLevel: '7',
+        userId: 'user1',
+        streams: [{ name: 'Stream1', startDate: '2025-01-01', endDate: '2025-12-31' }],
+      },
+      {
+        id: '2',
+        name: 'Inactive Card',
+        description: 'Inactive Description',
+        enabled: false,
+        ntiMarkets: [{ displayName: 'Market2' }],
+        readinessLevel: '2',
+        userId: 'user2',
+        streams: [{ name: 'Stream2', startDate: '2024-01-01', endDate: '2024-12-31' }],
+      },
+    ];
+
+    global.fetch = jest.fn((url) => {
+      if (url.includes('/api/v1/streams')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            content: [
+              { id: 'stream1', name: 'Stream1', startDate: '2025-01-01', endDate: '2025-12-31' },
+              { id: 'stream2', name: 'Stream2', startDate: '2024-01-01', endDate: '2024-12-31' },
+            ],
+          }),
+        });
+      }
+      if (url.endsWith('/streams/nti-markets')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            { id: 'm1', name: 'Market1', displayName: 'Market1' },
+            { id: 'm2', name: 'Market2', displayName: 'Market2' },
+          ]),
+        });
+      }
+      if (url.includes('/team-cards')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            content: mockCards,
+            page: { totalPages: 1 },
+          }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [], page: { totalPages: 1 } }) });
+    });
+
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <TrackerPage />
+        </MemoryRouter>
+      );
+    });
+
+    expect(await screen.findByText('Active Card')).toBeInTheDocument();
+    expect(screen.getByText('Активно')).toBeInTheDocument();
+    expect(screen.getByText('Inactive Card')).toBeInTheDocument();
+    expect(screen.getByText('Завершено')).toBeInTheDocument();
+    expect(screen.getByText('Рынки НТИ: Market1')).toBeInTheDocument();
+    expect(screen.getByText('Рынки НТИ: Market2')).toBeInTheDocument();
+    expect(screen.getByText('TRL: 7')).toBeInTheDocument();
+    expect(screen.getByText('TRL: 2')).toBeInTheDocument();
+    expect(screen.getByText(/Поток: Stream1/)).toBeInTheDocument();
+    expect(screen.getByText(/Поток: Stream2/)).toBeInTheDocument();
   });
 
-  expect(await screen.findByText('Active Card')).toBeInTheDocument();
-  expect(screen.getByText('Активно')).toBeInTheDocument();
-  expect(screen.getByText('Inactive Card')).toBeInTheDocument();
-  expect(screen.getByText('Завершено')).toBeInTheDocument();
-  expect(screen.getByText('Рынки НТИ: Market1')).toBeInTheDocument();
-  expect(screen.getByText('Рынки НТИ: Market2')).toBeInTheDocument();
-  expect(screen.getByText('TRL: 7')).toBeInTheDocument();
-  expect(screen.getByText('TRL: 2')).toBeInTheDocument();
-  expect(screen.getByText(/Поток: Stream1/)).toBeInTheDocument();
-  expect(screen.getByText(/Поток: Stream2/)).toBeInTheDocument();
-});
+  test('Отображение сообщения "Ничего не найдено по запросу" (668-694)', async () => {
+    global.fetch = jest.fn((url) => {
+      if (url.includes('/api/v1/streams')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            content: [{ id: '1', name: 'Stream', startDate: '2025-01-01', endDate: '2025-12-31' }],
+          }),
+        });
+      }
+      if (url.endsWith('/streams/nti-markets')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+      }
+      if (url.includes('/team-cards')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            content: [],
+            page: { totalPages: 1 },
+          }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [], page: { totalPages: 1 } }) });
+    });
 
-test('Отображение сообщения "Ничего не найдено по запросу" (668-694)', async () => {
-  global.fetch = jest.fn((url) => {
-    if (url.includes('/api/v1/streams')) {
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({
-          content: [{ id: '1', name: 'Stream', startDate: '2025-01-01', endDate: '2025-12-31' }],
-        }),
-      });
-    }
-    if (url.endsWith('/streams/nti-markets')) {
-      return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
-    }
-    if (url.includes('/team-cards')) {
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({
-          content: [],
-          page: { totalPages: 1 },
-        }),
-      });
-    }
-    return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [], page: { totalPages: 1 } }) });
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <TrackerPage />
+        </MemoryRouter>
+      );
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Ничего не найдено по запросу')).toBeInTheDocument();
+    });
   });
 
-  await act(async () => {
-    render(
-      <MemoryRouter>
-        <TrackerPage />
-      </MemoryRouter>
-    );
-  });
-
-  await waitFor(() => {
-    expect(screen.getByText('Ничего не найдено по запросу')).toBeInTheDocument();
-  });
-});
-
-test('fetchCards добавляет фильтр по username для роли TRACKER и устанавливает cards/totalPages (147-157, 164-171)', async () => {
+  test('fetchCards добавляет фильтр по username для роли TRACKER и устанавливает cards/totalPages (147-157, 164-171)', async () => {
     localStorage.setItem('user', JSON.stringify({ username: 'testuser', roles: ['TRACKER'] }));
     localStorage.setItem('streamName', 'TestStream');
 
@@ -1412,50 +1414,250 @@ test('fetchCards добавляет фильтр по username для роли T
   });
 
   test('перезагружает карточки при visibilitychange когда страница становится видимой', async () => {
-  localStorage.setItem('user', JSON.stringify({ username: 'testuser', roles: ['TRACKER'] }));
-  localStorage.setItem('streamName', 'TestStream');
+    localStorage.setItem('user', JSON.stringify({ username: 'testuser', roles: ['TRACKER'] }));
+    localStorage.setItem('streamName', 'TestStream');
 
-  let fetchCardsCallCount = 0;
-  global.fetch = jest.fn((url) => {
-    if (url.includes('/api/v1/streams')) {
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({
-          content: [{ id: '1', name: 'TestStream', startDate: '2025-01-01', endDate: '2025-12-31' }],
-        }),
-      });
-    }
-    if (url.endsWith('/streams/nti-markets')) {
-      return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
-    }
-    if (url.includes('/team-cards')) {
-      fetchCardsCallCount++;
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({ content: [], page: { totalPages: 1 } }),
-      });
-    }
-    return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [], page: { totalPages: 1 } }) });
-  });
+    let fetchCardsCallCount = 0;
+    global.fetch = jest.fn((url) => {
+      if (url.includes('/api/v1/streams')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            content: [{ id: '1', name: 'TestStream', startDate: '2025-01-01', endDate: '2025-12-31' }],
+          }),
+        });
+      }
+      if (url.endsWith('/streams/nti-markets')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+      }
+      if (url.includes('/team-cards')) {
+        fetchCardsCallCount++;
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ content: [], page: { totalPages: 1 } }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [], page: { totalPages: 1 } }) });
+    });
 
-  await act(async () => {
-    render(<MemoryRouter><TrackerPage /></MemoryRouter>);
-  });
+    await act(async () => {
+      render(<MemoryRouter><TrackerPage /></MemoryRouter>);
+    });
 
-  await waitFor(() => {
-    expect(fetchCardsCallCount).toBeGreaterThan(0);
-  });
+    await waitFor(() => {
+      expect(fetchCardsCallCount).toBeGreaterThan(0);
+    });
 
-  const initialCalls = fetchCardsCallCount;
+    const initialCalls = fetchCardsCallCount;
 
   // Симулируем visibilitychange — страница становится видимой
-  await act(async () => {
-    Object.defineProperty(document, 'visibilityState', { value: 'visible', writable: true });
-    document.dispatchEvent(new Event('visibilitychange'));
+    await act(async () => {
+      Object.defineProperty(document, 'visibilityState', { value: 'visible', writable: true });
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+
+    await waitFor(() => {
+      expect(fetchCardsCallCount).toBeGreaterThan(initialCalls);
+    });
   });
 
-  await waitFor(() => {
-    expect(fetchCardsCallCount).toBeGreaterThan(initialCalls);
+  test('восстанавливает страницу из location.state.restoredPage', async () => {
+    const mockCards = [
+      { id: '1', name: 'Card 1', description: 'Desc', enabled: true, ntiMarkets: [], readinessLevel: '5', streams: [] }
+    ];
+
+    global.fetch = jest.fn((url) => {
+      if (url.includes('/api/v1/streams')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream', startDate: '2025-01-01', endDate: '2025-12-31' }] }),
+        });
+      }
+      if (url.endsWith('/streams/nti-markets')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+      }
+      if (url.includes('/team-cards')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ content: mockCards, page: { totalPages: 1 } }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [], page: { totalPages: 1 } }) });
+    });
+
+    await act(async () => {
+      render(
+        <MemoryRouter initialEntries={[{ pathname: '/teamcard', state: { restoredPage: 2 } }]}>
+          <TrackerPage />
+        </MemoryRouter>
+      );
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Card 1')).toBeInTheDocument();
+    });
+  });
+
+  test('сохраняет состояние в sessionStorage при клике на карточку', async () => {
+    const mockCard = {
+      id: 'card1',
+      name: 'Test Card',
+      description: 'Description',
+      enabled: true,
+      ntiMarkets: [{ displayName: 'Market1' }],
+      readinessLevel: '5',
+      userId: 'user1',
+      streams: [{ name: 'Stream1', startDate: '2025-01-01', endDate: '2025-12-31' }],
+    };
+
+    global.fetch = jest.fn((url) => {
+      if (url.includes('/api/v1/streams')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream1', startDate: '2025-01-01', endDate: '2025-12-31' }] }),
+        });
+      }
+      if (url.endsWith('/streams/nti-markets')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve([{ id: 'm1', name: 'Market1', displayName: 'Market1' }]) });
+      }
+      if (url.includes('/team-cards')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ content: [mockCard], page: { totalPages: 1 } }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [], page: { totalPages: 1 } }) });
+    });
+
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <TrackerPage />
+        </MemoryRouter>
+      );
+    });
+
+    const card = await screen.findByText('Test Card');
+    fireEvent.click(card.closest('.card'));
+
+    const savedState = JSON.parse(sessionStorage.getItem('trackerPageState'));
+    expect(savedState).toBeDefined();
+    expect(savedState.cardId).toBe('card1');
+    expect(savedState.page).toBe(0);
+    expect(savedState.scrollY).toBeDefined();
+
+    expect(mockNavigate).toHaveBeenCalledWith(
+      '/teamcard/card1',
+      expect.objectContaining({
+        state: expect.objectContaining({
+          from: '/',
+          page: 0,
+          returnCardId: 'card1'
+        })
+      })
+    );
+  });
+
+  test('восстанавливает скролл при возврате из карточки', async () => {
+    sessionStorage.setItem(
+      'trackerPageState',
+      JSON.stringify({
+        page: 0,
+        scrollY: 500,
+        cardId: 'card1'
+      })
+    );
+
+    const mockCard = {
+      id: 'card1',
+      name: 'Test Card',
+      description: 'Description',
+      enabled: true,
+      ntiMarkets: [{ displayName: 'Market1' }],
+      readinessLevel: '5',
+      userId: 'user1',
+      streams: [{ name: 'Stream1', startDate: '2025-01-01', endDate: '2025-12-31' }],
+    };
+
+    global.fetch = jest.fn((url) => {
+      if (url.includes('/api/v1/streams')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream1', startDate: '2025-01-01', endDate: '2025-12-31' }] }),
+        });
+      }
+      if (url.endsWith('/streams/nti-markets')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+      }
+      if (url.includes('/team-cards')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ content: [mockCard], page: { totalPages: 1 } }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [], page: { totalPages: 1 } }) });
+    });
+
+    const scrollIntoViewMock = jest.fn();
+    HTMLElement.prototype.scrollIntoView = scrollIntoViewMock;
+
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <TrackerPage />
+        </MemoryRouter>
+      );
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Test Card')).toBeInTheDocument();
+    });
+
+    expect(scrollIntoViewMock).toHaveBeenCalledWith({
+      behavior: 'auto',
+      block: 'center'
+    });
+  });
+
+  test('сбрасывает прокрутку при обычной навигации', async () => {
+    sessionStorage.removeItem('trackerPageState');
+
+    global.fetch = jest.fn((url) => {
+      if (url.includes('/api/v1/streams')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream', startDate: '2025-01-01', endDate: '2025-12-31' }] }),
+        });
+      }
+      if (url.endsWith('/streams/nti-markets')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+      }
+      if (url.includes('/team-cards')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ content: [], page: { totalPages: 1 } }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [], page: { totalPages: 1 } }) });
+    });
+
+    const scrollToMock = jest.fn();
+    window.scrollTo = scrollToMock;
+
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <TrackerPage />
+        </MemoryRouter>
+      );
+    });
+
+    await waitFor(() => {
+      expect(scrollToMock).toHaveBeenCalledWith({
+        top: 0,
+        behavior: 'auto'
+      });
+    });
   });
 });
 
@@ -1463,6 +1665,7 @@ describe('TrackerPage - Исправленный поиск и пагинаци�
   beforeEach(() => {
     jest.clearAllMocks();
     localStorage.clear();
+    sessionStorage.clear();
     localStorage.setItem('user', JSON.stringify({ username: 'testuser', roles: ['TRACKER'] }));
     localStorage.setItem('userRole', 'TRACKER');
     localStorage.setItem('streamName', 'TestStream');
@@ -1655,6 +1858,7 @@ describe('TrackerPage - Исправленный поиск и пагинаци�
     }
     expect(page).toBe(0);
   });
+
   test('покрытие handleShowPrevious при page > 0', async () => {
     global.fetch = jest.fn((url) => {
       if (url.includes('/api/v1/streams')) {
@@ -1710,5 +1914,4 @@ describe('TrackerPage - Исправленный поиск и пагинаци�
   });
 
 
-});
 });

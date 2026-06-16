@@ -1,6 +1,6 @@
 import {useCallback, useEffect, useState} from "react";
 import "./TrackerPage.css";
-import { useLocation, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import {useNavigate} from "react-router-dom";
 import StreamPlaceholder from './Заглушка для потока в TrackMe.png';
 import { getCsrfConfigForFetch } from "../../utils/csrf-utils";
@@ -24,9 +24,9 @@ function TrackerPage() {
     const [username, setusername] = useState(null);
     const [selectedYears, setSelectedYears] = useState([]);
     const [isRestoring, setIsRestoring] = useState(true);
-    const restoredPage = window.location.state?.restoredPage;
+    const restoredPage = globalThis.location.state?.restoredPage;
     const [searchParams] = useSearchParams();
-const showAllCards = window.location.pathname === "/all-team-cards";
+const showAllCards = globalThis.location.pathname === "/all-team-cards";
 const [showMyTeamsOnly, setShowMyTeamsOnly] = useState(false);
 const [page, setPage] = useState(0);
 const pageSize = 18; // или 10, если хочешь другой размер
@@ -538,7 +538,7 @@ const options = {
                 return true;
             }
         } else if (parsed.scrollY !== undefined) {
-            window.scrollTo({
+            globalThis.scrollTo({
                 top: parsed.scrollY,
                 behavior: "auto"
             });
@@ -574,11 +574,11 @@ const options = {
         }
         
         // Обычный переход - сбрасываем наверх
-        window.scrollTo({
+        globalThis.scrollTo({
             top: 0,
             behavior: "auto"
         });
-    }, [window.location.pathname]);
+    }, [globalThis.location.pathname]);
 
     return (
         <div className="tracker-container">
@@ -793,7 +793,7 @@ const options = {
                         </div>
                     </div>
                     {(userRole === "ADMIN" || userRole === "SUPER_ADMIN") &&
-                        (window.location.pathname === "/all-team-cards" || window.location.pathname.startsWith("/team-cards")) ? (
+                        (globalThis.location.pathname === "/all-team-cards" || globalThis.location.pathname.startsWith("/team-cards")) ? (
                         <div className="switch-wrapper">
                             <div className="tooltip-wrapper">
                                 <label className="ios-switch">
@@ -836,15 +836,15 @@ const options = {
       "trackerPageState",
       JSON.stringify({
         page: page,
-        scrollY: window.scrollY,
+        scrollY: globalThis.scrollY,
         cardId: card.id
       })
     );
     navigate(`/teamcard/${card.id}`, {
       state: {
-        from: window.location.pathname,
+        from: globalThis.location.pathname,
         page: page,
-        returnScroll: window.scrollY,
+        returnScroll: globalThis.scrollY,
         returnCardId: card.id
       }
     });
@@ -855,15 +855,15 @@ const options = {
         "trackerPageState",
         JSON.stringify({
           page,
-          scrollY: window.scrollY,
+          scrollY: globalThis.scrollY,
           cardId: card.id
         })
       );
       navigate(`/teamcard/${card.id}`, {
         state: {
-          from: window.location.pathname,
+          from: globalThis.location.pathname,
           page: page,
-          returnScroll: window.scrollY,
+          returnScroll: globalThis.scrollY,
           returnCardId: card.id
         }
       });
@@ -969,7 +969,7 @@ const options = {
   state: {
     userId: card.userId,
     streamId: streamId,
-    from: window.location.pathname
+    from: globalThis.location.pathname
   }
 });
 

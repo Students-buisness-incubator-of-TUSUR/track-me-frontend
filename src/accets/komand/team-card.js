@@ -311,7 +311,7 @@ const checkNtiMarketsMatchWithStream = (streamId, marketIds) => {
           readinessLevel: prev.readinessLevel || found.readinessLevel,
           description: prev.description || found.description,
           meetingRoomLink: prev.meetingRoomLink || found.meetingRoomLink || "",
-          passive: teamData.passive || false,
+          passive: found.passive ?? false,
         }));
       }
     } catch (error) {

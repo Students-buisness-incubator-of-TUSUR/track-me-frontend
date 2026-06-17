@@ -53,6 +53,7 @@ export default function MeetingReportPage() {
   const [availableData, setAvailableData] = useState({ trackers: [], teams: [] });
   const [openMenu, setOpenMenu] = useState({ tracker: false, team: false, status: false });
   const [filters, setFilters] = useState({ tracker: null, team: null, status: null });
+  const [trackerSearchQuery, setTrackerSearchQuery] = useState("");
   const [sortConfig, setSortConfig] = useState({ 
     teamNameDir: "asc", 
     secondary: { field: "startDate", direction: "desc" } 
@@ -64,6 +65,7 @@ export default function MeetingReportPage() {
   const updateFilter = (key, value) => {
     setFilters(prev => ({ ...prev, [key]: value }));
     setOpenMenu({ tracker: false, team: false, status: false });
+    if (key === 'tracker') setTrackerSearchQuery("");
   };
 
   const toggleMenu = (key) => {
@@ -209,9 +211,19 @@ export default function MeetingReportPage() {
               ))}
             </Dropdown>
 
-            <Dropdown label={filters.tracker?.fullName || "Трекеры"} isOpen={openMenu.tracker} onToggle={() => toggleMenu('tracker')}>
+            <Dropdown label={filters.tracker?.fullName || "Трекеры"} className="mrep-dropdown--tracker" isOpen={openMenu.tracker} onToggle={() => toggleMenu('tracker')}>
+              <input
+                type="text"
+                placeholder="Поиск по имени или логину..."
+                className="mrep-dropdown-item mrep-search-input"
+                value={trackerSearchQuery}
+                onChange={(e) => setTrackerSearchQuery(e.target.value)}
+              />
               <button className="mrep-dropdown-item" onClick={() => updateFilter('tracker', null)}>— Все —</button>
-              {availableData.trackers.map(t => (
+              {availableData.trackers.filter(t => {
+                const q = trackerSearchQuery.toLowerCase();
+                return t.fullName.toLowerCase().includes(q) || t.username.toLowerCase().includes(q);
+              }).map(t => (
                 <button key={t.username} className="mrep-dropdown-item" onClick={() => updateFilter('tracker', t)}>{`${t.fullName} (@${t.username})`}</button>
               ))}
             </Dropdown>
@@ -250,9 +262,9 @@ export default function MeetingReportPage() {
   );
 }
 
-function Dropdown({ label, isOpen, onToggle, children }) {
+function Dropdown({ label, isOpen, onToggle, children, className = "" }) {
   return (
-    <div className="mrep-dropdown">
+    <div className={`mrep-dropdown ${className}`}>
       <button className={`mrep-dropdown-btn ${isOpen ? "open" : ""}`} onClick={onToggle}>
         {label}
         <img src={isOpen ? IconClose : IconOpen} alt="" className="mrep-dropdown-arrow" />

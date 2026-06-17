@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import PropTypes from "prop-types";
 import "./MeetingReportPage.css";
 
 import IconOpen from "./icon-open.png";
@@ -269,10 +270,18 @@ function Dropdown({ label, isOpen, onToggle, children, className = "" }) {
         {label}
         <img src={isOpen ? IconClose : IconOpen} alt="" className="mrep-dropdown-arrow" />
       </button>
-      {isOpen && <div className="mrep-dropdown-menu">{children}</div>}
+      {isOpen && <div className="mrep-dropdown-menu"><div className="mrep-dropdown-menu-inner">{children}</div></div>}
     </div>
   );
 }
+
+Dropdown.propTypes = {
+  label: PropTypes.string.isRequired,
+  isOpen: PropTypes.bool.isRequired,
+  onToggle: PropTypes.func.isRequired,
+  children: PropTypes.node,
+  className: PropTypes.string,
+};
 
 function SortableHeader({ title, dir, currentSort, field, onSort }) {
   const isActive = currentSort ? currentSort.field === field : true;
@@ -286,3 +295,14 @@ function SortableHeader({ title, dir, currentSort, field, onSort }) {
     </th>
   );
 }
+
+SortableHeader.propTypes = {
+  title: PropTypes.string.isRequired,
+  dir: PropTypes.string,
+  currentSort: PropTypes.shape({
+    field: PropTypes.string,
+    direction: PropTypes.string,
+  }),
+  field: PropTypes.string,
+  onSort: PropTypes.func.isRequired,
+};

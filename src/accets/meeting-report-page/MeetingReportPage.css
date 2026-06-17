@@ -88,12 +88,19 @@
   border: 2px solid #44069A;
   border-top: none;
   border-radius: 0 0 29px 29px;
-  max-height: 300px;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden;
   box-sizing: border-box;
   z-index: 20;
 }
+
+.mrep-dropdown-menu-inner {
+  max-height: 300px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.mrep-dropdown-menu-inner::-webkit-scrollbar { width: 4px; }
+.mrep-dropdown-menu-inner::-webkit-scrollbar-thumb { background: #843AEB; border-radius: 4px; }
 
 .mrep-dropdown-item {
   border: none;
@@ -120,8 +127,7 @@
 .mrep-dropdown-item:nth-child(even) { background-color: white; }
 .mrep-dropdown-item:hover { background: #ede9fe; }
 
-.mrep-dropdown-menu::-webkit-scrollbar { width: 4px; }
-.mrep-dropdown-menu::-webkit-scrollbar-thumb { background: #843AEB; border-radius: 4px; }
+
 
 .mrep-search-input {
   cursor: text;

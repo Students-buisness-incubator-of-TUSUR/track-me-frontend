@@ -493,7 +493,7 @@ const options = {
         if (userRole && username && streamName) {
             fetchCards(currentFilters, searchParams);
         }
-    }, [page]);
+    }, [page, userRole, username, streamName, fetchCards, searchParams, currentFilters]);
 
     return (
         <div className="tracker-container">

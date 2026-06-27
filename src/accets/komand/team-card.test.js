@@ -1021,12 +1021,15 @@ describe("Deactivate team card", () => {
 });
 
 describe("Close button navigation", () => {
-  it("calls navigate(-1) when close button is clicked", async () => {
+  it("navigates to /team-cards with restoredPage when close button is clicked", async () => {
     renderTeamCard();
     await waitForLoad();
     const closeBtn = document.querySelector(".team-card_close-button");
     fireEvent.click(closeBtn);
-    expect(mockNavigate).toHaveBeenCalledWith(-1);
+    expect(mockNavigate).toHaveBeenCalledWith(
+      "/team-cards",
+      { state: { restoredPage: 0 } }
+    );
   });
 });
 

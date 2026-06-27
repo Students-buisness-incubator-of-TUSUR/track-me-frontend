@@ -122,47 +122,33 @@ const [currentFilters, setCurrentFilters] = useState([]);
         label: `${index + 2016}`,
     }));
 
+    const getStreamFilter = () => {
+        if (userRole !== "ADMIN" && userRole !== "SUPER_ADMIN") return null;
+        if (showAllCards || !streamName) return null;
+        return { fieldName: "streams.name", type: "EQ", value: streamName };
+    };
+
+    const getUsernameFilter = (searchParams) => {
+        if (userRole === "TRACKER") return { fieldName: "username", type: "EQ", value: username };
+        if (userRole !== "ADMIN" && userRole !== "SUPER_ADMIN") return null;
+        const searchUsername = searchParams?.get("username");
+        if (searchUsername) return { fieldName: "username", type: "EQ", value: searchUsername };
+        if (showMyTeamsOnly) return { fieldName: "username", type: "EQ", value: username };
+        return null;
+    };
+
     const buildTeamCardFilters = useCallback((filters = [], searchParams) => {
         const allFilters = [...filters];
 
         if (searchQuery?.trim()) {
-                allFilters.push({
-                    fieldName: "name",
-                    type: "LIKE",
-                    value: searchQuery.trim(),
-                });
-            }
-
-        if (userRole === "ADMIN" || userRole === "SUPER_ADMIN") {
-            if (!showAllCards && streamName) {
-                allFilters.push({
-                    fieldName: "streams.name",
-                    type: "EQ",
-                    value: streamName,
-                });
-            }
-
-            const searchUsername = searchParams?.get("username");
-            if (searchUsername) {
-                allFilters.push({
-                    fieldName: "username",
-                    type: "EQ",
-                    value: searchUsername,
-                });
-            } else if (showMyTeamsOnly) {
-                allFilters.push({
-                    fieldName: "username",
-                    type: "EQ",
-                    value: username,
-                });
-            }
-        } else if (userRole === "TRACKER") {
-            allFilters.push({
-                fieldName: "username",
-                type: "EQ",
-                value: username,
-            });
+            allFilters.push({ fieldName: "name", type: "LIKE", value: searchQuery.trim() });
         }
+
+        const streamFilter = getStreamFilter();
+        if (streamFilter) allFilters.push(streamFilter);
+
+        const usernameFilter = getUsernameFilter(searchParams);
+        if (usernameFilter) allFilters.push(usernameFilter);
 
         return allFilters;
     }, [userRole, username, streamName, showAllCards, showMyTeamsOnly, searchQuery]);
@@ -748,10 +734,20 @@ const options = {
                 </div>
             )}
             <div className="cards-wrapper">
-                {error ? (
-                    <p className="error-message">{error}</p>
-                ) : filteredCards.length > 0 ? (
-                    visibleCards.map((card) => (
+                {(() => {
+                    if (error) return <p className="error-message">{error}</p>;
+                    if (filteredCards.length === 0) return <p>Ничего не найдено по запросу</p>;
+                    return visibleCards.map((card) => {
+                        let statusClass = "";
+                        let statusText = "Активно";
+                        if (!card.enabled) {
+                            statusClass = "inactive";
+                            statusText = "Завершено";
+                        } else if (card.passive) {
+                            statusClass = "passive";
+                            statusText = "Отчислена";
+                        }
+                        return (
                         <div 
   className="card" 
   key={card.id} 
@@ -785,8 +781,8 @@ const options = {
       className="stream-image"
     />
   </div>
-                            <span className={`status ${!card.enabled ? "inactive" : (card.passive ? "passive" : "")}`}>
-                                {!card.enabled ? "Завершено" : (card.passive ? "Отчислена" : "Активно")}
+                            <span className={`status ${statusClass}`}>
+                                {statusText}
                             </span>
 
                             <div className="card-content">
@@ -873,9 +869,7 @@ const options = {
                             )}
                         </div>
                     ))
-                ) : (
-                    <p>Ничего не найдено по запросу</p>
-                )}
+                })()}
             </div>
 
             {filteredCards.length > 0 && (

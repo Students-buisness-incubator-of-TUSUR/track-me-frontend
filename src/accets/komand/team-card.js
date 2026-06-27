@@ -505,7 +505,7 @@ const checkNtiMarketsMatchWithStream = (streamId, marketIds) => {
       .catch(err => handleApiError(err, "загрузке рынков НТИ"));
   }, []);
   useEffect(() => {
-    if (!teamData || !teamData.id || isEditing) return;
+    if (!teamData?.id || isEditing) return;
 
     setEditedData(prev => ({
       ...prev,
@@ -610,56 +610,63 @@ const checkNtiMarketsMatchWithStream = (streamId, marketIds) => {
     });
   };
 
+  const validateForm = () => {
+    if (!editedData.name?.trim() ||
+      !editedData.meetingRoomLink?.trim() ||
+      !editedData.description?.trim() ||
+      !editedData.ntiMarketIds ||
+      !editedData.readinessLevel ||
+      ((role === "ADMIN" || role === "SUPER_ADMIN") && !editedData.username)) {
+      return "Пожалуйста, заполните все обязательные поля";
+    }
+    return null;
+  };
+
+  const checkStreamMarkets = () => {
+    if (!selectedStreamId || !editedData.ntiMarketIds?.length) return true;
+    const hasMatch = checkNtiMarketsMatchWithStream(selectedStreamId, editedData.ntiMarketIds);
+    if (!hasMatch) {
+      setMeetingError("Хотя бы один рынок НТИ команды должен соответствовать рынкам НТИ акселерационного потока.");
+      setTimeout(() => setMeetingError(""), 5000);
+    }
+    return hasMatch;
+  };
+
   const handleSave = async () => {
     setIsLoading(true);
     setApiError(null);
 
     try {
-      // 1. Проверка заполненности
-      if (!editedData.name?.trim() ||
-        !editedData.meetingRoomLink?.trim() ||
-        !editedData.description?.trim() ||
-        !editedData.ntiMarketIds ||
-        !editedData.readinessLevel ||
-        ((role === "ADMIN" || role === "SUPER_ADMIN") && !editedData.username)) {
-        throw new Error("Пожалуйста, заполните все обязательные поля");
+      const validationError = validateForm();
+      if (validationError) throw new Error(validationError);
+
+      if (!checkStreamMarkets()) {
+        setIsLoading(false);
+        return;
       }
+
       let usernameToSend = editedData.username;
       if ((role === "ADMIN" || role === "SUPER_ADMIN") && trackers.length) {
         const sel = trackers.find(t => t.id === editedData.username);
-        if (sel && sel.username) {
+        if (sel?.username) {
           usernameToSend = sel.username;
         }
       }
 
-      // === НОВАЯ ПРОВЕРКА ===
-      if (selectedStreamId && editedData.ntiMarketIds?.length > 0) {
-        const hasMatch = checkNtiMarketsMatchWithStream(selectedStreamId, editedData.ntiMarketIds);
-        if (!hasMatch) {
-          setMeetingError("Хотя бы один рынок НТИ команды должен соответствовать рынкам НТИ акселерационного потока.");
-          setTimeout(() => setMeetingError(""), 5000);
-          setIsLoading(false);
-          return;
-        }
-      }
+      const isAdmin = role === "ADMIN" || role === "SUPER_ADMIN";
+      const baseEndpoint = isAdmin
+        ? `${backendHost}/api/v1/admin/team-card`
+        : `${backendHost}/api/v1/team-card`;
 
-      // 2. Выбираем endpoint
-      const baseEndpoint =
-        (role === "ADMIN" || role === "SUPER_ADMIN")
-          ? `${backendHost}/api/v1/admin/team-card`
-          : `${backendHost}/api/v1/team-card`;
-
-      // 2. Параметры запроса
       const params = new URLSearchParams();
       params.append("teamCardId", id);
       if (selectedStreamId != null) {
         params.append("streamId", selectedStreamId);
       }
-      if (role === "ADMIN" || role === "SUPER_ADMIN") {
+      if (isAdmin) {
         params.append("username", usernameToSend);
       }
 
-      // 4. Тело запроса
       const patchData = {
         name: editedData.name.trim(),
         meetingRoomLink: editedData.meetingRoomLink.trim(),
@@ -669,7 +676,6 @@ const checkNtiMarketsMatchWithStream = (streamId, marketIds) => {
         passive: editedData.passive,
       };
 
-      // 5. Отправка PATCH
       const response = await fetch(
         `${baseEndpoint}?${params.toString()}`,
         {

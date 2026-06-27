@@ -122,21 +122,6 @@ const [currentFilters, setCurrentFilters] = useState([]);
         label: `${index + 2016}`,
     }));
 
-    const getStreamFilter = () => {
-        if (userRole !== "ADMIN" && userRole !== "SUPER_ADMIN") return null;
-        if (showAllCards || !streamName) return null;
-        return { fieldName: "streams.name", type: "EQ", value: streamName };
-    };
-
-    const getUsernameFilter = (searchParams) => {
-        if (userRole === "TRACKER") return { fieldName: "username", type: "EQ", value: username };
-        if (userRole !== "ADMIN" && userRole !== "SUPER_ADMIN") return null;
-        const searchUsername = searchParams?.get("username");
-        if (searchUsername) return { fieldName: "username", type: "EQ", value: searchUsername };
-        if (showMyTeamsOnly) return { fieldName: "username", type: "EQ", value: username };
-        return null;
-    };
-
     const buildTeamCardFilters = useCallback((filters = [], searchParams) => {
         const allFilters = [...filters];
 
@@ -144,11 +129,19 @@ const [currentFilters, setCurrentFilters] = useState([]);
             allFilters.push({ fieldName: "name", type: "LIKE", value: searchQuery.trim() });
         }
 
-        const streamFilter = getStreamFilter();
-        if (streamFilter) allFilters.push(streamFilter);
-
-        const usernameFilter = getUsernameFilter(searchParams);
-        if (usernameFilter) allFilters.push(usernameFilter);
+        if (userRole === "ADMIN" || userRole === "SUPER_ADMIN") {
+            if (!showAllCards && streamName) {
+                allFilters.push({ fieldName: "streams.name", type: "EQ", value: streamName });
+            }
+            const searchUsername = searchParams?.get("username");
+            if (searchUsername) {
+                allFilters.push({ fieldName: "username", type: "EQ", value: searchUsername });
+            } else if (showMyTeamsOnly) {
+                allFilters.push({ fieldName: "username", type: "EQ", value: username });
+            }
+        } else if (userRole === "TRACKER") {
+            allFilters.push({ fieldName: "username", type: "EQ", value: username });
+        }
 
         return allFilters;
     }, [userRole, username, streamName, showAllCards, showMyTeamsOnly, searchQuery]);
@@ -386,6 +379,144 @@ const options = {
         if (page > 0) {
             setPage((prev) => prev - 1);
         }
+    };
+
+    const renderCardList = () => {
+        if (error) return <p className="error-message">{error}</p>;
+        if (filteredCards.length === 0) return <p>Ничего не найдено по запросу</p>;
+        return visibleCards.map((card) => {
+            let statusClass = "";
+            let statusText = "Активно";
+            if (!card.enabled) {
+                statusClass = "inactive";
+                statusText = "Завершено";
+            } else if (card.passive) {
+                statusClass = "passive";
+                statusText = "Отчислена";
+            }
+            return (
+                <div 
+  className="card" 
+  key={card.id} 
+  onClick={() => navigate(`/teamcard/${card.id}`)}
+  onKeyDown={(e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      navigate(`/teamcard/${card.id}`);
+    }
+  }}
+  tabIndex={0}
+  role="button"
+  aria-label={`Перейти к карточке команды ${card.name}`}
+>
+  <div className="card-image">
+    {card?.averageGrade !== undefined && card?.averageGrade !== null && (
+      <div className={`card-image-rating ${
+        card.averageGrade >= 0.51 ? 'rating-green' :
+        card.averageGrade >= 0.26 ? 'rating-yellow' :
+        'rating-red'
+      }`}>
+        {card.averageGrade.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+      </div>
+    )}
+    <img 
+      src={card.streams?.[0]?.id && streamImages[card.streams[0].id] ? streamImages[card.streams[0].id] : StreamPlaceholder}
+      alt=""
+      onError={(e) => {
+        e.target.src = StreamPlaceholder;
+        e.target.onerror = null;
+      }}
+      className="stream-image"
+    />
+  </div>
+                            <span className={`status ${statusClass}`}>
+                                {statusText}
+                            </span>
+
+                            <div className="card-content">
+                                <div className="text-container project-title">
+                                    <h3>{card.name}</h3>
+                                </div>
+                                <div className="text-container">
+  <div className={`project-description ${card._showFull ? "expanded" : ""}`}>
+    <p>{card.description}</p>
+  </div>
+
+  {card.description.length > 100 && (
+    <div
+  className="show-more-text"
+  onClick={(e) => {
+    e.stopPropagation();
+    setCards((prev) =>
+      prev.map((c) =>
+        c.id === card.id ? { ...c, _showFull: !c._showFull } : c
+      )
+    );
+  }}
+  onKeyDown={(e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      setCards((prev) =>
+        prev.map((c) =>
+          c.id === card.id ? { ...c, _showFull: !c._showFull } : c
+        )
+      );
+    }
+  }}
+  tabIndex={0}
+  role="button"
+  aria-label={card._showFull ? "Свернуть описание" : "Показать полное описание"}
+>
+  {card._showFull ? "Свернуть" : "Подробнее"}
+</div>
+  )}
+</div>
+
+
+
+                                <div className="under-cont">
+                                    <div className="text-container project-markets">
+                                        <p>
+  Рынки НТИ:{" "}
+  {card.ntiMarkets?.length > 0
+    ? card.ntiMarkets.map((market) => market.displayName).join(", ")
+    : "Неизвестны"}
+</p>
+
+
+                                    </div>
+                                    <div className="text-container project-trl">
+                                        <p>TRL: {card.readinessLevel || "Неизвестен"}</p>
+                                    </div>
+                                    <div className="text-container project-flow">
+                                        <p>
+  Поток: {card.streams?.[0]?.name || "Неизвестен"}: {card.streams?.[0]?.startDate || "?"} - {card.streams?.[0]?.endDate || "?"}
+</p>
+
+                                    </div>
+                                </div>
+                            </div>
+
+                            {!(userRole === "TRACKER" && card.passive) && (
+                                <button
+                                    className="edit-button"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        navigate(`/teamcard/${card.id}?userId=${card.userId}&edit=true`, {
+  state: {
+    userId: card.userId,
+    streamId: streamId,
+    from: location.pathname
+  }
+});
+
+                                    }}
+                                >
+                                    Редактировать
+                                </button>
+                            )}
+                        </div>
+            );
+        });
     };
 
     const handleSearchChange = (e) => {
@@ -733,143 +864,8 @@ const options = {
                     </div>
                 </div>
             )}
-            <div className="cards-wrapper">
-                {(() => {
-                    if (error) return <p className="error-message">{error}</p>;
-                    if (filteredCards.length === 0) return <p>Ничего не найдено по запросу</p>;
-                    return visibleCards.map((card) => {
-                        let statusClass = "";
-                        let statusText = "Активно";
-                        if (!card.enabled) {
-                            statusClass = "inactive";
-                            statusText = "Завершено";
-                        } else if (card.passive) {
-                            statusClass = "passive";
-                            statusText = "Отчислена";
-                        }
-                        return (
-                        <div 
-  className="card" 
-  key={card.id} 
-  onClick={() => navigate(`/teamcard/${card.id}`)}
-  onKeyDown={(e) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      navigate(`/teamcard/${card.id}`);
-    }
-  }}
-  tabIndex={0}
-  role="button"
-  aria-label={`Перейти к карточке команды ${card.name}`}
->
-  <div className="card-image">
-    {card?.averageGrade !== undefined && card?.averageGrade !== null && (
-      <div className={`card-image-rating ${
-        card.averageGrade >= 0.51 ? 'rating-green' :
-        card.averageGrade >= 0.26 ? 'rating-yellow' :
-        'rating-red'
-      }`}>
-        {card.averageGrade.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-      </div>
-    )}
-    <img 
-      src={card.streams?.[0]?.id && streamImages[card.streams[0].id] ? streamImages[card.streams[0].id] : StreamPlaceholder}
-      alt=""
-      onError={(e) => {
-        e.target.src = StreamPlaceholder;
-        e.target.onerror = null;
-      }}
-      className="stream-image"
-    />
-  </div>
-                            <span className={`status ${statusClass}`}>
-                                {statusText}
-                            </span>
-
-                            <div className="card-content">
-                                <div className="text-container project-title">
-                                    <h3>{card.name}</h3>
-                                </div>
-                                <div className="text-container">
-  <div className={`project-description ${card._showFull ? "expanded" : ""}`}>
-    <p>{card.description}</p>
-  </div>
-
-  {card.description.length > 100 && (
-    <div
-  className="show-more-text"
-  onClick={(e) => {
-    e.stopPropagation();
-    setCards((prev) =>
-      prev.map((c) =>
-        c.id === card.id ? { ...c, _showFull: !c._showFull } : c
-      )
-    );
-  }}
-  onKeyDown={(e) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault(); // Предотвращаем прокрутку страницы при нажатии пробела
-      setCards((prev) =>
-        prev.map((c) =>
-          c.id === card.id ? { ...c, _showFull: !c._showFull } : c
-        )
-      );
-    }
-  }}
-  tabIndex={0} // Делаем элемент фокусируемым
-  role="button" // Указываем роль кнопки для семантики
-  aria-label={card._showFull ? "Свернуть описание" : "Показать полное описание"} // Улучшаем доступность
->
-  {card._showFull ? "Свернуть" : "Подробнее"}
-</div>
-  )}
-</div>
-
-
-
-                                <div className="under-cont">
-                                    <div className="text-container project-markets">
-                                        <p>
-  Рынки НТИ:{" "}
-  {card.ntiMarkets?.length > 0
-    ? card.ntiMarkets.map((market) => market.displayName).join(", ")
-    : "Неизвестны"}
-</p>
-
-
-                                    </div>
-                                    <div className="text-container project-trl">
-                                        <p>TRL: {card.readinessLevel || "Неизвестен"}</p>
-                                    </div>
-                                    <div className="text-container project-flow">
-                                        <p>
-  Поток: {card.streams?.[0]?.name || "Неизвестен"}: {card.streams?.[0]?.startDate || "?"} - {card.streams?.[0]?.endDate || "?"}
-</p>
-
-                                    </div>
-                                </div>
-                            </div>
-
-                            {!(userRole === "TRACKER" && card.passive) && (
-                                <button
-                                    className="edit-button"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        navigate(`/teamcard/${card.id}?userId=${card.userId}&edit=true`, {
-  state: {
-    userId: card.userId,
-    streamId: streamId,
-    from: location.pathname
-  }
-});
-
-                                    }}
-                                >
-                                    Редактировать
-                                </button>
-                            )}
-                        </div>
-                    ))
-                })()}
+<div className="cards-wrapper">
+                {renderCardList()}
             </div>
 
             {filteredCards.length > 0 && (

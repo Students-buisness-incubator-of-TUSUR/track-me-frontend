@@ -225,9 +225,13 @@
     text-align: center;
   }
 
-  .status.inactive {
-    background-color: #999999;
-  }
+.status.inactive {
+  background-color: #999999;
+}
+
+.status.passive {
+  background-color: #e53935;
+}
 
 .card-image-rating {
     position: absolute;

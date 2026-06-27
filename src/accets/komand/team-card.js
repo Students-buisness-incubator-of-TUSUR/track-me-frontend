@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import "./team-card.css";
 import MeetingCreate from "../meeting-card/MeetingCreate.js";
@@ -88,7 +88,7 @@ const [isTrackerDropdownOpen, setIsTrackerDropdownOpen] = useState(false);
   const [newMeetingDate, setNewMeetingDate] = useState('');
   const [meetingError, setMeetingError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [apiError, setApiError] = useState(null); // eslint-disable-line no-unused-vars
+  const [apiError, setApiError] = useState(null);
   const [maxMeetingsCount, setMaxMeetingsCount] = useState(0);
   const trlLevels = useMemo(() => [
     { id: 1, label: "0-2" },
@@ -99,6 +99,10 @@ const [isTrackerDropdownOpen, setIsTrackerDropdownOpen] = useState(false);
   const [streamInfo, setStreamInfo] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [meetingToDelete, setMeetingToDelete] = useState(null);
+  const isEditingRef = useRef(isEditing);
+  useEffect(() => {
+    isEditingRef.current = isEditing;
+  }, [isEditing]);
   const canEdit = isEditing && (
         (role === "TRACKER" && !teamData.passive) ||  // Трекер не может редактировать пассивную команду
         (role !== "TRACKER")                          // Админ может всегда
@@ -338,13 +342,17 @@ const checkNtiMarketsMatchWithStream = (streamId, marketIds) => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         loadMeetings();
-        loadTeamCard();
+        if (!isEditingRef.current) {
+          loadTeamCard();
+        }
       }
     };
 
     const handlePopState = () => {
       loadMeetings();
-      loadTeamCard();
+      if (!isEditingRef.current) {
+        loadTeamCard();
+      }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -360,14 +368,18 @@ const checkNtiMarketsMatchWithStream = (streamId, marketIds) => {
     const refreshParam = query.get("refresh");
     if (refreshParam) {
       loadMeetings();
-      loadTeamCard();
+      if (!isEditingRef.current) {
+        loadTeamCard();
+      }
     }
   }, [location.search, loadMeetings, loadTeamCard, query]);
 
   useEffect(() => {
     const interval = setInterval(() => {
       loadMeetings();
-      loadTeamCard();
+      if (!isEditingRef.current) {
+        loadTeamCard();
+      }
     }, 30000);
 
     return () => clearInterval(interval);
@@ -493,7 +505,7 @@ const checkNtiMarketsMatchWithStream = (streamId, marketIds) => {
       .catch(err => handleApiError(err, "загрузке рынков НТИ"));
   }, []);
   useEffect(() => {
-    if (!teamData || !teamData.id) return;
+    if (!teamData || !teamData.id || isEditing) return;
 
     setEditedData(prev => ({
       ...prev,
@@ -503,7 +515,7 @@ const checkNtiMarketsMatchWithStream = (streamId, marketIds) => {
       meetingRoomLink: teamData.meetingRoomLink || prev.meetingRoomLink || "",
       passive: teamData.passive || false,
     }));
-  }, [teamData]);
+  }, [teamData, isEditing]);
 
   useEffect(() => {
     if (!selectedStreamId && streamInfo?.id) {
@@ -640,7 +652,9 @@ const checkNtiMarketsMatchWithStream = (streamId, marketIds) => {
       // 2. Параметры запроса
       const params = new URLSearchParams();
       params.append("teamCardId", id);
-      params.append("streamId", selectedStreamId);
+      if (selectedStreamId != null) {
+        params.append("streamId", selectedStreamId);
+      }
       if (role === "ADMIN" || role === "SUPER_ADMIN") {
         params.append("username", usernameToSend);
       }
@@ -672,8 +686,8 @@ const checkNtiMarketsMatchWithStream = (streamId, marketIds) => {
       }
 
       const updated = await response.json();
-      setTeamData(updated);
-      setEditedData(updated);
+      setTeamData({ ...updated, passive: editedData.passive ?? false });
+      setEditedData({ ...updated, passive: editedData.passive ?? false });
       setOriginalData(null);
       setIsEditing(false);
 
@@ -854,6 +868,11 @@ const checkNtiMarketsMatchWithStream = (streamId, marketIds) => {
   return (
     <>
       <Header userRole={role} />
+      {apiError && (
+        <div className="team-card_error-message" data-testid="api-error">
+          {apiError}
+        </div>
+      )}
       {meetingError && (
         <div className="team-card_error-message" data-testid="meeting-error">
           {meetingError}
@@ -913,6 +932,34 @@ const checkNtiMarketsMatchWithStream = (streamId, marketIds) => {
       <div className="team-card_main">
         <div className="team-card_container">
           <div className="team-card_header">
+            <button
+              onClick={() => navigate(-1)}
+              className="team-card_close-button"
+            >
+              <CloseIcon />
+            </button>
+            {teamData.passive && !isEditing && role === "TRACKER" ? (
+              <div className="team-card_tooltip-wrapper">
+                <span className="team-card_passive-badge">Отчислена</span>
+                <span className="team-card_tooltip-text">Карточку отчисленной команды нельзя редактировать</span>
+              </div>
+            ) : (
+              <button
+                onClick={isEditing ? handleSave : () => { setOriginalData({...editedData}); setIsEditing(true); }}
+                className="team-card_etc-button"
+              >
+                {isLoading ? "Сохранение..." : (isEditing ? "Сохранить" : "Редактировать")}
+              </button>
+            )}
+            {[adminRoleName, superadminRoleName].includes(role) && isEditing && (
+              <button
+                type="button"
+                className={`team-card_passive-toggle ${editedData.passive ? 'team-card_passive-toggle-return' : 'team-card_passive-toggle-expel'}`}
+                onClick={() => setEditedData(prev => ({ ...prev, passive: !prev.passive }))}
+              >
+                {editedData.passive ? 'Вернуть' : 'Отчислить'}
+              </button>
+            )}
             {teamData.averageGrade !== undefined && teamData.averageGrade !== null && (
               <div
                 className={`team-card_team-rating ${teamData.averageGrade >= 0.51 ? 'team-card_rating-green' :
@@ -923,18 +970,9 @@ const checkNtiMarketsMatchWithStream = (streamId, marketIds) => {
                 {teamData.averageGrade.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
             )}
-            <button
-              onClick={() => navigate(-1)}
-              className="team-card_close-button"
-            >
-              <CloseIcon />
-            </button>
-            <button
-              onClick={isEditing ? handleSave : () => { setOriginalData({...editedData}); setIsEditing(true); }}
-              className="team-card_etc-button"
-            >
-              {isLoading ? "Сохранение..." : (isEditing ? "Сохранить" : "Редактировать")}
-            </button>
+            {teamData.passive && !isEditing && role !== "TRACKER" && (
+              <span className="team-card_passive-badge">Отчислена</span>
+            )}
           </div>
           <div className="team-card_row">
             <div className="team-card_fields">
@@ -1125,19 +1163,6 @@ const checkNtiMarketsMatchWithStream = (streamId, marketIds) => {
                 </div>
               )}
               {[adminRoleName, superadminRoleName].includes(role) && isEditing && (
-                                <div className="team-card_field">
-                                    <p>Пассивный статус:</p>
-                                    <label className="team-card_checkbox-label">
-                                        <input
-                                            type="checkbox"
-                                            checked={editedData.passive === true}
-                                            onChange={(e) => setEditedData(prev => ({ ...prev, passive: e.target.checked }))}
-                                        />
-                                        Команда в пассиве (неактивна)
-                                    </label>
-                                </div>
-              )}
-              {[adminRoleName, superadminRoleName].includes(role) && isEditing && (
                 <div className="team-card_field" data-testid="stream-field">
                   <p>Поток:</p>
                   <CheckBox
@@ -1255,7 +1280,7 @@ const checkNtiMarketsMatchWithStream = (streamId, marketIds) => {
                 onClick={() => {
                 // Админ может создавать встречи для пассивной команды
                 if (teamData.passive && role !== "ADMIN" && role !== "SUPER_ADMIN") {
-                    setMeetingError("Нельзя создавать встречи для пассивной команды");
+                    setMeetingError("Нельзя создавать встречи для отчисленной команды");
                     setTimeout(() => setMeetingError(""), 3000);
                     return;
                 }

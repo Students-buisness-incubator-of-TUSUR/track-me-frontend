@@ -166,6 +166,7 @@ const TEAM_CARD = {
   ntiMarkets: [{ id: 1, displayName: "Аэронет" }],
   ntiMarketIds: [1],
   streams: [STREAM],
+  passive: false,
 };
 
 const MEETINGS = [
@@ -2554,6 +2555,125 @@ describe('Unit tests for uncovered functions', () => {
     renderTeamCard({ role: 'ADMIN' });
     await waitFor(() => {
       expect(screen.getByTestId('header')).toBeInTheDocument();
+    });
+  });
+});
+
+describe('Passive team (expelled) UI', () => {
+  it('shows "Отчислена" badge for TRACKER viewing passive team, no edit button', async () => {
+    renderTeamCard({
+      role: 'TRACKER',
+      fetchOverrides: { teamCard: { ...TEAM_CARD, passive: true } },
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('inputbox-name')).toHaveValue('Команда Икс');
+    });
+    const badge = screen.getByText('Отчислена');
+    expect(badge).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /редактировать/i })).not.toBeInTheDocument();
+  });
+
+  it('shows tooltip on badge hover for TRACKER', async () => {
+    renderTeamCard({
+      role: 'TRACKER',
+      fetchOverrides: { teamCard: { ...TEAM_CARD, passive: true } },
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('inputbox-name')).toHaveValue('Команда Икс');
+    });
+    const badge = screen.getByText('Отчислена');
+    expect(badge).toBeInTheDocument();
+    const wrapper = badge.closest('.team-card_tooltip-wrapper');
+    expect(wrapper).toBeInTheDocument();
+    const tooltip = wrapper.querySelector('.team-card_tooltip-text');
+    expect(tooltip).toHaveTextContent('Карточку отчисленной команды нельзя редактировать');
+  });
+
+  it('shows "Отчислена" badge AND edit button for ADMIN viewing passive team', async () => {
+    renderTeamCard({
+      role: 'ADMIN',
+      fetchOverrides: { teamCard: { ...TEAM_CARD, passive: true } },
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('inputbox-name')).toHaveValue('Команда Икс');
+    });
+    expect(screen.getByText('Отчислена')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /редактировать/i })).toBeInTheDocument();
+  });
+
+  it('does not show badge for active team', async () => {
+    renderTeamCard({ role: 'TRACKER' });
+    await waitFor(() => {
+      expect(screen.getByTestId('inputbox-name')).toHaveValue('Команда Икс');
+    });
+    expect(screen.queryByText('Отчислена')).not.toBeInTheDocument();
+  });
+
+  it('shows "Вернуть" toggle button for ADMIN editing passive team', async () => {
+    renderTeamCard({
+      role: 'ADMIN',
+      fetchOverrides: { teamCard: { ...TEAM_CARD, passive: true } },
+    });
+    await waitForLoad();
+    fireEvent.click(screen.getByRole('button', { name: /редактировать/i }));
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /вернуть/i })).toBeInTheDocument();
+    });
+  });
+
+  it('sends passive flag in PATCH request on save', async () => {
+    renderTeamCard({
+      role: 'ADMIN',
+      fetchOverrides: { teamCard: { ...TEAM_CARD, passive: true } },
+    });
+    await enterEditMode();
+    const returnBtn = screen.getByRole('button', { name: /вернуть/i });
+    fireEvent.click(returnBtn);
+    fireEvent.click(screen.getByRole('button', { name: /сохранить/i }));
+    await waitFor(() => {
+      const patchCall = global.fetch.mock.calls.find(
+        ([url, opts]) => opts?.method === 'PATCH' && (url.includes('/api/v1/admin/team-card') || url.includes('/api/v1/team-card'))
+      );
+      expect(patchCall).toBeTruthy();
+      const body = JSON.parse(patchCall[1].body);
+      expect(body).toHaveProperty('passive', false);
+    });
+  });
+
+  it('sends passive: true when expelling team', async () => {
+    renderTeamCard({ role: 'ADMIN' });
+    await enterEditMode();
+    const expelBtn = screen.getByRole('button', { name: /отчислить/i });
+    fireEvent.click(expelBtn);
+    fireEvent.click(screen.getByRole('button', { name: /сохранить/i }));
+    await waitFor(() => {
+      const patchCall = global.fetch.mock.calls.find(
+        ([url, opts]) => opts?.method === 'PATCH' && (url.includes('/api/v1/admin/team-card') || url.includes('/api/v1/team-card'))
+      );
+      expect(patchCall).toBeTruthy();
+      const body = JSON.parse(patchCall[1].body);
+      expect(body).toHaveProperty('passive', true);
+    });
+  });
+
+  it('shows no passive checkbox in edit form', async () => {
+    renderTeamCard({ role: 'ADMIN' });
+    await enterEditMode();
+    expect(screen.queryByText(/пассивн/i)).not.toBeInTheDocument();
+  });
+
+  it('shows meeting creation error for expelled team', async () => {
+    renderTeamCard({
+      role: 'TRACKER',
+      fetchOverrides: { teamCard: { ...TEAM_CARD, passive: true } },
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('inputbox-name')).toHaveValue('Команда Икс');
+    });
+    const scheduleBtn = screen.getByRole('button', { name: /запланировать/i });
+    fireEvent.click(scheduleBtn);
+    await waitFor(() => {
+      expect(screen.getByTestId('meeting-error')).toHaveTextContent(/отчисленной/i);
     });
   });
 });

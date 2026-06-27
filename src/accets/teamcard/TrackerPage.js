@@ -198,7 +198,17 @@ const [currentFilters, setCurrentFilters] = useState([]);
         .then((data) => {
             if (data?.content) {
                 const cardsArray = Array.isArray(data.content) ? data.content : [];
-                setCards(cardsArray.map(card => ({ ...card, _showFull: false })));
+                const sortedCards = cardsArray
+                    .map(card => ({ ...card, _showFull: false }))
+                    .sort((a, b) => {
+                        if (a.passive && !b.passive) return 1;
+                        if (!a.passive && b.passive) return -1;
+                        const gradeA = a.averageGrade ?? 0;
+                        const gradeB = b.averageGrade ?? 0;
+                        if (gradeB !== gradeA) return gradeB - gradeA;
+                        return (a.name || '').localeCompare(b.name || '');
+                    });
+                setCards(sortedCards);
                 setTotalPages(data?.page?.totalPages || 1);
             }
         })
@@ -775,8 +785,8 @@ const options = {
       className="stream-image"
     />
   </div>
-                            <span className={`status ${!card.enabled ? "inactive" : ""}`}>
-                                {card.enabled ? "Активно" : "Завершено"}
+                            <span className={`status ${!card.enabled ? "inactive" : (card.passive ? "passive" : "")}`}>
+                                {!card.enabled ? "Завершено" : (card.passive ? "Отчислена" : "Активно")}
                             </span>
 
                             <div className="card-content">
@@ -843,11 +853,12 @@ const options = {
                                 </div>
                             </div>
 
-                            <button
-                                className="edit-button"
-                                onClick={(e) => {
-                                    e.stopPropagation(); // чтобы не срабатывал переход по карточке
-                                    navigate(`/teamcard/${card.id}?userId=${card.userId}&edit=true`, {
+                            {!(userRole === "TRACKER" && card.passive) && (
+                                <button
+                                    className="edit-button"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        navigate(`/teamcard/${card.id}?userId=${card.userId}&edit=true`, {
   state: {
     userId: card.userId,
     streamId: streamId,
@@ -855,10 +866,11 @@ const options = {
   }
 });
 
-                                }}
-                            >
-                                Редактировать
-                            </button>
+                                    }}
+                                >
+                                    Редактировать
+                                </button>
+                            )}
                         </div>
                     ))
                 ) : (

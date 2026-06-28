@@ -120,9 +120,8 @@ const [currentFilters, setCurrentFilters] = useState([]);
     
     if (savedState) {
         const parsed = JSON.parse(savedState);
-        if (parsed.page !== undefined && parsed.page !== page) {
+        if (parsed.page !== undefined) {
             setPage(parsed.page);
-            // Не очищаем sessionStorage здесь, он понадобится для прокрутки
         }
     }
     
@@ -724,7 +723,7 @@ const options = {
             top: 0,
             behavior: "auto"
         });
-    }, [globalThis.location.pathname]);
+    }, []);
 
     return (
         <div className="tracker-container">

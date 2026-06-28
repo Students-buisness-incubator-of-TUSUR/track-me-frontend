@@ -1,6 +1,7 @@
+/* global globalThis */
 import {useCallback, useEffect, useState} from "react";
 import "./TrackerPage.css";
-import { useLocation, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import {useNavigate} from "react-router-dom";
 import StreamPlaceholder from './Заглушка для потока в TrackMe.png';
 import { getCsrfConfigForFetch } from "../../utils/csrf-utils";
@@ -23,9 +24,10 @@ function TrackerPage() {
     const [userRole, setUserRole] = useState(null);
     const [username, setusername] = useState(null);
     const [selectedYears, setSelectedYears] = useState([]);
-    const location = useLocation();
+    const [isRestoring, setIsRestoring] = useState(true);
+    const restoredPage = globalThis.location.state?.restoredPage;
     const [searchParams] = useSearchParams();
-const showAllCards = location.pathname === "/all-team-cards";
+const showAllCards = globalThis.location.pathname === "/all-team-cards";
 const [showMyTeamsOnly, setShowMyTeamsOnly] = useState(false);
 const [page, setPage] = useState(0);
 const pageSize = 18; // или 10, если хочешь другой размер
@@ -113,7 +115,19 @@ const [currentFilters, setCurrentFilters] = useState([]);
         setusername(user.username);
     }, [user]);
 
+    useEffect(() => {
+    const savedState = sessionStorage.getItem("trackerPageState");
     
+    if (savedState) {
+        const parsed = JSON.parse(savedState);
+        if (parsed.page !== undefined && parsed.page !== page) {
+            setPage(parsed.page);
+            // Не очищаем sessionStorage здесь, он понадобится для прокрутки
+        }
+    }
+    
+    setIsRestoring(false);
+}, []);
     
 
     // Данные для чекбоксов "год"
@@ -402,14 +416,34 @@ const options = {
                 statusClass = "passive";
                 statusText = "Отчислена";
             }
+            const navigateToCard = () => {
+                sessionStorage.setItem(
+                    "trackerPageState",
+                    JSON.stringify({
+                        page: page,
+                        scrollY: globalThis.scrollY,
+                        cardId: card.id
+                    })
+                );
+                navigate(`/teamcard/${card.id}`, {
+                    state: {
+                        from: globalThis.location.pathname,
+                        page: page,
+                        returnScroll: globalThis.scrollY,
+                        returnCardId: card.id
+                    }
+                });
+            };
+
             return (
                 <div 
   className="card" 
   key={card.id} 
-  onClick={() => navigate(`/teamcard/${card.id}`)}
+  data-card-id={card.id}
+  onClick={navigateToCard}
   onKeyDown={(e) => {
     if (e.key === 'Enter' || e.key === ' ') {
-      navigate(`/teamcard/${card.id}`);
+      navigateToCard();
     }
   }}
   tabIndex={0}
@@ -496,24 +530,22 @@ const options = {
                                 </div>
                             </div>
 
-                            {!(userRole === "TRACKER" && card.passive) && (
-                                <button
-                                    className="edit-button"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        navigate(`/teamcard/${card.id}?userId=${card.userId}&edit=true`, {
+                            <button
+                                className="edit-button"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(`/teamcard/${card.id}?userId=${card.userId}&edit=true`, {
   state: {
     userId: card.userId,
     streamId: streamId,
-    from: location.pathname
+    from: globalThis.location.pathname
   }
 });
 
-                                    }}
-                                >
-                                    Редактировать
-                                </button>
-                            )}
+                                }}
+                            >
+                                Редактировать
+                            </button>
                         </div>
             );
         });
@@ -597,10 +629,20 @@ const options = {
 
     };
     useEffect(() => {
+        if (restoredPage !== undefined && restoredPage !== null) {
+            setPage(restoredPage);
+        }
+    }, [restoredPage]);
+    
+    useEffect(() => {
+
+    if (isRestoring) return;
+
     if (userRole && username && streamName) {
-        fetchCards([], searchParams);
+        fetchCards(currentFilters, searchParams);
     }
-}, [userRole, username, streamName, fetchCards, searchParams]);
+
+}, [userRole, username, streamName, page, fetchCards, searchParams, currentFilters, isRestoring]);
 
     useEffect(() => {
     const handleVisibilityChange = () => {
@@ -615,12 +657,74 @@ const options = {
         document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
 }, [userRole, username, streamName, fetchCards, searchParams]);
-    // Добавить этот useEffect для перезагрузки карточек при изменении страницы
+    
     useEffect(() => {
-        if (userRole && username && streamName) {
-            fetchCards(currentFilters, searchParams);
+    const savedState = sessionStorage.getItem("trackerPageState");
+    
+    if (!savedState) return;
+    
+    const parsed = JSON.parse(savedState);
+    
+    // Проверяем, что мы на правильной странице
+    if (page !== parsed.page) {
+        return;
+    }
+    
+    if (cards.length === 0) return;
+    
+    const findAndScroll = () => {
+        if (parsed.cardId) {
+            const cardElement = document.querySelector(`[data-card-id="${parsed.cardId}"]`);
+            if (cardElement) {
+                cardElement.scrollIntoView({
+                    behavior: "auto",
+                    block: "center"
+                });
+                sessionStorage.removeItem("trackerPageState");
+                return true;
+            }
+        } else if (parsed.scrollY !== undefined) {
+            globalThis.scrollTo({
+                top: parsed.scrollY,
+                behavior: "auto"
+            });
+            sessionStorage.removeItem("trackerPageState");
+            return true;
         }
-    }, [page, userRole, username, streamName, fetchCards, searchParams, currentFilters]);
+        return false;
+    };
+    
+    if (findAndScroll()) return;
+    
+    let attempts = 0;
+    const interval = setInterval(() => {
+        attempts++;
+        if (findAndScroll() || attempts > 30) {
+            clearInterval(interval);
+        }
+    }, 100);
+    
+    return () => clearInterval(interval);
+}, [cards, page]);
+
+    // Сброс прокрутки при обычной навигации
+    useEffect(() => {
+        const savedState = sessionStorage.getItem("trackerPageState");
+        
+        // Если есть сохраненное состояние с cardId - это возврат из карточки
+        if (savedState) {
+            const parsed = JSON.parse(savedState);
+            if (parsed.cardId) {
+                return; // Не сбрасываем
+            }
+        }
+        
+        // Обычный переход - сбрасываем наверх
+        globalThis.scrollTo({
+            top: 0,
+            behavior: "auto"
+        });
+    }, [globalThis.location.pathname]);
 
     return (
         <div className="tracker-container">
@@ -835,7 +939,7 @@ const options = {
                         </div>
                     </div>
                     {(userRole === "ADMIN" || userRole === "SUPER_ADMIN") &&
-                        (location.pathname === "/all-team-cards" || location.pathname.startsWith("/team-cards")) ? (
+                        (globalThis.location.pathname === "/all-team-cards" || globalThis.location.pathname.startsWith("/team-cards")) ? (
                         <div className="switch-wrapper">
                             <div className="tooltip-wrapper">
                                 <label className="ios-switch">

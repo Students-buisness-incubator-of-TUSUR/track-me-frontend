@@ -384,6 +384,14 @@ const options = {
     const renderCardList = () => {
         if (error) return <p className="error-message">{error}</p>;
         if (filteredCards.length === 0) return <p>Ничего не найдено по запросу</p>;
+        const toggleDescription = (cardId) => {
+            setCards((prev) =>
+                prev.map((c) =>
+                    c.id === cardId ? { ...c, _showFull: !c._showFull } : c
+                )
+            );
+        };
+
         return visibleCards.map((card) => {
             let statusClass = "";
             let statusText = "Активно";
@@ -446,20 +454,12 @@ const options = {
   className="show-more-text"
   onClick={(e) => {
     e.stopPropagation();
-    setCards((prev) =>
-      prev.map((c) =>
-        c.id === card.id ? { ...c, _showFull: !c._showFull } : c
-      )
-    );
+    toggleDescription(card.id);
   }}
   onKeyDown={(e) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
-      setCards((prev) =>
-        prev.map((c) =>
-          c.id === card.id ? { ...c, _showFull: !c._showFull } : c
-        )
-      );
+      toggleDescription(card.id);
     }
   }}
   tabIndex={0}

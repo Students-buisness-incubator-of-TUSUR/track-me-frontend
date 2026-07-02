@@ -1802,9 +1802,6 @@ select.team-input-widget option {
         min-height: 48px;
         padding-bottom: 8px;
         gap: 8px;
-    }
-
-    .team-card_header {
         padding-left: 168px;
     }
 

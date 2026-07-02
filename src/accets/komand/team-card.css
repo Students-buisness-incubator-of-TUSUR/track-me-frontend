@@ -1603,6 +1603,8 @@ select.team-input-widget option {
     font-weight: 600;
     white-space: nowrap;
     cursor: default;
+    height: 35px;
+    line-height: 35px;
 }
 
 .team-card_tooltip-wrapper {
@@ -1795,7 +1797,21 @@ select.team-input-widget option {
     }
 
     .team-card_header {
+        flex-wrap: wrap;
+        height: auto;
+        min-height: 48px;
+        padding-bottom: 8px;
         gap: 8px;
+    }
+
+    .team-card_header {
+        padding-left: 168px;
+    }
+
+    .team-card_etc-button,
+    .team-card_passive-toggle,
+    .team-card_passive-badge {
+        flex-shrink: 0;
     }
 
     .team-card_stream-container {
@@ -1837,12 +1853,89 @@ select.team-input-widget option {
     }
 }
 
-@media (max-width: 480px) {
+@media only screen and (max-width: 600px) {
     .team-card_header {
-        flex-wrap: wrap;
+        display: grid;
+        grid-template-columns: 1fr auto auto;
+        grid-template-rows: auto auto;
+        gap: 8px;
         height: auto;
         min-height: 48px;
-        padding-bottom: 8px;
+        padding: 0px 20px 8px 168px;
+        align-items: start;
+    }
+
+    .team-card_etc-button {
+        grid-column: 2;
+        grid-row: 1;
+        min-width: 140px;
+        text-align: center;
+        justify-content: center;
+    }
+
+    .team-card_close-button {
+        grid-column: 3;
+        grid-row: 1;
+    }
+
+    .team-card_passive-toggle {
+        grid-column: 2;
+        grid-row: 2;
+    }
+
+    .team-card_passive-badge {
+        grid-column: 2;
+        grid-row: 2;
+    }
+
+    .team-card_tooltip-wrapper {
+        grid-column: 2;
+        grid-row: 1;
+        display: flex;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .team-card_header {
+        display: grid;
+        grid-template-columns: 1fr auto auto;
+        grid-template-rows: auto auto;
+        gap: 8px;
+        height: auto;
+        min-height: 48px;
+        padding: 0px 20px 8px 168px;
+        align-items: start;
+    }
+
+    .team-card_etc-button {
+        grid-column: 2;
+        grid-row: 1;
+        min-width: 130px;
+        text-align: center;
+        justify-content: center;
+    }
+
+    .team-card_close-button {
+        grid-column: 3;
+        grid-row: 1;
+    }
+
+    .team-card_passive-toggle {
+        grid-column: 2;
+        grid-row: 2;
+    }
+
+    .team-card_passive-badge {
+        grid-column: 2;
+        grid-row: 2;
+    }
+
+    .team-card_tooltip-wrapper {
+        grid-column: 2;
+        grid-row: 1;
+        display: flex;
+        justify-content: center;
     }
 
     .team-card_meetings-container {

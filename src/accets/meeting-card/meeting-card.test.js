@@ -3501,13 +3501,12 @@ describe('Super admin meeting status select', () => {
         </MemoryRouter>
       </Provider>
     );
-    //await waitFor(() => expect(screen.getByText(/Встреча 8/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/Встреча 8/i)).toBeInTheDocument());
     
-    //const completedButton = screen.getByRole('button', { name: /Состоялась/i });
-    //const notHappenedButton = screen.getByRole('button', { name: /Не состоялась/i });
-   // expect(completedButton).toBeDisabled();
-   // expect(notHappenedButton).toBeDisabled();u
-   //y
+    const completedButton = screen.getByTestId('complete-meeting-btn');
+    const notHappenedButton = screen.getByRole('button', { name: 'Не состоялась' });
+    expect(completedButton).toBeDisabled();
+    expect(notHappenedButton).toBeDisabled();
   });
 });
 

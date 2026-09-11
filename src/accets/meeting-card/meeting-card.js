@@ -76,6 +76,14 @@ const MeetingCard = () => {
                     <textarea
                         name={name}
                         value={value || ''}
+                        ref={(el) => {
+                            /* Авто-высота при монтировании: без этого поле рендерится
+                               в min-height и «раздувается» только по клику */
+                            if (el) {
+                                el.style.height = 'auto';
+                                el.style.height = el.scrollHeight + 'px';
+                            }
+                        }}
                         onChange={(e) => {
                             handleChange(e);
                             e.target.style.height = 'auto';

@@ -491,20 +491,53 @@
 }
 
 .unique-task {
+    box-sizing: border-box;     /* padding входит в width:100% — блок не распирает контейнер */
     line-height: 1.2;
     background: white;
     min-height: 45px;
+    max-height: 260px;          /* больше контента видно, но страницу не растягивает */
     padding: 20px 30px;
     border-radius: 70px;
     font-size: 20px;
     width: 100%;
-    display: block;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;           /* обрезает контент (и скролл) по скруглённой границе pill */
     
     /* Вместо word-break: break-all; используйте: */
     word-wrap: break-word;      /* переносит длинные слова только при необходимости */
     word-break: normal;         /* обычный перенос по слогам/пробелам */
     overflow-wrap: break-word;  /* современный стандарт для переноса */
-    white-space: normal;        /* уже есть, нормальный перенос по пробелам */
+    white-space: pre-wrap;      /* сохраняет переносы строк (\n) и пробелы */
+}
+
+/* Внутренний скроллер — живёт на padding-зоне, не у внешних краёв pill,
+   поэтому его скролл не вылезает за скругление и не заходит на текст */
+.unique-task-scroll {
+    flex: 1 1 auto;
+    min-height: 0;              /* разрешает сжатие во flex-контейнере, иначе скролл не включится */
+    overflow-y: auto;
+
+    /* Кастомный скролл по стилю проекта (фиолетовый #8338EB) */
+    scrollbar-width: thin;      /* Firefox */
+    scrollbar-color: #8338EB transparent;
+}
+
+.unique-task-scroll::-webkit-scrollbar {
+    width: 6px;                 /* тонкий, не выпирает за скругление */
+}
+
+.unique-task-scroll::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.unique-task-scroll::-webkit-scrollbar-thumb {
+    background: #8338EB;
+    border-radius: 6px;         /* скруглённый бегунок под стиль pill-блока */
+}
+
+.unique-task-scroll::-webkit-scrollbar-thumb:hover {
+    background: #6f1fd8;        /* чуть темнее при наведении */
 }
 
 .unique-input {

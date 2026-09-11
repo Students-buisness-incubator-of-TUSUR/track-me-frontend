@@ -8,7 +8,7 @@ permissions:
 on:
   push:
     branches: [ master, develop ]
-    tags: [ '*.*.*' ]
+    tags: [ 'v*.*.*' ]
   pull_request:
     branches: [ master, develop ]
 
@@ -44,10 +44,27 @@ jobs:
             -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }}
             -Dsonar.sources=src
             -Dsonar.exclusions=src/**/*.test.js,src/**/*.spec.js,src/**/__tests__/**
+            -Dsonar.tests=src
+            -Dsonar.test.inclusions=src/**/*.test.js,src/**/*.spec.js,src/**/__tests__/**
             -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
 
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm install
+      - name: Build
+        run: npm run build
+
   build-push:
-    needs: test
+    needs: [ test, build ]
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:

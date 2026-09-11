@@ -281,9 +281,7 @@ describe('MeetingCard Component', () => {
     configurable: true
   });
 
-  await act(async () => {
-    fireEvent.change(fileInput);
-  });
+  fireEvent.change(fileInput);
 
   await waitFor(() => {
     expect(fileInput.files[0]).toBeDefined();
@@ -291,9 +289,7 @@ describe('MeetingCard Component', () => {
 
   await fillAllRequiredFields(container);
   
-  await act(async () => {
-    fireEvent.click(screen.getByText('Сохранить'));
-  });
+  fireEvent.click(screen.getByText('Сохранить'));
 
   await waitFor(() => {
     expect(fetchCallCount).toBe(3);
@@ -370,9 +366,7 @@ describe('MeetingCard Component', () => {
     configurable: true
   });
 
-  await act(async () => {
-    fireEvent.change(fileInput);
-  });
+  fireEvent.change(fileInput);
 
   await waitFor(() => {
     expect(fileInput.files[0].name).toBe('test.png');
@@ -380,9 +374,7 @@ describe('MeetingCard Component', () => {
 
   await fillAllRequiredFields(container);
   
-  await act(async () => {
-    fireEvent.click(screen.getByText('Сохранить'));
-  });
+  fireEvent.click(screen.getByText('Сохранить'));
 
   await waitFor(() => {
     expect(fetchCallCount).toBe(3);
@@ -424,9 +416,7 @@ test('handles image upload', async () => {
     </Provider>
   );
 
-  await waitFor(() => {
-    expect(screen.getByText('Новая встреча')).toBeInTheDocument();
-  });
+  expect(await screen.findByText('Новая встреча')).toBeInTheDocument();
 
   const fileInput = container.querySelector('input[type="file"]');
   const file = new File(['test'], 'test.png', { type: 'image/png' });
@@ -502,9 +492,7 @@ test('handles image upload', async () => {
 
   await fillAllRequiredFields(container);
   
-  await act(async () => {
-    fireEvent.click(screen.getByText('Сохранить'));
-  });
+  fireEvent.click(screen.getByText('Сохранить'));
 
   await waitFor(() => {
     expect(screen.getByText(/Ошибка при сохранении/i)).toBeInTheDocument();
@@ -535,9 +523,7 @@ test('handles image upload', async () => {
 
     fireEvent.click(screen.getByText('Сохранить'));
 
-    await waitFor(() => {
-      expect(screen.getByText(/Недопустимая дата встречи/i)).toBeInTheDocument();
-    });
+    expect(await screen.findByText(/Недопустимая дата встречи/i)).toBeInTheDocument();
     expect(fetch).toHaveBeenCalledTimes(1);
   });
 });
@@ -599,14 +585,14 @@ describe('MeetingCard Delete Functionality', () => {
       </Provider>
     );
 
-    await waitFor(() => screen.getByText('Редактировать'), { timeout: 3000 });
+    expect(await screen.findByText('Редактировать', {}, { timeout: 3000 })).toBeInTheDocument();
     
     fireEvent.click(screen.getByText('Редактировать'));
     
-    await waitFor(() => screen.getByText('Удалить'));
+    expect(await screen.findByText('Удалить')).toBeInTheDocument();
     fireEvent.click(screen.getByText('Удалить'));
     
-    await waitFor(() => screen.getByTestId('delete-confirm-button'));
+    expect(await screen.findByTestId('delete-confirm-button')).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('delete-confirm-button'));
 
     await waitFor(() => {
@@ -654,14 +640,14 @@ describe('MeetingCard Delete Functionality', () => {
       </Provider>
     );
 
-    await waitFor(() => screen.getByText('Редактировать'), { timeout: 3000 });
+    expect(await screen.findByText('Редактировать', {}, { timeout: 3000 })).toBeInTheDocument();
     
     fireEvent.click(screen.getByText('Редактировать'));
     
-    await waitFor(() => screen.getByText('Удалить'));
+    expect(await screen.findByText('Удалить')).toBeInTheDocument();
     fireEvent.click(screen.getByText('Удалить'));
     
-    await waitFor(() => screen.getByTestId('delete-confirm-button'));
+    expect(await screen.findByTestId('delete-confirm-button')).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('delete-confirm-button'));
 
     await waitFor(() => {
@@ -700,14 +686,14 @@ describe('MeetingCard Delete Functionality', () => {
       </Provider>
     );
 
-    await waitFor(() => screen.getByText('Редактировать'), { timeout: 3000 });
+    expect(await screen.findByText('Редактировать', {}, { timeout: 3000 })).toBeInTheDocument();
     
     fireEvent.click(screen.getByText('Редактировать'));
     
-    await waitFor(() => screen.getByText('Удалить'));
+    expect(await screen.findByText('Удалить')).toBeInTheDocument();
     fireEvent.click(screen.getByText('Удалить'));
     
-    await waitFor(() => screen.getByText('Отмена'));
+    expect(await screen.findByText('Отмена')).toBeInTheDocument();
     fireEvent.click(screen.getByText('Отмена'));
 
     expect(screen.queryByTestId('delete-modal-title')).not.toBeInTheDocument();
@@ -937,9 +923,7 @@ test('should handle image upload with FormData', async () => {
   
   await fillAllRequiredFields(container);
   
-  await act(async () => {
-    fireEvent.click(screen.getByText('Сохранить'));
-  });
+  fireEvent.click(screen.getByText('Сохранить'));
 
   await waitFor(() => {
     expect(meetingSaveCalled).toBe(true);
@@ -1085,9 +1069,7 @@ describe('MeetingCard Button Interactions', () => {
     );
 
     fireEvent.click(screen.getByText('Не указано'));
-    await act(async () => {
-      fireEvent.click(screen.getByText('Всё ок'));
-    });
+    fireEvent.click(screen.getByText('Всё ок'));
     expect(screen.getByText('Всё ок')).toBeInTheDocument();
   });
 
@@ -1103,9 +1085,7 @@ describe('MeetingCard Button Interactions', () => {
     );
 
     fireEvent.click(screen.getByText('Не указано'));
-    await act(async () => {
-      fireEvent.click(screen.getByText('Есть проблемы'));
-    });
+    fireEvent.click(screen.getByText('Есть проблемы'));
     expect(screen.getByText('Есть проблемы')).toBeInTheDocument();
   });
 
@@ -1121,9 +1101,7 @@ describe('MeetingCard Button Interactions', () => {
     );
 
     fireEvent.click(screen.getByText('Не указано'));
-    await act(async () => {
-      fireEvent.click(screen.getByText('Есть большие проблемы'));
-    });
+    fireEvent.click(screen.getByText('Есть большие проблемы'));
     expect(screen.getByText('Есть большие проблемы')).toBeInTheDocument();
   });
 });
@@ -1235,9 +1213,7 @@ describe('MeetingCard Completion and Editing', () => {
 
   await fillAllRequiredFields(container);
 
-  await act(async () => {
-    fireEvent.click(screen.getByText('Сохранить'));
-  });
+  fireEvent.click(screen.getByText('Сохранить'));
 
   // Ждем завершения всех вызовов fetch
   await waitFor(() => {
@@ -1578,7 +1554,7 @@ describe('Meeting Room Integration', () => {
       </Provider>
     );
 
-    await screen.findByText(/Встреча 1/i);
+    expect(await screen.findByText(/Встреча 1/i)).toBeInTheDocument();
 
     const joinButton = screen.getByLabelText('Запустить встречу');
     fireEvent.click(joinButton);
@@ -1601,7 +1577,7 @@ describe('Meeting Room Integration', () => {
       </Provider>
     );
 
-    await screen.findByText(/Встреча 1/i);
+    expect(await screen.findByText(/Встреча 1/i)).toBeInTheDocument();
 
     const joinButton = screen.getByLabelText('Запустить встречу');
     fireEvent.click(joinButton);
@@ -1621,7 +1597,7 @@ describe('Meeting Room Integration', () => {
       </Provider>
     );
 
-    await screen.findByText(/Встреча 1/i);
+    expect(await screen.findByText(/Встреча 1/i)).toBeInTheDocument();
 
     const joinButton = screen.getByLabelText('Запустить встречу');
     fireEvent.click(joinButton);
@@ -1759,9 +1735,7 @@ describe('MeetingCard Role Setting - Complete Line Coverage', () => {
       </Provider>
     );
 
-    await waitFor(() => {
-      expect(screen.getByText('Новая встреча')).toBeInTheDocument();
-    });
+    expect(await screen.findByText('Новая встреча')).toBeInTheDocument();
   });
 
   test('covers all branches - reduxUser with empty roles array', async () => {
@@ -1782,9 +1756,7 @@ describe('MeetingCard Role Setting - Complete Line Coverage', () => {
       </Provider>
     );
 
-    await waitFor(() => {
-      expect(screen.getByText('Новая встреча')).toBeInTheDocument();
-    });
+    expect(await screen.findByText('Новая встреча')).toBeInTheDocument();
   });
 
   test('covers all branches - reduxUser without roles property', async () => {
@@ -1805,9 +1777,7 @@ describe('MeetingCard Role Setting - Complete Line Coverage', () => {
       </Provider>
     );
 
-    await waitFor(() => {
-      expect(screen.getByText('Новая встреча')).toBeInTheDocument();
-    });
+    expect(await screen.findByText('Новая встреча')).toBeInTheDocument();
   });
 
   test('covers all branches - reduxUser null, localStorage has user', async () => {
@@ -1830,9 +1800,7 @@ describe('MeetingCard Role Setting - Complete Line Coverage', () => {
       </Provider>
     );
 
-    await waitFor(() => {
-      expect(screen.getByText('Новая встреча')).toBeInTheDocument();
-    });
+    expect(await screen.findByText('Новая встреча')).toBeInTheDocument();
   });
 
   test('covers all branches - reduxUser null, localStorage has user without roles', async () => {
@@ -1855,9 +1823,7 @@ describe('MeetingCard Role Setting - Complete Line Coverage', () => {
       </Provider>
     );
 
-    await waitFor(() => {
-      expect(screen.getByText('Новая встреча')).toBeInTheDocument();
-    });
+    expect(await screen.findByText('Новая встреча')).toBeInTheDocument();
   });
 
   test('covers all branches - reduxUser null, localStorage empty', async () => {
@@ -1878,9 +1844,7 @@ describe('MeetingCard Role Setting - Complete Line Coverage', () => {
       </Provider>
     );
 
-    await waitFor(() => {
-      expect(screen.getByText('Новая встреча')).toBeInTheDocument();
-    });
+    expect(await screen.findByText('Новая встреча')).toBeInTheDocument();
   });
 
   test('covers all branches - reduxUser null, localStorage has invalid JSON - handles error', async () => {
@@ -1926,9 +1890,7 @@ describe('MeetingCard Role Setting - Complete Line Coverage', () => {
       </Provider>
     );
 
-    await waitFor(() => {
-      expect(screen.getByText('Новая встреча')).toBeInTheDocument();
-    });
+    expect(await screen.findByText('Новая встреча')).toBeInTheDocument();
   });
 
   test('covers all branches - reduxUser undefined (not null)', async () => {
@@ -1947,9 +1909,7 @@ describe('MeetingCard Role Setting - Complete Line Coverage', () => {
       </Provider>
     );
 
-    await waitFor(() => {
-      expect(screen.getByText('Новая встреча')).toBeInTheDocument();
-    });
+    expect(await screen.findByText('Новая встреча')).toBeInTheDocument();
   });
 
   test('covers all branches - localStorage returns empty string', async () => {
@@ -1970,9 +1930,7 @@ describe('MeetingCard Role Setting - Complete Line Coverage', () => {
       </Provider>
     );
 
-    await waitFor(() => {
-      expect(screen.getByText('Новая встреча')).toBeInTheDocument();
-    });
+    expect(await screen.findByText('Новая встреча')).toBeInTheDocument();
   });
 });
 
@@ -2146,9 +2104,7 @@ describe('MeetingCard Validation Coverage (lines 215-217)', () => {
     );
 
     // Ждем пока компонент загрузится
-    await waitFor(() => {
-      expect(screen.getByText('Сохранить')).toBeInTheDocument();
-    });
+    expect(await screen.findByText('Сохранить')).toBeInTheDocument();
 
     // Нажимаем кнопку сохранения
     fireEvent.click(screen.getByText('Сохранить'));
@@ -2214,17 +2170,13 @@ describe('MeetingCard Validation Coverage (lines 215-217)', () => {
     );
 
     // Ждем загрузки встречи
-    await waitFor(() => {
-      expect(screen.getByText('Редактировать')).toBeInTheDocument();
-    });
+    expect(await screen.findByText('Редактировать')).toBeInTheDocument();
 
     // Включаем редактирование
     fireEvent.click(screen.getByText('Редактировать'));
     
     // Ждем появления кнопки сохранения
-    await waitFor(() => {
-      expect(screen.getByText('Сохранить')).toBeInTheDocument();
-    });
+    expect(await screen.findByText('Сохранить')).toBeInTheDocument();
 
     // Нажимаем кнопку сохранения
     fireEvent.click(screen.getByText('Сохранить'));
@@ -2279,7 +2231,7 @@ describe('MeetingCard for Super Admin', () => {
       </Provider>
     );
     
-    await waitFor(() => expect(screen.getByText(/Встреча 1/i)).toBeInTheDocument());
+    expect(await screen.findByText(/Встреча 1/i)).toBeInTheDocument();
     
     const editButton = screen.getByRole('button', { name: /Редактировать/i });
     expect(editButton).not.toBeDisabled();
@@ -2314,7 +2266,7 @@ describe('MeetingCard for Super Admin', () => {
       </Provider>
     );
     
-    await waitFor(() => expect(screen.getByText(/Встреча 1/i)).toBeInTheDocument());
+    expect(await screen.findByText(/Встреча 1/i)).toBeInTheDocument();
     
     const editButton = screen.getByRole('button', { name: /Редактировать/i });
     // Для обычного админа кнопка должна быть disabled
@@ -2351,7 +2303,7 @@ describe('MeetingCard for Super Admin', () => {
       </Provider>
     );
     
-    await waitFor(() => expect(screen.getByText(/Встреча 1/i)).toBeInTheDocument());
+    expect(await screen.findByText(/Встреча 1/i)).toBeInTheDocument();
     
     fireEvent.click(screen.getByText('Редактировать'));
     
@@ -2396,7 +2348,7 @@ describe('MeetingCard for Super Admin', () => {
     );
 
     // Ждём, пока загрузится встреча и появится кнопка "Редактировать"
-    await waitFor(() => expect(screen.getByText('Редактировать')).toBeInTheDocument());
+    expect(await screen.findByText('Редактировать')).toBeInTheDocument();
 
     // Нажимаем редактировать
     fireEvent.click(screen.getByText('Редактировать'));
@@ -2447,7 +2399,7 @@ describe('Additional coverage for super admin and regular admin (SBI800)', () =>
         </MemoryRouter>
       </Provider>
     );
-    await waitFor(() => expect(screen.getByText(/Встреча 7/i)).toBeInTheDocument());
+    expect(await screen.findByText(/Встреча 7/i)).toBeInTheDocument();
     const editButton = screen.getByRole('button', { name: /Редактировать/i });
     expect(editButton).not.toBeDisabled();
   });
@@ -2467,7 +2419,7 @@ describe('Additional coverage for super admin and regular admin (SBI800)', () =>
         </MemoryRouter>
       </Provider>
     );
-    await waitFor(() => expect(screen.getByText(/Встреча 8/i)).toBeInTheDocument());
+    expect(await screen.findByText(/Встреча 8/i)).toBeInTheDocument();
     const editButton = screen.getByRole('button', { name: /Редактировать/i });
     await waitFor(() => expect(editButton).toHaveAttribute('disabled'), { timeout: 5000 });
   });
@@ -2487,7 +2439,7 @@ describe('Additional coverage for super admin and regular admin (SBI800)', () =>
         </MemoryRouter>
       </Provider>
     );
-    await waitFor(() => expect(screen.getByText(/Встреча 9/i)).toBeInTheDocument());
+    expect(await screen.findByText(/Встреча 9/i)).toBeInTheDocument();
     const editButton = screen.getByRole('button', { name: /Редактировать/i });
     await waitFor(() => expect(editButton).toHaveAttribute('disabled'), { timeout: 5000 });
   });
@@ -2502,10 +2454,10 @@ describe('Additional coverage for super admin and regular admin (SBI800)', () =>
         </MemoryRouter>
       </Provider>
     );
-    await waitFor(() => expect(screen.getByText('Сохранить')).toBeInTheDocument());
+    expect(await screen.findByText('Сохранить')).toBeInTheDocument();
     const recordLinkInput = screen.getByPlaceholderText('https://example.com/record');
     fireEvent.change(recordLinkInput, { target: { value: 'invalid' } });
-    await waitFor(() => expect(screen.getByText(/Введите корректный URL/i)).toBeInTheDocument());
+    expect(await screen.findByText(/Введите корректный URL/i)).toBeInTheDocument();
     const saveButton = screen.getByText('Сохранить');
     expect(saveButton).toBeDisabled();
     fireEvent.change(recordLinkInput, { target: { value: 'http://valid.com' } });
@@ -2527,7 +2479,7 @@ describe('Additional coverage for super admin and regular admin (SBI800)', () =>
         </MemoryRouter>
       </Provider>
     );
-    await waitFor(() => expect(screen.getByText(/Встреча 89/i)).toBeInTheDocument());
+    expect(await screen.findByText(/Встреча 89/i)).toBeInTheDocument();
     const notHappenedButton = screen.getByText('Не состоялась');
     expect(notHappenedButton).toHaveAttribute('title', 'Плановое время завершения встречи ещё не наступило, поэтому её невозможно завершить');
   });
@@ -2547,7 +2499,7 @@ describe('Additional coverage for super admin and regular admin (SBI800)', () =>
         </MemoryRouter>
       </Provider>
     );
-    await waitFor(() => expect(screen.getByText(/Встреча 93/i)).toBeInTheDocument());
+    expect(await screen.findByText(/Встреча 93/i)).toBeInTheDocument();
     const notHappenedButton = screen.getByText('Не состоялась');
     expect(notHappenedButton).toBeDisabled();
     expect(notHappenedButton).toHaveAttribute('title', 'Плановое время завершения встречи ещё не наступило, поэтому её невозможно завершить');
@@ -2579,13 +2531,11 @@ describe('Extra coverage for missing lines in MeetingCard', () => {
     </Provider>
   );
 
-  await waitFor(() => expect(screen.getByText('Сохранить')).toBeInTheDocument());
+  expect(await screen.findByText('Сохранить')).toBeInTheDocument();
   const saveButton = screen.getByText('Сохранить');
   fireEvent.click(saveButton);
 
-  await waitFor(() => {
-    expect(screen.getByText('Дата встречи недопустима')).toBeInTheDocument();
-  });
+  expect(await screen.findByText('Дата встречи недопустима')).toBeInTheDocument();
   // Сбрасываем мок, чтобы не влиять на другие тесты
   mockValidateMeetingWeekLimit.mockReset();
 });
@@ -2600,17 +2550,15 @@ describe('Extra coverage for missing lines in MeetingCard', () => {
       </MemoryRouter>
     </Provider>
   );
-  await waitFor(() => expect(screen.getByText('Сохранить')).toBeInTheDocument());
+  expect(await screen.findByText('Сохранить')).toBeInTheDocument();
   const recordLinkInput = screen.getByPlaceholderText('https://example.com/record');
   fireEvent.change(recordLinkInput, { target: { value: 'invalid-url' } });
-  await waitFor(() => expect(screen.getByText(/Введите корректный URL/i)).toBeInTheDocument());
+  expect(await screen.findByText(/Введите корректный URL/i)).toBeInTheDocument();
   const saveButton = screen.getByText('Сохранить');
   expect(saveButton).toBeDisabled();
   // также проверка, что при сохранении с невалидной ссылкой вылезает ошибка
   fireEvent.click(saveButton);
-  await waitFor(() => {
-    expect(screen.getByText(/Введите корректный URL/i)).toBeInTheDocument();
-  });
+  expect(await screen.findByText(/Введите корректный URL/i)).toBeInTheDocument();
 });
 
 
@@ -2645,13 +2593,13 @@ describe('Extra coverage for missing lines in MeetingCard', () => {
     </Provider>
   );
 
-  await waitFor(() => expect(screen.getByText(/Встреча 1/i)).toBeInTheDocument());
+  expect(await screen.findByText(/Встреча 1/i)).toBeInTheDocument();
 
   fireEvent.click(screen.getByText('Редактировать'));
-  await waitFor(() => expect(screen.getByText('Удалить')).toBeInTheDocument());
+  expect(await screen.findByText('Удалить')).toBeInTheDocument();
 
   fireEvent.click(screen.getByText('Удалить'));
-  await waitFor(() => expect(screen.getByTestId('delete-confirm-button')).toBeInTheDocument());
+  expect(await screen.findByTestId('delete-confirm-button')).toBeInTheDocument();
 
   fireEvent.click(screen.getByTestId('delete-confirm-button'));
 
@@ -2687,13 +2635,11 @@ describe('Extra coverage for missing lines in MeetingCard', () => {
     </Provider>
   );
 
-  await waitFor(() => expect(screen.getByText('Сохранить')).toBeInTheDocument());
+  expect(await screen.findByText('Сохранить')).toBeInTheDocument();
   const saveButton = screen.getByText('Сохранить');
   fireEvent.click(saveButton);
 
-  await waitFor(() => {
-    expect(screen.getByText('Дата встречи недопустима')).toBeInTheDocument();
-  });
+  expect(await screen.findByText('Дата встречи недопустима')).toBeInTheDocument();
   
   // Сбрасываем мок, чтобы не влиять на другие тесты
   mockValidateMeetingWeekLimit.mockReset();
@@ -2709,16 +2655,14 @@ describe('Extra coverage for missing lines in MeetingCard', () => {
         </MemoryRouter>
       </Provider>
     );
-    await waitFor(() => expect(screen.getByText('Сохранить')).toBeInTheDocument());
+    expect(await screen.findByText('Сохранить')).toBeInTheDocument();
     const recordLinkInput = screen.getByPlaceholderText('https://example.com/record');
     fireEvent.change(recordLinkInput, { target: { value: 'invalid-url' } });
-    await waitFor(() => expect(screen.getByText(/Введите корректный URL/i)).toBeInTheDocument());
+    expect(await screen.findByText(/Введите корректный URL/i)).toBeInTheDocument();
     const saveButton = screen.getByText('Сохранить');
     expect(saveButton).toBeDisabled();
     fireEvent.click(saveButton);
-    await waitFor(() => {
-      expect(screen.getByText(/Введите корректный URL/i)).toBeInTheDocument();
-    });
+    expect(await screen.findByText(/Введите корректный URL/i)).toBeInTheDocument();
   });
 
   test('Deleting meeting shows confirmation modal and deletes', async () => {
@@ -2738,11 +2682,11 @@ describe('Extra coverage for missing lines in MeetingCard', () => {
         </MemoryRouter>
       </Provider>
     );
-    await waitFor(() => expect(screen.getByText(/Встреча 1/i)).toBeInTheDocument());
+    expect(await screen.findByText(/Встреча 1/i)).toBeInTheDocument();
     fireEvent.click(screen.getByText('Редактировать'));
-    await waitFor(() => expect(screen.getByText('Удалить')).toBeInTheDocument());
+    expect(await screen.findByText('Удалить')).toBeInTheDocument();
     fireEvent.click(screen.getByText('Удалить'));
-    await waitFor(() => expect(screen.getByTestId('delete-confirm-button')).toBeInTheDocument());
+    expect(await screen.findByTestId('delete-confirm-button')).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('delete-confirm-button'));
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith(expect.stringContaining('/teamcard/team123?userId=user123&refresh='));
@@ -2774,16 +2718,14 @@ describe('Extra coverage for missing lines in MeetingCard', () => {
     </Provider>
   );
 
-  await waitFor(() => expect(screen.getByText(/Встреча 1/i)).toBeInTheDocument());
+  expect(await screen.findByText(/Встреча 1/i)).toBeInTheDocument();
   fireEvent.click(screen.getByText('Редактировать'));
-  await waitFor(() => expect(screen.getByText('Удалить')).toBeInTheDocument());
+  expect(await screen.findByText('Удалить')).toBeInTheDocument();
   fireEvent.click(screen.getByText('Удалить'));
-  await waitFor(() => expect(screen.getByTestId('delete-confirm-button')).toBeInTheDocument());
+  expect(await screen.findByTestId('delete-confirm-button')).toBeInTheDocument();
   fireEvent.click(screen.getByTestId('delete-confirm-button'));
 
-  await waitFor(() => {
-    expect(screen.getByText(/Server error/i)).toBeInTheDocument();
-  });
+  expect(await screen.findByText(/Server error/i)).toBeInTheDocument();
 });
 
 /*
@@ -2831,7 +2773,7 @@ describe('Extra coverage for missing lines in MeetingCard', () => {
     </Provider>
   );
 
-  await waitFor(() => expect(screen.getByText(/Встреча 1/i)).toBeInTheDocument());
+  expect(await screen.findByText(/Встреча 1/i)).toBeInTheDocument();
   await waitFor(() => {
     expect(consoleErrorSpy).toHaveBeenCalledWith("Ошибка при загрузке изображения:", expect.any(Error));
   });
@@ -2854,7 +2796,7 @@ test('covers startTime handling in handleChange', async () => {
     </Provider>
   );
 
-  await waitFor(() => expect(screen.getByText('Сохранить')).toBeInTheDocument());
+  expect(await screen.findByText('Сохранить')).toBeInTheDocument();
 
   const timeInput = document.querySelector('input[type="time"]');
   expect(timeInput).toBeInTheDocument();
@@ -2881,7 +2823,7 @@ test('covers recordLink else branches in handleChange (empty and valid)', async 
     </Provider>
   );
 
-  await waitFor(() => expect(screen.getByText('Сохранить')).toBeInTheDocument());
+  expect(await screen.findByText('Сохранить')).toBeInTheDocument();
 
   const recordLinkInput = screen.getByPlaceholderText('https://example.com/record');
 
@@ -2908,7 +2850,7 @@ test('covers invalid URL validation on save (when recordLink is invalid and save
     </Provider>
   );
 
-  await waitFor(() => expect(screen.getByText('Сохранить')).toBeInTheDocument());
+  expect(await screen.findByText('Сохранить')).toBeInTheDocument();
 
   // Заполняем все поля, но ссылку делаем невалидной
   const textareas = container.querySelectorAll('textarea');
@@ -2917,7 +2859,7 @@ test('covers invalid URL validation on save (when recordLink is invalid and save
 
   const dropdown = container.querySelector('.status-selected');
   fireEvent.click(dropdown);
-  await waitFor(() => expect(screen.getByText('Всё ок')).toBeInTheDocument());
+  expect(await screen.findByText('Всё ок')).toBeInTheDocument();
   fireEvent.click(screen.getByText('Всё ок'));
 
   const dateInput = container.querySelector('input[type="date"]');
@@ -2928,7 +2870,7 @@ test('covers invalid URL validation on save (when recordLink is invalid and save
   Object.defineProperty(fileInput, 'files', { value: [file] });
   fireEvent.change(fileInput);
 
-  await waitFor(() => expect(screen.getByAltText('Превью')).toBeInTheDocument());
+  expect(await screen.findByAltText('Превью')).toBeInTheDocument();
 
   const recordLinkInput = screen.getByPlaceholderText('https://example.com/record');
   fireEvent.change(recordLinkInput, { target: { value: 'invalid-url' } });
@@ -2942,9 +2884,7 @@ test('covers invalid URL validation on save (when recordLink is invalid and save
   fireEvent.click(saveButton);
 
   // Ищем текст ошибки, который реально появляется (из recordLinkError)
-  await waitFor(() => {
-    expect(screen.getByText(/Введите корректный URL, начиная с http:\/\/ или https:\/\//i)).toBeInTheDocument();
-  });
+  expect(await screen.findByText(/Введите корректный URL, начиная с http:\/\/ или https:\/\//i)).toBeInTheDocument();
 });
 
 test('covers editing existing meeting and saving (isNewMeeting = false branch)', async () => {
@@ -2983,10 +2923,10 @@ test('covers editing existing meeting and saving (isNewMeeting = false branch)',
     </Provider>
   );
 
-  await waitFor(() => expect(screen.getByText(/Встреча 5/i)).toBeInTheDocument());
+  expect(await screen.findByText(/Встреча 5/i)).toBeInTheDocument();
 
   fireEvent.click(screen.getByText('Редактировать'));
-  await waitFor(() => expect(screen.getByText('Сохранить')).toBeInTheDocument());
+  expect(await screen.findByText('Сохранить')).toBeInTheDocument();
 
   const textarea = screen.getAllByRole('textbox').find(el => el.tagName === 'TEXTAREA');
   fireEvent.change(textarea, { target: { value: 'Updated tasks', name: 'tasksCurrentMeeting' } });
@@ -2994,7 +2934,7 @@ test('covers editing existing meeting and saving (isNewMeeting = false branch)',
   fireEvent.click(screen.getByText('Сохранить'));
 
   // После сохранения режим редактирования должен выключиться
-  await waitFor(() => expect(screen.getByText('Редактировать')).toBeInTheDocument(), { timeout: 5000 });
+  expect(await screen.findByText('Редактировать', {}, { timeout: 5000 })).toBeInTheDocument();
 });
 
 /*
@@ -3024,7 +2964,7 @@ test('covers handleEditClick when meeting is locked (error message)', async () =
     </Provider>
   );
 
-  await waitFor(() => expect(screen.getByText(/Встреча 99/i)).toBeInTheDocument());
+  expect(await screen.findByText(/Встреча 99/i)).toBeInTheDocument();
 
   const editButton = screen.getByRole('button', { name: /Редактировать/i });
   expect(editButton).toBeDisabled();
@@ -3087,9 +3027,9 @@ describe('handlePasteImage functionality', () => {
     );
 
     // Ждем загрузки и включаем режим редактирования
-    await waitFor(() => expect(screen.getByText(/Встреча 1/i)).toBeInTheDocument());
+    expect(await screen.findByText(/Встреча 1/i)).toBeInTheDocument();
     fireEvent.click(screen.getByText('Редактировать'));
-    await waitFor(() => expect(screen.getByText('Сохранить')).toBeInTheDocument());
+    expect(await screen.findByText('Сохранить')).toBeInTheDocument();
 
     // Создаем мок для clipboardData
     const mockFile = new File(['test-image-content'], 'pasted-image.png', { type: 'image/png' });
@@ -3156,7 +3096,7 @@ describe('handlePasteImage functionality', () => {
     );
 
     // Ждем загрузки, но НЕ включаем режим редактирования
-    await waitFor(() => expect(screen.getByText(/Встреча 1/i)).toBeInTheDocument());
+    expect(await screen.findByText(/Встреча 1/i)).toBeInTheDocument();
 
     // Создаем мок для clipboardData
     const mockFile = new File(['test-image-content'], 'pasted-image.png', { type: 'image/png' });
@@ -3215,7 +3155,7 @@ describe('handlePasteImage functionality', () => {
       </Provider>
     );
 
-    await waitFor(() => expect(screen.getByText(/Встреча 2/i)).toBeInTheDocument());
+    expect(await screen.findByText(/Встреча 2/i)).toBeInTheDocument();
 
     // Пытаемся включить редактирование (кнопка должна быть disabled)
     const editButton = screen.getByText('Редактировать');
@@ -3260,7 +3200,7 @@ describe('handlePasteImage functionality', () => {
       </Provider>
     );
 
-    await waitFor(() => expect(screen.getByText('Новая встреча')).toBeInTheDocument());
+    expect(await screen.findByText('Новая встреча')).toBeInTheDocument();
 
     const pasteEvent = new Event('paste', { bubbles: true, cancelable: true });
     Object.defineProperty(pasteEvent, 'clipboardData', {
@@ -3289,7 +3229,7 @@ describe('handlePasteImage functionality', () => {
       </Provider>
     );
 
-    await waitFor(() => expect(screen.getByText('Новая встреча')).toBeInTheDocument());
+    expect(await screen.findByText('Новая встреча')).toBeInTheDocument();
 
     // Мокаем clipboardData с текстом вместо изображения
     const mockClipboardData = {
@@ -3329,7 +3269,7 @@ describe('handlePasteImage functionality', () => {
       </Provider>
     );
 
-    await waitFor(() => expect(screen.getByText('Новая встреча')).toBeInTheDocument());
+    expect(await screen.findByText('Новая встреча')).toBeInTheDocument();
 
     const mockClipboardData = {
       items: []
@@ -3362,7 +3302,7 @@ describe('handlePasteImage functionality', () => {
       </Provider>
     );
 
-    await waitFor(() => expect(screen.getByText('Новая встреча')).toBeInTheDocument());
+    expect(await screen.findByText('Новая встреча')).toBeInTheDocument();
     // В новой встрече isEditing === true по умолчанию
 
     const mockFile = new File(['test-image-content'], 'pasted-image.png', { type: 'image/png' });
@@ -3431,7 +3371,7 @@ describe('Super admin meeting status select', () => {
      //   </MemoryRouter>
     //  </Provider>
     //);
-    //await waitFor(() => expect(screen.getByText(/Встреча 5/i)).toBeInTheDocument());
+    //expect(await screen.findByText(/Встреча 5/i)).toBeInTheDocument();
     
     //const completedButton = screen.getByRole('button', { name: /Состоялась/i });
     //const notHappenedButton = screen.getByRole('button', { name: /Не состоялась/i });
@@ -3470,7 +3410,7 @@ describe('Super admin meeting status select', () => {
         </MemoryRouter>
       </Provider>
     );
-    await waitFor(() => expect(screen.getByText(/Встреча 7/i)).toBeInTheDocument());
+    expect(await screen.findByText(/Встреча 7/i)).toBeInTheDocument();
     
     const notHappenedButton = screen.getByRole('button', { name: /Не состоялась/i });
     fireEvent.click(notHappenedButton);
@@ -3501,13 +3441,12 @@ describe('Super admin meeting status select', () => {
         </MemoryRouter>
       </Provider>
     );
-    //await waitFor(() => expect(screen.getByText(/Встреча 8/i)).toBeInTheDocument());
+    expect(await screen.findByText(/Встреча 8/i)).toBeInTheDocument();
     
-    //const completedButton = screen.getByRole('button', { name: /Состоялась/i });
-    //const notHappenedButton = screen.getByRole('button', { name: /Не состоялась/i });
-   // expect(completedButton).toBeDisabled();
-   // expect(notHappenedButton).toBeDisabled();u
-   //y
+    const completedButton = screen.getByTestId('complete-meeting-btn');
+    const notHappenedButton = screen.getByRole('button', { name: 'Не состоялась' });
+    expect(completedButton).toBeDisabled();
+    expect(notHappenedButton).toBeDisabled();
   });
 });
 

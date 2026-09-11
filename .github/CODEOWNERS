@@ -1,12 +1,12 @@
-database/* @akarmanov2022
-.github/* @akarmanov2022
-**/*.java @akarmanov2022
-**/database/** @akarmanov2022
-**/*.sql @akarmanov2022
-**/Dockerfile @akarmanov2022
-**/*.js @BDA228
-**/*.ts @BDA228
-**/*.tsx @BDA228
-**/*.jsx @BDA228
-**/*.css @BDA228
-src/* @BDA228
+database/* @akarmanov2022, @SgiSbi
+.github/* @akarmanov2022, @SgiSbi
+**/*.java @akarmanov2022, @SgiSbi
+**/database/** @akarmanov2022, @SgiSbi
+**/*.sql @akarmanov2022, @SgiSbi
+**/Dockerfile @akarmanov2022, @SgiSbi
+**/*.js @BDA228, @SgiSbi
+**/*.ts @BDA228, @SgiSbi
+**/*.tsx @BDA228, @SgiSbi
+**/*.jsx @BDA228, @SgiSbi
+**/*.css @BDA228, @SgiSbi
+src/* @BDA228, @SgiSbi

@@ -457,7 +457,7 @@ export default function ReportPage({ defaultIsActive = true }) {
             style={{ cursor: 'pointer', color: '#843AEB', textDecoration: 'underline' }}
             onClick={() => navigate(`/teamcard/${item.teamId}`)}
           >
-            {item.teamCardName}
+            {item.teamCardName}{item.passive ? ' (отчислена)' : ''}
           </td>
 
           <td>{`${trackers?.filter((tracker) => tracker.username === item.username)[0]?.fullName} (${item.username})`}</td>

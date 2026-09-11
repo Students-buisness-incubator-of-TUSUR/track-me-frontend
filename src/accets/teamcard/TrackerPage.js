@@ -1,6 +1,7 @@
+/* global globalThis */
 import {useCallback, useEffect, useState} from "react";
 import "./TrackerPage.css";
-import { useLocation, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import {useNavigate} from "react-router-dom";
 import StreamPlaceholder from './Заглушка для потока в TrackMe.png';
 import { getCsrfConfigForFetch } from "../../utils/csrf-utils";
@@ -23,9 +24,10 @@ function TrackerPage() {
     const [userRole, setUserRole] = useState(null);
     const [username, setusername] = useState(null);
     const [selectedYears, setSelectedYears] = useState([]);
-    const location = useLocation();
+    const [isRestoring, setIsRestoring] = useState(true);
+    const restoredPage = globalThis.location.state?.restoredPage;
     const [searchParams] = useSearchParams();
-const showAllCards = location.pathname === "/all-team-cards";
+const showAllCards = globalThis.location.pathname === "/all-team-cards";
 const [showMyTeamsOnly, setShowMyTeamsOnly] = useState(false);
 const [page, setPage] = useState(0);
 const pageSize = 18; // или 10, если хочешь другой размер
@@ -113,7 +115,18 @@ const [currentFilters, setCurrentFilters] = useState([]);
         setusername(user.username);
     }, [user]);
 
+    useEffect(() => {
+    const savedState = sessionStorage.getItem("trackerPageState");
     
+    if (savedState) {
+        const parsed = JSON.parse(savedState);
+        if (parsed.page !== undefined) {
+            setPage(parsed.page);
+        }
+    }
+    
+    setIsRestoring(false);
+}, []);
     
 
     // Данные для чекбоксов "год"
@@ -126,42 +139,21 @@ const [currentFilters, setCurrentFilters] = useState([]);
         const allFilters = [...filters];
 
         if (searchQuery?.trim()) {
-                allFilters.push({
-                    fieldName: "name",
-                    type: "LIKE",
-                    value: searchQuery.trim(),
-                });
-            }
+            allFilters.push({ fieldName: "name", type: "LIKE", value: searchQuery.trim() });
+        }
 
         if (userRole === "ADMIN" || userRole === "SUPER_ADMIN") {
             if (!showAllCards && streamName) {
-                allFilters.push({
-                    fieldName: "streams.name",
-                    type: "EQ",
-                    value: streamName,
-                });
+                allFilters.push({ fieldName: "streams.name", type: "EQ", value: streamName });
             }
-
             const searchUsername = searchParams?.get("username");
             if (searchUsername) {
-                allFilters.push({
-                    fieldName: "username",
-                    type: "EQ",
-                    value: searchUsername,
-                });
+                allFilters.push({ fieldName: "username", type: "EQ", value: searchUsername });
             } else if (showMyTeamsOnly) {
-                allFilters.push({
-                    fieldName: "username",
-                    type: "EQ",
-                    value: username,
-                });
+                allFilters.push({ fieldName: "username", type: "EQ", value: username });
             }
         } else if (userRole === "TRACKER") {
-            allFilters.push({
-                fieldName: "username",
-                type: "EQ",
-                value: username,
-            });
+            allFilters.push({ fieldName: "username", type: "EQ", value: username });
         }
 
         return allFilters;
@@ -198,7 +190,17 @@ const [currentFilters, setCurrentFilters] = useState([]);
         .then((data) => {
             if (data?.content) {
                 const cardsArray = Array.isArray(data.content) ? data.content : [];
-                setCards(cardsArray.map(card => ({ ...card, _showFull: false })));
+                const sortedCards = cardsArray
+                    .map(card => ({ ...card, _showFull: false }))
+                    .sort((a, b) => {
+                        if (a.passive && !b.passive) return 1;
+                        if (!a.passive && b.passive) return -1;
+                        const gradeA = a.averageGrade ?? 0;
+                        const gradeB = b.averageGrade ?? 0;
+                        if (gradeB !== gradeA) return gradeB - gradeA;
+                        return (a.name || '').localeCompare(b.name || '');
+                    });
+                setCards(sortedCards);
                 setTotalPages(data?.page?.totalPages || 1);
             }
         })
@@ -392,6 +394,162 @@ const options = {
         }
     };
 
+    const renderCardList = () => {
+        if (error) return <p className="error-message">{error}</p>;
+        if (filteredCards.length === 0) return <p>Ничего не найдено по запросу</p>;
+        const toggleDescription = (cardId) => {
+            setCards((prev) =>
+                prev.map((c) =>
+                    c.id === cardId ? { ...c, _showFull: !c._showFull } : c
+                )
+            );
+        };
+
+        return visibleCards.map((card) => {
+            let statusClass = "";
+            let statusText = "Активно";
+            if (!card.enabled) {
+                statusClass = "inactive";
+                statusText = "Завершено";
+            } else if (card.passive) {
+                statusClass = "passive";
+                statusText = "Отчислена";
+            }
+            const navigateToCard = () => {
+                sessionStorage.setItem(
+                    "trackerPageState",
+                    JSON.stringify({
+                        page: page,
+                        scrollY: globalThis.scrollY,
+                        cardId: card.id
+                    })
+                );
+                navigate(`/teamcard/${card.id}`, {
+                    state: {
+                        from: globalThis.location.pathname,
+                        page: page,
+                        returnScroll: globalThis.scrollY,
+                        returnCardId: card.id
+                    }
+                });
+            };
+
+            return (
+                <div 
+  className="card" 
+  key={card.id} 
+  data-card-id={card.id}
+  onClick={navigateToCard}
+  onKeyDown={(e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      navigateToCard();
+    }
+  }}
+  tabIndex={0}
+  role="button"
+  aria-label={`Перейти к карточке команды ${card.name}`}
+>
+  <div className="card-image">
+    {card?.averageGrade !== undefined && card?.averageGrade !== null && (
+      <div className={`card-image-rating ${
+        card.averageGrade >= 0.51 ? 'rating-green' :
+        card.averageGrade >= 0.26 ? 'rating-yellow' :
+        'rating-red'
+      }`}>
+        {card.averageGrade.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+      </div>
+    )}
+    <img 
+      src={card.streams?.[0]?.id && streamImages[card.streams[0].id] ? streamImages[card.streams[0].id] : StreamPlaceholder}
+      alt=""
+      onError={(e) => {
+        e.target.src = StreamPlaceholder;
+        e.target.onerror = null;
+      }}
+      className="stream-image"
+    />
+  </div>
+                            <span className={`status ${statusClass}`}>
+                                {statusText}
+                            </span>
+
+                            <div className="card-content">
+                                <div className="text-container project-title">
+                                    <h3>{card.name}</h3>
+                                </div>
+                                <div className="text-container">
+  <div className={`project-description ${card._showFull ? "expanded" : ""}`}>
+    <p>{card.description}</p>
+  </div>
+
+  {card.description.length > 100 && (
+    <div
+  className="show-more-text"
+  onClick={(e) => {
+    e.stopPropagation();
+    toggleDescription(card.id);
+  }}
+  onKeyDown={(e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      toggleDescription(card.id);
+    }
+  }}
+  tabIndex={0}
+  role="button"
+  aria-label={card._showFull ? "Свернуть описание" : "Показать полное описание"}
+>
+  {card._showFull ? "Свернуть" : "Подробнее"}
+</div>
+  )}
+</div>
+
+
+
+                                <div className="under-cont">
+                                    <div className="text-container project-markets">
+                                        <p>
+  Рынки НТИ:{" "}
+  {card.ntiMarkets?.length > 0
+    ? card.ntiMarkets.map((market) => market.displayName).join(", ")
+    : "Неизвестны"}
+</p>
+
+
+                                    </div>
+                                    <div className="text-container project-trl">
+                                        <p>TRL: {card.readinessLevel || "Неизвестен"}</p>
+                                    </div>
+                                    <div className="text-container project-flow">
+                                        <p>
+  Поток: {card.streams?.[0]?.name || "Неизвестен"}: {card.streams?.[0]?.startDate || "?"} - {card.streams?.[0]?.endDate || "?"}
+</p>
+
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button
+                                className="edit-button"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(`/teamcard/${card.id}?userId=${card.userId}&edit=true`, {
+  state: {
+    userId: card.userId,
+    streamId: streamId,
+    from: globalThis.location.pathname
+  }
+});
+
+                                }}
+                            >
+                                Редактировать
+                            </button>
+                        </div>
+            );
+        });
+    };
+
     const handleSearchChange = (e) => {
         setSearchQuery(e.target.value);
         setPage(0);
@@ -470,10 +628,20 @@ const options = {
 
     };
     useEffect(() => {
+        if (restoredPage !== undefined && restoredPage !== null) {
+            setPage(restoredPage);
+        }
+    }, [restoredPage]);
+    
+    useEffect(() => {
+
+    if (isRestoring) return;
+
     if (userRole && username && streamName) {
-        fetchCards([], searchParams);
+        fetchCards(currentFilters, searchParams);
     }
-}, [userRole, username, streamName, fetchCards, searchParams]);
+
+}, [userRole, username, streamName, page, fetchCards, searchParams, currentFilters, isRestoring]);
 
     useEffect(() => {
     const handleVisibilityChange = () => {
@@ -488,12 +656,74 @@ const options = {
         document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
 }, [userRole, username, streamName, fetchCards, searchParams]);
-    // Добавить этот useEffect для перезагрузки карточек при изменении страницы
+    
     useEffect(() => {
-        if (userRole && username && streamName) {
-            fetchCards(currentFilters, searchParams);
+    const savedState = sessionStorage.getItem("trackerPageState");
+    
+    if (!savedState) return;
+    
+    const parsed = JSON.parse(savedState);
+    
+    // Проверяем, что мы на правильной странице
+    if (page !== parsed.page) {
+        return;
+    }
+    
+    if (cards.length === 0) return;
+    
+    const findAndScroll = () => {
+        if (parsed.cardId) {
+            const cardElement = document.querySelector(`[data-card-id="${parsed.cardId}"]`);
+            if (cardElement) {
+                cardElement.scrollIntoView({
+                    behavior: "auto",
+                    block: "center"
+                });
+                sessionStorage.removeItem("trackerPageState");
+                return true;
+            }
+        } else if (parsed.scrollY !== undefined) {
+            globalThis.scrollTo({
+                top: parsed.scrollY,
+                behavior: "auto"
+            });
+            sessionStorage.removeItem("trackerPageState");
+            return true;
         }
-    }, [page, userRole, username, streamName, fetchCards, searchParams, currentFilters]);
+        return false;
+    };
+    
+    if (findAndScroll()) return;
+    
+    let attempts = 0;
+    const interval = setInterval(() => {
+        attempts++;
+        if (findAndScroll() || attempts > 30) {
+            clearInterval(interval);
+        }
+    }, 100);
+    
+    return () => clearInterval(interval);
+}, [cards, page]);
+
+    // Сброс прокрутки при обычной навигации
+    useEffect(() => {
+        const savedState = sessionStorage.getItem("trackerPageState");
+        
+        // Если есть сохраненное состояние с cardId - это возврат из карточки
+        if (savedState) {
+            const parsed = JSON.parse(savedState);
+            if (parsed.cardId) {
+                return; // Не сбрасываем
+            }
+        }
+        
+        // Обычный переход - сбрасываем наверх
+        globalThis.scrollTo({
+            top: 0,
+            behavior: "auto"
+        });
+    }, []);
 
     return (
         <div className="tracker-container">
@@ -708,7 +938,7 @@ const options = {
                         </div>
                     </div>
                     {(userRole === "ADMIN" || userRole === "SUPER_ADMIN") &&
-                        (location.pathname === "/all-team-cards" || location.pathname.startsWith("/team-cards")) ? (
+                        (globalThis.location.pathname === "/all-team-cards" || globalThis.location.pathname.startsWith("/team-cards")) ? (
                         <div className="switch-wrapper">
                             <div className="tooltip-wrapper">
                                 <label className="ios-switch">
@@ -737,133 +967,8 @@ const options = {
                     </div>
                 </div>
             )}
-            <div className="cards-wrapper">
-                {error ? (
-                    <p className="error-message">{error}</p>
-                ) : filteredCards.length > 0 ? (
-                    visibleCards.map((card) => (
-                        <div 
-  className="card" 
-  key={card.id} 
-  onClick={() => navigate(`/teamcard/${card.id}`)}
-  onKeyDown={(e) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      navigate(`/teamcard/${card.id}`);
-    }
-  }}
-  tabIndex={0}
-  role="button"
-  aria-label={`Перейти к карточке команды ${card.name}`}
->
-  <div className="card-image">
-    {card?.averageGrade !== undefined && card?.averageGrade !== null && (
-      <div className={`card-image-rating ${
-        card.averageGrade >= 0.51 ? 'rating-green' :
-        card.averageGrade >= 0.26 ? 'rating-yellow' :
-        'rating-red'
-      }`}>
-        {card.averageGrade.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-      </div>
-    )}
-    <img 
-      src={card.streams?.[0]?.id && streamImages[card.streams[0].id] ? streamImages[card.streams[0].id] : StreamPlaceholder}
-      alt=""
-      onError={(e) => {
-        e.target.src = StreamPlaceholder;
-        e.target.onerror = null;
-      }}
-      className="stream-image"
-    />
-  </div>
-                            <span className={`status ${!card.enabled ? "inactive" : ""}`}>
-                                {card.enabled ? "Активно" : "Завершено"}
-                            </span>
-
-                            <div className="card-content">
-                                <div className="text-container project-title">
-                                    <h3>{card.name}</h3>
-                                </div>
-                                <div className="text-container">
-  <div className={`project-description ${card._showFull ? "expanded" : ""}`}>
-    <p>{card.description}</p>
-  </div>
-
-  {card.description.length > 100 && (
-    <div
-  className="show-more-text"
-  onClick={(e) => {
-    e.stopPropagation();
-    setCards((prev) =>
-      prev.map((c) =>
-        c.id === card.id ? { ...c, _showFull: !c._showFull } : c
-      )
-    );
-  }}
-  onKeyDown={(e) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault(); // Предотвращаем прокрутку страницы при нажатии пробела
-      setCards((prev) =>
-        prev.map((c) =>
-          c.id === card.id ? { ...c, _showFull: !c._showFull } : c
-        )
-      );
-    }
-  }}
-  tabIndex={0} // Делаем элемент фокусируемым
-  role="button" // Указываем роль кнопки для семантики
-  aria-label={card._showFull ? "Свернуть описание" : "Показать полное описание"} // Улучшаем доступность
->
-  {card._showFull ? "Свернуть" : "Подробнее"}
-</div>
-  )}
-</div>
-
-
-
-                                <div className="under-cont">
-                                    <div className="text-container project-markets">
-                                        <p>
-  Рынки НТИ:{" "}
-  {card.ntiMarkets?.length > 0
-    ? card.ntiMarkets.map((market) => market.displayName).join(", ")
-    : "Неизвестны"}
-</p>
-
-
-                                    </div>
-                                    <div className="text-container project-trl">
-                                        <p>TRL: {card.readinessLevel || "Неизвестен"}</p>
-                                    </div>
-                                    <div className="text-container project-flow">
-                                        <p>
-  Поток: {card.streams?.[0]?.name || "Неизвестен"}: {card.streams?.[0]?.startDate || "?"} - {card.streams?.[0]?.endDate || "?"}
-</p>
-
-                                    </div>
-                                </div>
-                            </div>
-
-                            <button
-                                className="edit-button"
-                                onClick={(e) => {
-                                    e.stopPropagation(); // чтобы не срабатывал переход по карточке
-                                    navigate(`/teamcard/${card.id}?userId=${card.userId}&edit=true`, {
-  state: {
-    userId: card.userId,
-    streamId: streamId,
-    from: location.pathname
-  }
-});
-
-                                }}
-                            >
-                                Редактировать
-                            </button>
-                        </div>
-                    ))
-                ) : (
-                    <p>Ничего не найдено по запросу</p>
-                )}
+<div className="cards-wrapper">
+                {renderCardList()}
             </div>
 
             {filteredCards.length > 0 && (

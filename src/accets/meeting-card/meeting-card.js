@@ -92,7 +92,9 @@ const MeetingCard = () => {
                     <img src={pencilIcon} alt="Редактировать" className="edit-icon23" />
                 </>
             ) : (
-                <div className="unique-task">{value || "Не указаны"}</div>
+                <div className="unique-task">
+                    <div className="unique-task-scroll">{value || "Не указаны"}</div>
+                </div>
             )}
         </div>
     );

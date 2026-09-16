@@ -179,11 +179,19 @@ useEffect(() => {
   return true;
 };
 
+  const MAX_IMAGE_SIZE_MB = 2;
+  const MAX_IMAGE_SIZE_BYTES = MAX_IMAGE_SIZE_MB * 1024 * 1024;
+
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
       if (!file.type.match('image.*')) {
         setError('Пожалуйста, выберите файл изображения (JPEG, PNG, GIF)');
+        return;
+      }
+      if (file.size > MAX_IMAGE_SIZE_BYTES) {
+        setError(`Размер изображения не должен превышать ${MAX_IMAGE_SIZE_MB} мб`);
+        e.target.value = '';
         return;
       }
       const reader = new FileReader();

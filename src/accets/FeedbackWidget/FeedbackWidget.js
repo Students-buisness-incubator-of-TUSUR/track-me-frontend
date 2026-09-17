@@ -11,8 +11,12 @@ const FeedbackWidget = () => {
   const [error, setError] = useState(null);
 
   const backendHost = (process.env.REACT_APP_BACKEND_URI || 'http://localhost:8080') + '/sso';
+  const hiddenRoutes = ['/', '/login', '/register', '/login-recovery', '/login-recovery-2', '/after-login', '/admin', '/superadmin'];
+  const isHiddenRoute = hiddenRoutes.includes(location.pathname);
 
   useEffect(() => {
+    if (isHiddenRoute) return undefined;
+
     const fetchUserData = async () => {
       setIsLoading(true);
       try {
@@ -45,7 +49,7 @@ const FeedbackWidget = () => {
     };
 
     fetchUserData();
-  }, [backendHost]);
+  }, [backendHost, isHiddenRoute]);
 
   useEffect(() => {
     const handleOpenFeedback = () => setIsOpen(true);
@@ -87,7 +91,7 @@ const FeedbackWidget = () => {
     }
   };
 
-  if (['/admin', '/superadmin'].includes(location.pathname)) return null;
+  if (isHiddenRoute) return null;
 
   return (
     <div className="feedback-widget">

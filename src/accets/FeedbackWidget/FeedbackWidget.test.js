@@ -1,7 +1,7 @@
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import FeedbackWidget from "./FeedbackWidget";
-import { BrowserRouter, MemoryRouter } from "react-router-dom";
+import { MemoryRouter } from "react-router-dom";
 import "@testing-library/jest-dom";
 
 // Мокаем fetch и localStorage
@@ -15,27 +15,28 @@ afterEach(() => {
 });
 
 describe("FeedbackWidget — базовое поведение", () => {
-  it("не рендерится на страницах /admin и /superadmin", () => {
-    render(
-      <MemoryRouter initialEntries={["/admin"]}>
-        <FeedbackWidget />
-      </MemoryRouter>
-    );
-    expect(screen.queryByText("Обратная связь")).not.toBeInTheDocument();
+  it("не рендерится на публичных и административных страницах и не загружает данные пользователя", () => {
+    const hiddenRoutes = ['/', '/login', '/register', '/admin', '/superadmin'];
 
-    render(
-      <MemoryRouter initialEntries={["/superadmin"]}>
-        <FeedbackWidget />
-      </MemoryRouter>
-    );
-    expect(screen.queryByText("Обратная связь")).not.toBeInTheDocument();
+    hiddenRoutes.forEach((route) => {
+      const { unmount } = render(
+        <MemoryRouter initialEntries={[route]}>
+          <FeedbackWidget />
+        </MemoryRouter>
+      );
+
+      expect(screen.queryByText("Обратная связь")).not.toBeInTheDocument();
+      unmount();
+    });
+
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it("рендерится на других страницах", () => {
     render(
-      <BrowserRouter>
+      <MemoryRouter initialEntries={["/streams"]}>
         <FeedbackWidget />
-      </BrowserRouter>
+      </MemoryRouter>
     );
     expect(screen.getByText("Обратная связь")).toBeInTheDocument();
   });
@@ -57,9 +58,9 @@ describe("FeedbackWidget — загрузка данных пользовате�
     });
     
     render(
-      <BrowserRouter>
+      <MemoryRouter initialEntries={["/streams"]}>
         <FeedbackWidget />
-      </BrowserRouter>
+      </MemoryRouter>
     );
     
     // Открываем форму
@@ -87,9 +88,9 @@ describe("FeedbackWidget — загрузка данных пользовате�
     Storage.prototype.getItem.mockReturnValueOnce(JSON.stringify(mockUserData));
     
     render(
-      <BrowserRouter>
+      <MemoryRouter initialEntries={["/streams"]}>
         <FeedbackWidget />
-      </BrowserRouter>
+      </MemoryRouter>
     );
     
     // Открываем форму
@@ -125,9 +126,9 @@ describe("FeedbackWidget — отправка формы", () => {
 
   it("отправляет форму с данными пользователя", async () => {
     render(
-      <BrowserRouter>
+      <MemoryRouter initialEntries={["/streams"]}>
         <FeedbackWidget />
-      </BrowserRouter>
+      </MemoryRouter>
     );
     
     // Открываем форму
@@ -191,9 +192,9 @@ describe("FeedbackWidget — отправка формы", () => {
     fetch.mockImplementationOnce(() => Promise.reject("API error"));
     
     render(
-      <BrowserRouter>
+      <MemoryRouter initialEntries={["/streams"]}>
         <FeedbackWidget />
-      </BrowserRouter>
+      </MemoryRouter>
     );
     
     // Открываем форму
@@ -222,9 +223,9 @@ describe("FeedbackWidget — отправка формы", () => {
 
   it("показывает ошибки валидации при пустых обязательных полях", async () => {
     render(
-      <BrowserRouter>
+      <MemoryRouter initialEntries={["/streams"]}>
         <FeedbackWidget />
-      </BrowserRouter>
+      </MemoryRouter>
     );
     
     // Открываем форму
@@ -267,9 +268,9 @@ describe("FeedbackWidget — состояние после отправки", ()
     });
     
     render(
-      <BrowserRouter>
+      <MemoryRouter initialEntries={["/streams"]}>
         <FeedbackWidget />
-      </BrowserRouter>
+      </MemoryRouter>
     );
     
     // Открываем форму

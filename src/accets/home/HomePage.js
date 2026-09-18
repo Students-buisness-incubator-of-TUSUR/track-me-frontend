@@ -15,12 +15,12 @@ const HomePage = () => {
     };
 
 
-    const handleYandexLogin = () => {
-        window.location.href = `${clientGatewayUri}/oauth2/authorization/yandex`;
+    const handleGithubLogin = () => {
+        alert("в разработке");
     };
 
     const handleGoogleLogin = () => {
-        window.location.href = `${clientGatewayUri}/oauth2/authorization/google`;
+        alert("в разработке");
     };
 
     const handleTelegramLogin = () => {
@@ -39,14 +39,14 @@ const HomePage = () => {
                 <p className="home-description">Управляйте своими потоками и командами с
                     легкостью.</p>
                 <div className="home-provider-buttons">
-                    <button className="home-provider-button" onClick={handleGoogleLogin}>
+                    <button className="home-provider-button" onClick={handleGoogleLogin} disabled>
                         <img src="/icons/google-logo.svg" alt="Google"/>
                     </button>
                     <button className="home-provider-button" onClick={handleTelegramLogin} disabled>
                         <img src="/icons/telegram-logo.svg" alt="Telegram"/>
                     </button>
-                    <button className="home-provider-button" onClick={handleYandexLogin}>
-                        <img src="/icons/yandex-logo-rus.svg" alt="Yandex"/>
+                    <button className="home-provider-button" onClick={handleGithubLogin} disabled>
+                        <img src="/icons/github-logo.svg" alt="GitHub"/>
                     </button>
                 </div>
                 <button className="home-sso-button" onClick={handleSSOLogin}>

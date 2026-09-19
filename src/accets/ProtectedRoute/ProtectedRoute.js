@@ -3,6 +3,8 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { setUser, clearUser } from '../../store/userSlice';
 import LoginService from '../../services/login-service';
+import { startActivitySession } from '../../services/activity-session';
+import { readSessionStatus, reportUserActivity } from '../../services/session-api';
 
 const ProtectedRoute = ({ children }) => {
     const user = useSelector(state => state.user.user);
@@ -21,7 +23,7 @@ const ProtectedRoute = ({ children }) => {
             }
         } catch (error) {
             console.error("Auth check failed:", error);
-            dispatch(clearUser());
+            if (error.response?.status === 401) dispatch(clearUser());
         } finally {
             setIsCheckingAuth(false);
         }
@@ -30,12 +32,12 @@ const ProtectedRoute = ({ children }) => {
     useEffect(() => {
         checkAuth();
 
-        const interval = setInterval(() => {
-            checkAuth();
-        }, 30000);
-
-        return () => clearInterval(interval);
-    }, [checkAuth]); // ✅ Без предупреждений теперь
+        return startActivitySession({
+            readStatus: readSessionStatus,
+            heartbeat: reportUserActivity,
+            onExpired: () => dispatch(clearUser()),
+        });
+    }, [checkAuth, dispatch]);
 
     if (isCheckingAuth) {
         return <div>Loading...</div>;

@@ -1,5 +1,5 @@
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import "@testing-library/jest-dom";
 import TrackerMeetingReportPage from "./TrackerMeetingReportPage";
@@ -30,12 +30,14 @@ describe("TrackerMeetingReportPage", () => {
     status: "COMPLETED",
   };
 
+  const successfulResponse = (content) => ({
+    ok: true,
+    json: () => Promise.resolve({ content }),
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
-    fetchMyTrackerMeetingReport.mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({ content: [report] }),
-    });
+    fetchMyTrackerMeetingReport.mockResolvedValue(successfulResponse([report]));
   });
 
   function renderPage() {
@@ -71,6 +73,87 @@ describe("TrackerMeetingReportPage", () => {
     expect(cells[4]).toHaveTextContent("Задача на следующую встречу");
   });
 
+  test("creates filters for a selected team and completed team status", async () => {
+    renderPage();
+    await screen.findByText("Команда А");
+
+    fireEvent.click(screen.getByRole("button", { name: "Команда" }));
+    fireEvent.click(screen.getByRole("button", { name: "Команда А" }));
+
+    await waitFor(() => expect(fetchMyTrackerMeetingReport).toHaveBeenLastCalledWith(expect.objectContaining({
+      filters: [{ fieldName: "teamName", type: "EQ", value: "Команда А" }],
+    })));
+
+    fireEvent.click(screen.getByRole("button", { name: "Статус" }));
+    fireEvent.click(screen.getByRole("button", { name: "Есть проблемы" }));
+
+    await waitFor(() => expect(fetchMyTrackerMeetingReport).toHaveBeenLastCalledWith(expect.objectContaining({
+      filters: [
+        { fieldName: "teamName", type: "EQ", value: "Команда А" },
+        { fieldName: "teamStatus", type: "EQ", value: "WITH_ISSUES" },
+        { fieldName: "status", type: "EQ", value: "COMPLETED" },
+      ],
+    })));
+  });
+
+  test("creates a direct status filter for a scheduled meeting", async () => {
+    renderPage();
+    await screen.findByText("Команда А");
+
+    fireEvent.click(screen.getByRole("button", { name: "Статус" }));
+    fireEvent.click(screen.getByRole("button", { name: "Запланирована" }));
+
+    await waitFor(() => expect(fetchMyTrackerMeetingReport).toHaveBeenLastCalledWith(expect.objectContaining({
+      filters: [{ fieldName: "status", type: "EQ", value: "SCHEDULED" }],
+    })));
+  });
+
+  test("updates sort parameters when sortable headers are clicked", async () => {
+    renderPage();
+    await screen.findByText("Команда А");
+
+    fireEvent.click(screen.getByText("Название команды"));
+    await waitFor(() => expect(fetchMyTrackerMeetingReport).toHaveBeenLastCalledWith(expect.objectContaining({
+      sort: ["teamName,desc", "startDate,desc"],
+    })));
+
+    fireEvent.click(screen.getByText("Статус команды"));
+    await waitFor(() => expect(fetchMyTrackerMeetingReport).toHaveBeenLastCalledWith(expect.objectContaining({
+      sort: ["teamName,desc", "teamStatus,asc"],
+    })));
+  });
+
+  test("renders scheduled, cancelled and completed statuses with appropriate task values", async () => {
+    fetchMyTrackerMeetingReport.mockResolvedValue(successfulResponse([
+      { ...report, teamId: "team-2", teamName: "Команда Б", status: "SCHEDULED", teamStatus: "OK" },
+      { ...report, teamId: "team-3", teamName: "Команда В", status: "SCHEDULED", teamStatus: null },
+      { ...report, teamId: "team-4", teamName: "Команда Г", status: "COMPLETED_AS_NOT_HAPPENED" },
+      { ...report, teamId: "team-5", teamName: "Команда Д", teamStatus: "MANY_ISSUES", tasksCurrentMeeting: "", tasksNextMeeting: "" },
+    ]));
+
+    const { container } = renderPage();
+
+    expect(await screen.findByText("Запланирована (Всё ок)")).toBeInTheDocument();
+    expect(screen.getByText("Запланирована")).toBeInTheDocument();
+    expect(screen.getByText("Не состоялась")).toBeInTheDocument();
+    expect(screen.getByText("Есть большие проблемы")).toBeInTheDocument();
+    expect(container.querySelector(".mrep-row-not-happened")).toBeInTheDocument();
+    expect(container.querySelectorAll("tbody tr")[0]).toHaveTextContent("—");
+  });
+
+  test("renders empty state and request error", async () => {
+    fetchMyTrackerMeetingReport.mockResolvedValueOnce(successfulResponse([]));
+    const { unmount } = renderPage();
+
+    expect(await screen.findByText("Нет данных")).toBeInTheDocument();
+    unmount();
+
+    fetchMyTrackerMeetingReport.mockResolvedValueOnce({ ok: false, status: 500 });
+    renderPage();
+
+    expect(await screen.findByText("Не удалось загрузить отчёт. Попробуйте обновить страницу.")).toBeInTheDocument();
+  });
+
   test("exports only tracker report data", async () => {
     fetchMyTrackerMeetingReportExcel.mockResolvedValue({
       ok: true,
@@ -83,6 +166,17 @@ describe("TrackerMeetingReportPage", () => {
     await screen.findByText("Команда А");
     fireEvent.click(screen.getByText("Выгрузить отчёт"));
 
-    expect(fetchMyTrackerMeetingReportExcel).toHaveBeenCalledWith(expect.objectContaining({ filters: [] }));
+    await waitFor(() => expect(fetchMyTrackerMeetingReportExcel).toHaveBeenCalledWith(expect.objectContaining({ filters: [] })));
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:report");
+  });
+
+  test("shows an error when Excel export fails", async () => {
+    fetchMyTrackerMeetingReportExcel.mockResolvedValue({ ok: false, status: 500 });
+    renderPage();
+    await screen.findByText("Команда А");
+
+    fireEvent.click(screen.getByText("Выгрузить отчёт"));
+
+    expect(await screen.findByText("Не удалось выгрузить отчёт. Попробуйте ещё раз.")).toBeInTheDocument();
   });
 });

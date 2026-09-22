@@ -50,6 +50,43 @@ export async function fetchMeetingReportExcel({ streamId, filters, sort }) {
   });
 }
 
+export async function fetchMyTrackerMeetingReport({ filters, page, size, sort }) {
+  let url = `${backendURLMeeting}/api/v1/tracker/meetings/reports/my?page=${page}&size=${size}`;
+  const sortArray = Array.isArray(sort) ? sort : sort ? [sort] : [];
+  sortArray.forEach((sortParam) => {
+    url += `&sort=${sortParam}`;
+  });
+
+  return fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getCsrfConfigForFetch(),
+    },
+    credentials: "include",
+    body: JSON.stringify({ filters: filters ?? [] }),
+  });
+}
+
+export async function fetchMyTrackerMeetingReportExcel({ filters, sort }) {
+  const params = new URLSearchParams();
+  const sortArray = Array.isArray(sort) ? sort : sort ? [sort] : [];
+  sortArray.forEach((sortParam) => params.append("sort", sortParam));
+  const query = params.toString();
+  const url = `${backendURLMeeting}/api/v1/tracker/meetings/reports/my/excel${query ? `?${query}` : ""}`;
+
+  return fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Accept": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      ...getCsrfConfigForFetch(),
+    },
+    credentials: "include",
+    body: JSON.stringify({ filters: filters ?? [] }),
+  });
+}
+
 export async function fetchReports({ page, size, filters }) {
   const response = await fetch(
     `${backendURLBackend}/api/v1/team-cards/reports?page=${page}&size=${size}`,

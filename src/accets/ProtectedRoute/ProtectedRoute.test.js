@@ -72,6 +72,37 @@ describe('ProtectedRoute', () => {
 
   
 
+  test('allows only the required role', async () => {
+    const tracker = { id: 1, roles: ['TRACKER'] };
+    useSelector.mockImplementation((selector) => selector({ user: { user: tracker } }));
+    mockGetUserInfo.mockResolvedValue(tracker);
+
+    await act(async () => {
+      render(<ProtectedRoute requiredRole="TRACKER">Tracker report</ProtectedRoute>);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Tracker report')).toBeInTheDocument();
+    });
+  });
+
+  test('redirects a user without the required role', async () => {
+    const admin = { id: 1, roles: ['ADMIN'] };
+    useSelector.mockImplementation((selector) => selector({ user: { user: admin } }));
+    mockGetUserInfo.mockResolvedValue(admin);
+
+    await act(async () => {
+      render(<ProtectedRoute requiredRole="TRACKER">Tracker report</ProtectedRoute>);
+    });
+
+    await waitFor(() => {
+      expect(Navigate).toHaveBeenCalledWith(
+        expect.objectContaining({ to: '/after-login', replace: true }),
+        undefined
+      );
+    });
+  });
+
   test('dispatches setUser on successful auth check', async () => {
     const userInfo = { id: 1, name: 'Test User' };
     mockGetUserInfo.mockResolvedValue(userInfo);

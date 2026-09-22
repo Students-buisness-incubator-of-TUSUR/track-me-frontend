@@ -50,9 +50,15 @@ export async function fetchMeetingReportExcel({ streamId, filters, sort }) {
   });
 }
 
+function toSortArray(sort) {
+  if (Array.isArray(sort)) return sort;
+  if (sort) return [sort];
+  return [];
+}
+
 export async function fetchMyTrackerMeetingReport({ filters, page, size, sort }) {
   let url = `${backendURLMeeting}/api/v1/tracker/meetings/reports/my?page=${page}&size=${size}`;
-  const sortArray = Array.isArray(sort) ? sort : sort ? [sort] : [];
+  const sortArray = toSortArray(sort);
   sortArray.forEach((sortParam) => {
     url += `&sort=${sortParam}`;
   });
@@ -70,10 +76,11 @@ export async function fetchMyTrackerMeetingReport({ filters, page, size, sort })
 
 export async function fetchMyTrackerMeetingReportExcel({ filters, sort }) {
   const params = new URLSearchParams();
-  const sortArray = Array.isArray(sort) ? sort : sort ? [sort] : [];
+  const sortArray = toSortArray(sort);
   sortArray.forEach((sortParam) => params.append("sort", sortParam));
   const query = params.toString();
-  const url = `${backendURLMeeting}/api/v1/tracker/meetings/reports/my/excel${query ? `?${query}` : ""}`;
+  let url = `${backendURLMeeting}/api/v1/tracker/meetings/reports/my/excel`;
+  if (query) url += `?${query}`;
 
   return fetch(url, {
     method: "POST",

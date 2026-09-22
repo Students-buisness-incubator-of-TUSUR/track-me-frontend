@@ -292,9 +292,13 @@ function Dropdown({ label, isOpen, onToggle, children }) {
 
 function SortableHeader({ title, dir, currentSort, field, onSort }) {
   const isActive = currentSort ? currentSort.field === field : true;
-  const icon = currentSort
-    ? (currentSort.direction === "asc" ? "↑" : "↓")
-    : (dir === "asc" ? "А→Я" : "Я→А");
+  let icon;
+
+  if (currentSort) {
+    icon = currentSort.direction === "asc" ? "↑" : "↓";
+  } else {
+    icon = dir === "asc" ? "А→Я" : "Я→А";
+  }
 
   return (
     <th onClick={onSort} className="mrep-th-sortable">

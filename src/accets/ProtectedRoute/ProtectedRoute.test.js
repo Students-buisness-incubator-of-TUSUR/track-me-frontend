@@ -77,9 +77,7 @@ describe('ProtectedRoute', () => {
     useSelector.mockImplementation((selector) => selector({ user: { user: tracker } }));
     mockGetUserInfo.mockResolvedValue(tracker);
 
-    await act(async () => {
-      render(<ProtectedRoute requiredRole="TRACKER">Tracker report</ProtectedRoute>);
-    });
+    render(<ProtectedRoute requiredRole="TRACKER">Tracker report</ProtectedRoute>);
 
     await waitFor(() => {
       expect(screen.getByText('Tracker report')).toBeInTheDocument();
@@ -91,9 +89,7 @@ describe('ProtectedRoute', () => {
     useSelector.mockImplementation((selector) => selector({ user: { user: admin } }));
     mockGetUserInfo.mockResolvedValue(admin);
 
-    await act(async () => {
-      render(<ProtectedRoute requiredRole="TRACKER">Tracker report</ProtectedRoute>);
-    });
+    render(<ProtectedRoute requiredRole="TRACKER">Tracker report</ProtectedRoute>);
 
     await waitFor(() => {
       expect(Navigate).toHaveBeenCalledWith(

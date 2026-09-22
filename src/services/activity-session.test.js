@@ -52,11 +52,21 @@ describe('activity-based session', () => {
     test('frequent input is throttled and its trailing activity is sent', async () => {
         await begin();
         for (let i = 0; i < 100; i++) fireEvent.keyDown(window);
-        expect(heartbeat).not.toHaveBeenCalled();
-        await advance(30000);
         expect(heartbeat).toHaveBeenCalledTimes(1);
         await advance(30000);
         expect(heartbeat).toHaveBeenCalledTimes(1);
+        await advance(30000);
+        expect(heartbeat).toHaveBeenCalledTimes(1);
+    });
+
+    test('activity immediately before the deadline is not delayed by a status poll', async () => {
+        await begin();
+        await advance(IDLE_TIMEOUT_MS - 1000);
+        fireEvent.keyDown(window);
+        await flush();
+        expect(heartbeat).toHaveBeenCalledTimes(1);
+        await advance(1000);
+        expect(onExpired).not.toHaveBeenCalled();
     });
 
     test('a late event after sleep cannot revive an expired session', async () => {

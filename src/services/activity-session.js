@@ -1,7 +1,7 @@
 export const IDLE_TIMEOUT_MS = 60 * 60 * 1000;
 export const ACTIVITY_KEY = 'trackme.lastUserActivity';
 const REQUEST_INTERVAL_MS = 30000;
-const EVENTS = ['keydown', 'input', 'pointerdown', 'pointermove', 'touchstart', 'scroll', 'wheel'];
+const EVENTS = ['keydown', 'input', 'pointerdown', 'pointermove', 'touchstart', 'touchmove', 'wheel'];
 
 // Only user events update activity. Network polls never extend the client deadline.
 export function startActivitySession({ readStatus, heartbeat, onExpired }) {
@@ -11,6 +11,7 @@ export function startActivitySession({ readStatus, heartbeat, onExpired }) {
     let busy = false;
     let lastActivity = Date.now();
     let lastRequest = 0;
+    let lastHeartbeat = -Infinity;
 
     const readShared = () => {
         try {
@@ -39,6 +40,7 @@ export function startActivitySession({ readStatus, heartbeat, onExpired }) {
         lastRequest = Date.now();
         const sentActivity = lastActivity;
         const sendingActivity = initialized && pending;
+        if (sendingActivity) lastHeartbeat = Date.now();
         try {
             const status = await (sendingActivity ? heartbeat() : readStatus());
             if (stopped) return;
@@ -66,7 +68,7 @@ export function startActivitySession({ readStatus, heartbeat, onExpired }) {
         pending = true;
         // Avoid a synchronous localStorage write for every mouse movement.
         if (lastActivity - readShared() >= 1000) writeShared(lastActivity);
-        if (Date.now() - lastRequest >= REQUEST_INTERVAL_MS) request();
+        if (Date.now() - lastHeartbeat >= REQUEST_INTERVAL_MS) request();
     };
     const storage = event => {
         if (event.key !== ACTIVITY_KEY || stopped) return;
@@ -76,7 +78,8 @@ export function startActivitySession({ readStatus, heartbeat, onExpired }) {
     const tick = () => {
         if (stopped) return;
         if (isExpired()) { expire(); return; }
-        if (Date.now() - lastRequest >= REQUEST_INTERVAL_MS) request();
+        if ((pending && Date.now() - lastHeartbeat >= REQUEST_INTERVAL_MS)
+                || Date.now() - lastRequest >= REQUEST_INTERVAL_MS) request();
     };
     const stop = () => {
         if (stopped) return;

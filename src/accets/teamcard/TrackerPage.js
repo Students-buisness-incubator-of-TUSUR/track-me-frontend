@@ -530,21 +530,31 @@ const options = {
                             </div>
 
                             <button
-                                className="edit-button"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    navigate(`/teamcard/${card.id}?userId=${card.userId}&edit=true`, {
-  state: {
-    userId: card.userId,
-    streamId: streamId,
-    from: globalThis.location.pathname
-  }
-});
-
-                                }}
-                            >
-                                Редактировать
-                            </button>
+    className="edit-button"
+    onClick={(e) => {
+        e.stopPropagation();
+        sessionStorage.setItem(
+            "trackerPageState",
+            JSON.stringify({
+                page: page,
+                scrollY: globalThis.scrollY,
+                cardId: card.id
+            })
+        );
+        navigate(`/teamcard/${card.id}?userId=${card.userId}&edit=true`, {
+            state: {
+                userId: card.userId,
+                streamId: streamId,
+                from: globalThis.location.pathname,
+                page: page,
+                returnScroll: globalThis.scrollY,
+                returnCardId: card.id
+            }
+        });
+    }}
+>
+    Редактировать
+</button>
                         </div>
             );
         });

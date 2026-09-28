@@ -248,8 +248,8 @@ export default function MeetingReportPage() {
                 <SortableHeader title="Название команды" dir={sortConfig.teamNameDir} onSort={() => requestSort("teamName")} />
                 <SortableHeader title="Дата встречи" currentSort={sortConfig.secondary} field="startDate" onSort={() => requestSort("startDate")} />
                 <th>Трекер</th>
-                <th>Задачи к следующей встрече</th>
                 <th>Выполнение задач / инфо по команде</th>
+                <th>Задачи к следующей встрече</th>
                 <SortableHeader title="Статус команды" currentSort={sortConfig.secondary} field="teamStatusValue" onSort={() => requestSort("teamStatusValue")} />
               </tr>
             </thead>

@@ -14,6 +14,7 @@ import HomePage from "./accets/home/HomePage";
 import AfterLogin from "./accets/after-login/AfterLogin";
 import TeamCardCreate from "./accets/create-teamcard/team-card-create.js";
 import MeetingCreate from "./accets/meeting-card/MeetingCreate.js";
+import TrackerMeetingReportPage from "./accets/tracker-meeting-report-page/TrackerMeetingReportPage.js";
 import FeedbackWidget from "./accets/FeedbackWidget/FeedbackWidget.js";
 import ProtectedRoute from "./accets/ProtectedRoute/ProtectedRoute.js"; // Импортируем компонент защиты
 import ReportPage from "./accets/report-page/ReportPage.js";
@@ -125,6 +126,11 @@ function App() {
                     <Route path="/profile/:username" element={
                         <ProtectedRoute>
                             <ProfilePage />
+                        </ProtectedRoute>
+                    } />
+                    <Route path="/tracker-report" element={
+                        <ProtectedRoute requiredRole="TRACKER">
+                            <TrackerMeetingReportPage />
                         </ProtectedRoute>
                     } />
                     <Route path="/report" element={

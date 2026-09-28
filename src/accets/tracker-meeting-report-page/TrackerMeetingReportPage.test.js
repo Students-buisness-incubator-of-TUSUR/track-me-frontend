@@ -69,8 +69,8 @@ describe("TrackerMeetingReportPage", () => {
 
     expect(screen.getByText("Выполнение задач / инфо по команде")).toBeInTheDocument();
     expect(screen.getByText("Задачи к следующей встрече")).toBeInTheDocument();
-    expect(cells[3]).toHaveTextContent("Выполненная задача");
-    expect(cells[4]).toHaveTextContent("Задача на следующую встречу");
+    expect(cells[3]).toHaveTextContent("Задача на следующую встречу");
+    expect(cells[4]).toHaveTextContent("Выполненная задача");
   });
 
   test("creates filters for a selected team and completed team status", async () => {

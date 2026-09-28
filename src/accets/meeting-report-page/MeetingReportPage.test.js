@@ -450,23 +450,42 @@ describe("MeetingReportPage Component", () => {
     });
   });
 
-  test("сортировка по статусу команды", async () => {
+  test("сортировка по статусу встречи возвращает исходный порядок на третье нажатие", async () => {
     renderComponent();
 
     await waitFor(() => {
       expect(screen.getByText("Team Alpha")).toBeInTheDocument();
     });
 
-    const statusHeader = screen.getByText("Статус команды");
+    expect(requests.fetchMeetingReport).toHaveBeenLastCalledWith(
+      expect.objectContaining({ sort: ["teamName,asc", "startDate,desc"] })
+    );
+
+    const statusHeader = screen.getByText("Статус встречи");
     fireEvent.click(statusHeader);
 
     await waitFor(() => {
-      expect(requests.fetchMeetingReport).toHaveBeenCalledWith(
+      expect(requests.fetchMeetingReport).toHaveBeenLastCalledWith(
         expect.objectContaining({
           sort: ["teamName,asc", "teamStatusValue,asc"],
         })
       );
     });
+
+    fireEvent.click(statusHeader);
+    await waitFor(() => {
+      expect(requests.fetchMeetingReport).toHaveBeenLastCalledWith(
+        expect.objectContaining({ sort: ["teamName,asc", "teamStatusValue,desc"] })
+      );
+    });
+
+    fireEvent.click(statusHeader);
+    await waitFor(() => {
+      expect(requests.fetchMeetingReport).toHaveBeenLastCalledWith(
+        expect.objectContaining({ sort: ["teamName,asc", "startDate,desc"] })
+      );
+    });
+    expect(statusHeader.querySelector(".mrep-icon-inactive")).toHaveTextContent("↕");
   });
 
   test("индикаторы сортировки отображаются корректно", async () => {

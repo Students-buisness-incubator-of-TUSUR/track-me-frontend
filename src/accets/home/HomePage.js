@@ -23,10 +23,6 @@ const HomePage = () => {
         window.location.href = `${clientGatewayUri}/oauth2/authorization/google`;
     };
 
-    const handleTelegramLogin = () => {
-        alert("в разработке");
-    };
-
     return (
         <div className="home-container">
             <div className="home-box">
@@ -41,9 +37,6 @@ const HomePage = () => {
                 <div className="home-provider-buttons">
                     <button className="home-provider-button" onClick={handleGoogleLogin}>
                         <img src="/icons/google-logo.svg" alt="Google"/>
-                    </button>
-                    <button className="home-provider-button" onClick={handleTelegramLogin} disabled>
-                        <img src="/icons/telegram-logo.svg" alt="Telegram"/>
                     </button>
                     <button className="home-provider-button" onClick={handleYandexLogin}>
                         <img src="/icons/yandex-logo-rus.svg" alt="Yandex"/>

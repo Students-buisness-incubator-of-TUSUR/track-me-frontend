@@ -219,8 +219,8 @@ export default function TrackerMeetingReportPage() {
             {item.teamName}{item.passive ? " (отчислена)" : ""}
           </td>
           <td>{item.startDate ? new Date(item.startDate).toLocaleDateString("ru-RU") : "—"}</td>
-          <td className="mrep-text-wrap">{showTasks ? item.tasksCurrentMeeting || "—" : "—"}</td>
           <td className="mrep-text-wrap">{showTasks ? item.tasksNextMeeting || "—" : "—"}</td>
+          <td className="mrep-text-wrap">{showTasks ? item.tasksCurrentMeeting || "—" : "—"}</td>
           <td className={`${statusClassName} mrep-cell-right`}>{statusText}</td>
         </tr>
       );

@@ -76,6 +76,16 @@ export default function MeetingReportPage() {
   const requestSort = (field) => {
     if (field === "teamName") {
       setSortConfig(prev => ({ ...prev, teamNameDir: prev.teamNameDir === "asc" ? "desc" : "asc" }));
+    } else if (field === "teamStatusValue") {
+      setSortConfig(prev => {
+        let secondary = { field, direction: "asc" };
+        if (prev.secondary.field === field) {
+          secondary = prev.secondary.direction === "asc"
+            ? { field, direction: "desc" }
+            : { field: "startDate", direction: "desc" };
+        }
+        return { ...prev, secondary };
+      });
     } else {
       setSortConfig(prev => ({
         ...prev,
@@ -250,7 +260,7 @@ export default function MeetingReportPage() {
                 <th>Трекер</th>
                 <th>Выполнение задач / инфо по команде</th>
                 <th>Задачи к следующей встрече</th>
-                <SortableHeader title="Статус команды" currentSort={sortConfig.secondary} field="teamStatusValue" onSort={() => requestSort("teamStatusValue")} />
+                <SortableHeader title="Статус встречи" currentSort={sortConfig.secondary} field="teamStatusValue" onSort={() => requestSort("teamStatusValue")} />
               </tr>
             </thead>
             <tbody>

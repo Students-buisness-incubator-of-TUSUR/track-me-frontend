@@ -32,6 +32,7 @@ function AfterLogin() {
 
         fetchCsrfToken()
             .then((data) => {
+                localStorage.removeItem('trackme.lastUserActivity');
                 let roles = data.roles;
                 let isAdmin = roles.includes("ADMIN");
                 let isTracker = roles.includes("TRACKER");

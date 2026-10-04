@@ -28,13 +28,19 @@ docker run --rm -p 3000:3000 -e REACT_APP_BACKEND_URI=http://localhost:8081 trac
 
 `:latest` двигается только из `develop`.
 
+Образ собирает отдельный workflow **`build-artifacts.yml`** («Build and Push Docker Image») на каждый
+push в `develop`/`main` и тег `v*.*.*` — **независимо от тестов**. `ci.yml` (тесты, SonarCloud, сборка
+бандла) идёт параллельно, как проверка; на образ его результат не влияет. `deploy-dev.yml` стартует
+после успешной сборки образа из `develop`. Такая же схема в монорепо `track-me`
+(`build-artifacts.yml` / `pr-checks.yml`).
+
 ## Релиз на prod
 
 Prod-стенд (`~/track-me-prod`, домен `trackme.startup-poligon.com`) разворачивает монорепо
 `track-me`; этот репозиторий обновляет в нём только сервис `trackme-frontend`.
 
 1. Влить `develop → main` через PR, дождаться зелёного CI.
-2. Тег на `main`: `git tag -a v1.2.3 -m "Release 1.2.3" && git push origin v1.2.3`; дождаться сборки образа `:v1.2.3`.
+2. Тег на `main`: `git tag -a v1.2.3 -m "Release 1.2.3" && git push origin v1.2.3`; дождаться **Build and Push Docker Image** для тега (образ `:v1.2.3`).
 3. Опубликовать GitHub Release из тега → **Deploy to PROD** → апрув в окружении `production`.
 
 Workflow прописывает `FRONTEND_IMAGE=…:vX.Y.Z` в `~/track-me-prod/.env` и пересоздаёт только

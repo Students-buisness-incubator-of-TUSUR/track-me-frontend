@@ -1,6 +1,6 @@
 name: Deploy to PROD
 
-# Релиз фронтенда на prod = публикация GitHub Release с тегом vX.Y.Z (образ :vX.Y.Z собирает CI
+# Релиз фронтенда на prod = публикация GitHub Release с тегом vX.Y.Z (образ :vX.Y.Z собирает build-artifacts
 # из тега на main). Выкатка идёт через окружение `production` с обязательным ручным апрувом.
 # workflow_dispatch со входом tag — для повторной выкатки/отката на любой релизный тег.
 #

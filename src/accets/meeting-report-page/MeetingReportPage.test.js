@@ -492,7 +492,7 @@ describe("MeetingReportPage Component", () => {
 
   test("сортировка по названию команды возвращает исходный порядок на третье нажатие", async () => {
     renderComponent();
-    await waitFor(() => expect(screen.getByText("Team Alpha")).toBeInTheDocument());
+    expect(await screen.findByText("Team Alpha")).toBeInTheDocument();
 
     const teamHeader = screen.getByText("Название команды");
     fireEvent.click(teamHeader);

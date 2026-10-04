@@ -263,8 +263,12 @@ export default function ReportPage({ defaultIsActive = true }) {
 
   useEffect(() => {
     setLoading(true);
-    Promise.all([loadReports(), loadStreams(), loadTrackers()]).finally(() => 
-      setLoading(false)
+    Promise.all([loadReports(), loadStreams(), loadTrackers()]).then(
+      () => setLoading(false),
+      (error) => {
+        console.error("Ошибка загрузки отчётов", error);
+        setLoading(false);
+      }
     );
   }, [loadReports, loadStreams, loadTrackers]);
 

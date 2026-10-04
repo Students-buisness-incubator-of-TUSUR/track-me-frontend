@@ -2,9 +2,10 @@ import axios from "axios";
 import { getCsrfConfig } from '../utils/csrf-utils';
 import {useDispatch} from "react-redux";
 import { setUser, clearUser } from '../store/userSlice';
+import { getBackendUri } from "../utils/runtime-env";
 
 function LoginService() {
-    const backendUrl = process.env.REACT_APP_BACKEND_URI || "http://localhost:8081";
+    const backendUrl = getBackendUri() || "http://localhost:8081";
     const dispatch = useDispatch();
 
     // Применяем withCredentials ко всем запросам через отдельный экземпляр axios

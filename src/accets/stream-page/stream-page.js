@@ -7,6 +7,7 @@ import { getCsrfConfig } from '../../utils/csrf-utils'; // Импортируе�
 // import LoginService from '../../services/login-service'; // Импортируем сервис для логина
 import Header from '../header/header';
 import { useGetUserInfo } from '../../services/util';
+import { getBackendUri } from "../../utils/runtime-env";
 
 export default function Stream() {
     const [isVisible, setIsVisible] = useState(false);
@@ -35,7 +36,7 @@ export default function Stream() {
     let today = new Date();
     const [imageUrls, setImageUrls] = useState({});
     let year = today.getFullYear();
-    const backendHost = (process.env.REACT_APP_BACKEND_URI || 'http://localhost:8080') + '/backend';
+    const backendHost = (getBackendUri() || 'http://localhost:8080') + '/backend';
     const numberOfCheckboxes = year - 2015;
 const [userRole, setUserRole] = useState('');
     // Убираем использование и проверку токена

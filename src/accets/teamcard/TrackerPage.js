@@ -7,6 +7,7 @@ import StreamPlaceholder from './Заглушка для потока в TrackMe
 import { getCsrfConfigForFetch } from "../../utils/csrf-utils";
 import Header from "../header/header";
 import { useGetUserInfo } from "../../services/util";
+import { getBackendUri } from "../../utils/runtime-env";
 
 function TrackerPage() {
     const [cards, setCards] = useState([]);
@@ -50,7 +51,7 @@ const [currentFilters, setCurrentFilters] = useState([]);
     };
 
 
-    const backendHost = (process.env.REACT_APP_BACKEND_URI || 'http://localhost:8080') + '/backend';
+    const backendHost = (getBackendUri() || 'http://localhost:8080') + '/backend';
     // Состояния для отображения панели фильтров и групп чекбоксов
     const [isVisible, setIsVisible] = useState(false);
     const [showCheckboxesStream, setShowCheckboxesStream] = useState(false); // Для "Все потоки"

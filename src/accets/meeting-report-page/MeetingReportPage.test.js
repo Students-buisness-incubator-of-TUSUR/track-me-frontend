@@ -103,6 +103,32 @@ describe("MeetingReportPage Component", () => {
     });
   });
 
+  test("отчисленные команды всегда идут после активных при сортировке", async () => {
+    requests.fetchMeetingReport.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        content: [
+          { ...mockData.content[0], passive: true },
+          { ...mockData.content[1], passive: false },
+          { ...mockData.content[2], passive: true },
+        ],
+      }),
+    });
+    const { container } = renderComponent();
+    await screen.findByText("Team Beta");
+
+    const teamNames = () => Array.from(container.querySelectorAll("tbody tr td:nth-child(2)"))
+      .map((cell) => cell.textContent);
+    const expectedOrder = ["Team Beta", "Team Alpha (отчислена)", "Team Gamma (отчислена)"];
+    expect(teamNames()).toEqual(expectedOrder);
+
+    fireEvent.click(screen.getByText("Статус встречи"));
+    await waitFor(() => expect(requests.fetchMeetingReport).toHaveBeenLastCalledWith(
+      expect.objectContaining({ sort: ["teamName,asc", "teamStatusValue,asc"] })
+    ));
+    await waitFor(() => expect(teamNames()).toEqual(expectedOrder));
+  });
+
   test("отображает данные в таблице и корректно форматирует статусы", async () => {
     renderComponent();
 
@@ -422,7 +448,7 @@ describe("MeetingReportPage Component", () => {
     });
   });
 
-  test("сортировка по дате встречи", async () => {
+  test("сортировка по дате встречи возвращает исходный порядок на третье нажатие", async () => {
     renderComponent();
 
     await waitFor(() => {
@@ -442,10 +468,58 @@ describe("MeetingReportPage Component", () => {
 
     fireEvent.click(dateHeader);
     await waitFor(() => {
-      expect(requests.fetchMeetingReport).toHaveBeenCalledWith(
+      expect(requests.fetchMeetingReport).toHaveBeenLastCalledWith(
         expect.objectContaining({
           sort: ["teamName,asc", "startDate,desc"],
         })
+      );
+    });
+
+    fireEvent.click(dateHeader);
+    await waitFor(() => {
+      expect(requests.fetchMeetingReport).toHaveBeenLastCalledWith(
+        expect.objectContaining({ sort: ["teamName,asc", "startDate,desc"] })
+      );
+    });
+
+    fireEvent.click(dateHeader);
+    await waitFor(() => {
+      expect(requests.fetchMeetingReport).toHaveBeenLastCalledWith(
+        expect.objectContaining({ sort: ["teamName,asc", "startDate,asc"] })
+      );
+    });
+  });
+
+  test("сортировка по названию команды возвращает исходный порядок на третье нажатие", async () => {
+    renderComponent();
+    await waitFor(() => expect(screen.getByText("Team Alpha")).toBeInTheDocument());
+
+    const teamHeader = screen.getByText("Название команды");
+    fireEvent.click(teamHeader);
+    await waitFor(() => {
+      expect(requests.fetchMeetingReport).toHaveBeenLastCalledWith(
+        expect.objectContaining({ sort: ["teamName,desc", "startDate,desc"] })
+      );
+    });
+
+    fireEvent.click(teamHeader);
+    await waitFor(() => {
+      expect(requests.fetchMeetingReport).toHaveBeenLastCalledWith(
+        expect.objectContaining({ sort: ["teamName,asc", "startDate,desc"] })
+      );
+    });
+
+    fireEvent.click(teamHeader);
+    await waitFor(() => {
+      expect(requests.fetchMeetingReport).toHaveBeenLastCalledWith(
+        expect.objectContaining({ sort: ["teamName,asc", "startDate,desc"] })
+      );
+    });
+
+    fireEvent.click(teamHeader);
+    await waitFor(() => {
+      expect(requests.fetchMeetingReport).toHaveBeenLastCalledWith(
+        expect.objectContaining({ sort: ["teamName,desc", "startDate,desc"] })
       );
     });
   });

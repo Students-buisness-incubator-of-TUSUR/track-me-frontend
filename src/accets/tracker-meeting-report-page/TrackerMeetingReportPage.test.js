@@ -61,6 +61,27 @@ describe("TrackerMeetingReportPage", () => {
     expect(screen.queryByPlaceholderText("Поиск по имени или логину...")).not.toBeInTheDocument();
   });
 
+  test("отчисленные команды остаются внизу после смены сортировки", async () => {
+    fetchMyTrackerMeetingReport.mockResolvedValue(successfulResponse([
+      { ...report, teamId: "team-1", teamName: "Команда А", passive: true },
+      { ...report, teamId: "team-2", teamName: "Команда Б", passive: false },
+      { ...report, teamId: "team-3", teamName: "Команда В", passive: true },
+    ]));
+    const { container } = renderPage();
+    await screen.findByText("Команда Б");
+
+    const teamNames = () => Array.from(container.querySelectorAll("tbody tr td:nth-child(2)"))
+      .map((cell) => cell.textContent);
+    const expectedOrder = ["Команда Б", "Команда А (отчислена)", "Команда В (отчислена)"];
+    expect(teamNames()).toEqual(expectedOrder);
+
+    fireEvent.click(screen.getByText("Дата встречи"));
+    await waitFor(() => expect(fetchMyTrackerMeetingReport).toHaveBeenLastCalledWith(
+      expect.objectContaining({ sort: ["teamName,asc", "startDate,asc"] })
+    ));
+    await waitFor(() => expect(teamNames()).toEqual(expectedOrder));
+  });
+
   test("matches task values with their columns", async () => {
     const { container } = renderPage();
 
@@ -121,6 +142,36 @@ describe("TrackerMeetingReportPage", () => {
     await waitFor(() => expect(fetchMyTrackerMeetingReport).toHaveBeenLastCalledWith(expect.objectContaining({
       sort: ["teamName,desc", "teamStatus,asc"],
     })));
+  });
+
+  test.each([
+    ["Название команды", ["teamName,desc", "startDate,desc"], ["teamName,asc", "startDate,desc"]],
+    ["Дата встречи", ["teamName,asc", "startDate,asc"], ["teamName,asc", "startDate,desc"]],
+    ["Статус команды", ["teamName,asc", "teamStatus,asc"], ["teamName,asc", "teamStatus,desc"]],
+  ])("%s: третье нажатие возвращает исходную сортировку", async (label, firstSort, secondSort) => {
+    renderPage();
+    await screen.findByText("Команда А");
+
+    const header = screen.getByText(label);
+    fireEvent.click(header);
+    await waitFor(() => expect(fetchMyTrackerMeetingReport).toHaveBeenLastCalledWith(
+      expect.objectContaining({ sort: firstSort })
+    ));
+
+    fireEvent.click(header);
+    await waitFor(() => expect(fetchMyTrackerMeetingReport).toHaveBeenLastCalledWith(
+      expect.objectContaining({ sort: secondSort })
+    ));
+
+    fireEvent.click(header);
+    await waitFor(() => expect(fetchMyTrackerMeetingReport).toHaveBeenLastCalledWith(
+      expect.objectContaining({ sort: ["teamName,asc", "startDate,desc"] })
+    ));
+
+    fireEvent.click(header);
+    await waitFor(() => expect(fetchMyTrackerMeetingReport).toHaveBeenLastCalledWith(
+      expect.objectContaining({ sort: firstSort })
+    ));
   });
 
   test("renders scheduled, cancelled and completed statuses with appropriate task values", async () => {

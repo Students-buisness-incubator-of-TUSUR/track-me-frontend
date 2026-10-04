@@ -1318,6 +1318,82 @@ describe('Сортировка колонок таблицы', () => {
       expect(screen.getByText('Название команды Я→А')).toBeInTheDocument();
     });
   });
+
+  test.each([
+    ['Название команды', 'teamCardName'],
+    ['Средняя оценка команды', 'averageTeamGrade'],
+    ['Средняя оценка трекера', 'averageUserGrade'],
+    ['Уровень TRL', 'readinessLevel'],
+  ])('%s: третье нажатие восстанавливает исходный порядок', async (label, field) => {
+    render(
+      <Router>
+        <ReportPage defaultIsActive={false} />
+      </Router>
+    );
+
+    await screen.findByText('Team A');
+    const header = screen.getByRole('columnheader', { name: new RegExp(label) });
+    const teamOrder = () => screen.getAllByRole('row').slice(1, 4)
+      .map((row) => row.querySelectorAll('td')[3].textContent);
+
+    fireEvent.click(header);
+    expect(teamOrder()).toEqual(field === 'teamCardName'
+      ? ['Team C', 'Team B', 'Team A']
+      : ['Team B', 'Team C', 'Team A']);
+
+    fireEvent.click(header);
+    fireEvent.click(header);
+    expect(teamOrder()).toEqual(['Team A', 'Team B', 'Team C']);
+    expect(header).not.toHaveClass('sorted');
+
+    fireEvent.click(header);
+    expect(header).toHaveClass('sorted');
+  });
+
+  test('отчисленные команды остаются внизу при любом направлении сортировки', async () => {
+    const makeReport = (teamCardName, averageTeamGrade, passive = false) => ({
+      streamName: 'Stream A',
+      startDate: '2020-01-01',
+      endDate: '2020-06-30',
+      teamCardName,
+      averageTeamGrade,
+      averageUserGrade: averageTeamGrade,
+      readinessLevel: String(averageTeamGrade),
+      ntiMarkets: [],
+      passive,
+    });
+    fetchReports.mockResolvedValue({
+      ok: true,
+      json: jest.fn().mockResolvedValue({
+        content: [
+          makeReport('Team A', 3),
+          makeReport('Team B', 5, true),
+          makeReport('Team C', 4),
+        ],
+      }),
+    });
+
+    render(
+      <Router>
+        <ReportPage defaultIsActive={false} />
+      </Router>
+    );
+    await screen.findByText('Team B (отчислена)');
+
+    const teamOrder = () => screen.getAllByRole('row').slice(1, 4)
+      .map((row) => row.querySelectorAll('td')[3].textContent);
+    const defaultOrder = ['Team A', 'Team C', 'Team B (отчислена)'];
+    expect(teamOrder()).toEqual(defaultOrder);
+
+    for (const label of ['Название команды', 'Средняя оценка команды', 'Средняя оценка трекера', 'Уровень TRL']) {
+      const header = screen.getByRole('columnheader', { name: new RegExp(label) });
+      for (let click = 0; click < 3; click += 1) {
+        fireEvent.click(header);
+        expect(teamOrder()[2]).toBe('Team B (отчислена)');
+      }
+      expect(teamOrder()).toEqual(defaultOrder);
+    }
+  });
 });
 
 describe('Фильтр потоков - активные и неактивные', () => {

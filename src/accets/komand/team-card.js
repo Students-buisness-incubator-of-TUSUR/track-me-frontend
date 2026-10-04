@@ -215,7 +215,7 @@ const checkNtiMarketsMatchWithStream = (streamId, marketIds) => {
   }, [streamInfo]);
   const checkMeetingCreation = () => {
     if (meetings.length >= maxMeetingsCount) {
-      setMeetingError(`Невозможно создать новую встречу. Максимальное количество встреч в потоке: ${maxMeetingsCount}`);
+      setMeetingError("Для этой команды назначено максимально возможное число встреч");
       setTimeout(() => setMeetingError(""), 3000); // Автоскрытие через 3 секунды
       return false;
     }

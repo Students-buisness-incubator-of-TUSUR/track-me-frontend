@@ -6,6 +6,7 @@ import IconOpen from "./icon-open.png";
 import IconClose from "./icon-close.png";
 
 import { fetchReportExcel, fetchReports, fetchStreams, fetchTrackers } from "../../services/requests";
+import { passiveTeamsLast } from "../../services/passiveTeamsLast";
 import { useGetUserInfo } from "../../services/util";
 
 import Header from "../header/header";
@@ -129,13 +130,18 @@ export default function ReportPage({ defaultIsActive = true }) {
         });
       }
 
-      return sorted;
+      return passiveTeamsLast(sorted);
     };
 
   // Обработчик сортировки колонок
   const handleColumnSort = (column) => {
     if (sortColumn === column) {
-      setSortDirection(sortDirection === 'desc' ? 'asc' : 'desc');
+      if (sortDirection === 'asc') {
+        setSortColumn(null);
+        setSortDirection('desc');
+      } else {
+        setSortDirection('asc');
+      }
     } else {
       setSortColumn(column);
       setSortDirection('desc');

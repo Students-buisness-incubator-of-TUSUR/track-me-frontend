@@ -9,6 +9,8 @@ import {
   fetchMyTrackerMeetingReportExcel,
 } from "../../services/requests";
 import { useGetUserInfo } from "../../services/util";
+import { initialMeetingReportSort, nextMeetingReportSort } from "../../services/meetingReportSort";
+import { passiveTeamsLast } from "../../services/passiveTeamsLast";
 import Header from "../header/header";
 
 const COMBINED_STATUS_OPTIONS = {
@@ -58,10 +60,7 @@ export default function TrackerMeetingReportPage() {
   const [error, setError] = useState("");
   const [openMenu, setOpenMenu] = useState({ team: false, status: false });
   const [filters, setFilters] = useState({ team: null, status: null });
-  const [sortConfig, setSortConfig] = useState({
-    teamNameDir: "asc",
-    secondary: { field: "startDate", direction: "desc" },
-  });
+  const [sortConfig, setSortConfig] = useState(initialMeetingReportSort);
 
   const apiFilters = useMemo(() => {
     const result = [];
@@ -108,7 +107,7 @@ export default function TrackerMeetingReportPage() {
 
       const data = await response.json();
       const content = data.content || [];
-      setReports(content);
+      setReports(passiveTeamsLast(content));
       setAvailableTeams((previousTeams) => previousTeams.length > 0
         ? previousTeams
         : [...new Set(content.map((item) => item.teamName))]
@@ -142,23 +141,7 @@ export default function TrackerMeetingReportPage() {
   };
 
   const requestSort = (field) => {
-    if (field === "teamName") {
-      setSortConfig((previous) => ({
-        ...previous,
-        teamNameDir: previous.teamNameDir === "asc" ? "desc" : "asc",
-      }));
-      return;
-    }
-
-    setSortConfig((previous) => ({
-      ...previous,
-      secondary: {
-        field,
-        direction: previous.secondary.field === field && previous.secondary.direction === "asc"
-          ? "desc"
-          : "asc",
-      },
-    }));
+    setSortConfig((previous) => nextMeetingReportSort(previous, field));
   };
 
   const handleExportExcel = async () => {

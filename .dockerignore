@@ -1,0 +1,11 @@
+node_modules
+build
+coverage
+.git
+.github
+.idea
+.claude
+.sonarlint
+.env*
+!.env.local.example
+*.md

@@ -1,6 +1,7 @@
 import React, {useState} from 'react';
 import './Registration.css';
 import axios from 'axios';
+import { getBackendUri } from "../../utils/runtime-env";
 
 const Registration = () => {
     const [form, setForm] = useState({
@@ -14,7 +15,7 @@ const Registration = () => {
     });
     const [selectedFile, setSelectedFile] = useState(null);
     const [previewPhoto, setPreviewPhoto] = useState(null);
-    const backendHost = (process.env.REACT_APP_BACKEND_URI || 'http://localhost:8080') + '/backend';
+    const backendHost = (getBackendUri() || 'http://localhost:8080') + '/backend';
 
     const handleChange = (e) => {
         setForm({...form, [e.target.name]: e.target.value});

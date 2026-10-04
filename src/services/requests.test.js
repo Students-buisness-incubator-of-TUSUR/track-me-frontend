@@ -1,4 +1,4 @@
-import { fetchReports, fetchTrackers, fetchStreams, fetchTeams, fetchUserInfo, fetchUserPhoto, updateUserInfo, updateUserPhoto, fetchMeetingReportExcel, fetchMeetingReport, fetchUserTeams, fetchReportExcel } from './requests';
+import { fetchReports, fetchTrackers, fetchStreams, fetchTeams, fetchUserInfo, fetchUserPhoto, updateUserInfo, updateUserPhoto, fetchMeetingReportExcel, fetchMeetingReport, fetchMyTrackerMeetingReport, fetchMyTrackerMeetingReportExcel, fetchUserTeams, fetchReportExcel } from './requests';
 
 // Mock global fetch
 global.fetch = jest.fn();
@@ -40,6 +40,52 @@ describe('fetchMeetingReport', () => {
     expect(callUrl).not.toContain('size=');
     
     expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({ filters: [] });
+  });
+});
+
+describe('fetchMyTrackerMeetingReport', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('posts filters to the current tracker report endpoint', async () => {
+    fetch.mockResolvedValue({ ok: true });
+    const filters = [{ fieldName: 'teamName', type: 'EQ', value: 'Команда А' }];
+
+    await fetchMyTrackerMeetingReport({
+      filters,
+      page: 0,
+      size: 20,
+      sort: ['teamName,asc', 'startDate,desc'],
+    });
+
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining('api/v1/tracker/meetings/reports/my?page=0&size=20&sort=teamName,asc&sort=startDate,desc'),
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ filters }),
+      })
+    );
+  });
+
+  it('exports the tracker report with filters and sort', async () => {
+    fetch.mockResolvedValue({ ok: true });
+
+    await fetchMyTrackerMeetingReportExcel({
+      filters: [],
+      sort: 'startDate,desc',
+    });
+
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining('api/v1/tracker/meetings/reports/my/excel?sort=startDate%2Cdesc'),
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          Accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        }),
+        body: JSON.stringify({ filters: [] }),
+      })
+    );
   });
 });
 

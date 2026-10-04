@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo, useCallback } from 'react';
 import { setUser, clearUser } from '../../store/userSlice';
 import LoginService from '../../services/login-service';
 
-const ProtectedRoute = ({ children }) => {
+const ProtectedRoute = ({ children, requiredRole }) => {
     const user = useSelector(state => state.user.user);
     const dispatch = useDispatch();
     const { getUserInfo } = useMemo(() => LoginService(), []);
@@ -43,6 +43,15 @@ const ProtectedRoute = ({ children }) => {
 
     if (!user) {
         return <Navigate to="/?sessionExpired=true" replace />;
+    }
+
+    if (requiredRole) {
+        const userRoles = user.roles || [];
+        const hasRequiredRole = userRoles.includes(requiredRole) || userRoles.includes(`ROLE_${requiredRole}`);
+
+        if (!hasRequiredRole) {
+            return <Navigate to="/after-login" replace />;
+        }
     }
 
     return children;

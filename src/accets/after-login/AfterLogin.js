@@ -2,8 +2,9 @@ import {useEffect} from "react";
 import loginService from "../../services/login-service";
 import {useNavigate} from "react-router-dom";
 import axios from "axios";
+import { getBackendUri } from "../../utils/runtime-env";
 
-const backendHost = (process.env.REACT_APP_BACKEND_URI || 'http://localhost:8080');
+const backendHost = (getBackendUri() || 'http://localhost:8080');
 
 function AfterLogin() {
     let service = loginService();

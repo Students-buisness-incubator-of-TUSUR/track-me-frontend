@@ -276,4 +276,233 @@ describe("MeetingReportPage Component", () => {
       expect(screen.getByText("Нет данных")).toBeInTheDocument();
     });
   });
+
+  test("открывает и закрывает дропдаун трекеров", async () => {
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByText("Team Alpha")).toBeInTheDocument();
+    });
+
+    const trackerBtn = screen.getByText("Трекеры");
+    fireEvent.click(trackerBtn);
+
+    expect(screen.getByPlaceholderText("Поиск по имени или логину...")).toBeInTheDocument();
+
+    fireEvent.click(trackerBtn);
+    expect(screen.queryByPlaceholderText("Поиск по имени или логину...")).not.toBeInTheDocument();
+  });
+
+  test("поиск в трекерах фильтрует список", async () => {
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByText("Team Alpha")).toBeInTheDocument();
+    });
+
+    const trackerBtn = screen.getByText("Трекеры");
+    fireEvent.click(trackerBtn);
+
+    const searchInput = screen.getByPlaceholderText("Поиск по имени или логину...");
+    fireEvent.change(searchInput, { target: { value: "Петр" } });
+
+    expect(screen.getByText("Петр Петров (@tracker2)")).toBeInTheDocument();
+    expect(screen.queryByText("Иван Иванов (@tracker1)")).not.toBeInTheDocument();
+  });
+
+  test("поиск по логину трекера фильтрует список", async () => {
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByText("Team Alpha")).toBeInTheDocument();
+    });
+
+    const trackerBtn = screen.getByText("Трекеры");
+    fireEvent.click(trackerBtn);
+
+    const searchInput = screen.getByPlaceholderText("Поиск по имени или логину...");
+    fireEvent.change(searchInput, { target: { value: "tracker2" } });
+
+    expect(screen.getByText("Петр Петров (@tracker2)")).toBeInTheDocument();
+    expect(screen.queryByText("Иван Иванов (@tracker1)")).not.toBeInTheDocument();
+  });
+
+  test("пустой поиск в трекерах не показывает вариантов", async () => {
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByText("Team Alpha")).toBeInTheDocument();
+    });
+
+    const trackerBtn = screen.getByText("Трекеры");
+    fireEvent.click(trackerBtn);
+
+    const searchInput = screen.getByPlaceholderText("Поиск по имени или логину...");
+    fireEvent.change(searchInput, { target: { value: "zzz" } });
+
+    expect(screen.queryByText("Иван Иванов (@tracker1)")).not.toBeInTheDocument();
+    expect(screen.queryByText("Петр Петров (@tracker2)")).not.toBeInTheDocument();
+  });
+
+  test("выбор трекера сбрасывает поисковый запрос", async () => {
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByText("Team Alpha")).toBeInTheDocument();
+    });
+
+    const trackerBtn = screen.getByText("Трекеры");
+    fireEvent.click(trackerBtn);
+
+    const searchInput = screen.getByPlaceholderText("Поиск по имени или логину...");
+    fireEvent.change(searchInput, { target: { value: "Петр" } });
+
+    const trackerOption = screen.getByRole("button", { name: "Петр Петров (@tracker2)" });
+    fireEvent.click(trackerOption);
+
+    expect(screen.queryByPlaceholderText("Поиск по имени или логину...")).not.toBeInTheDocument();
+  });
+
+  test("выбор '— Все —' сбрасывает фильтр трекера", async () => {
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByText("Team Alpha")).toBeInTheDocument();
+    });
+
+    const trackerBtn = screen.getByText("Трекеры");
+    fireEvent.click(trackerBtn);
+
+    const allOption = screen.getByRole("button", { name: "— Все —" });
+    fireEvent.click(allOption);
+
+    await waitFor(() => {
+      expect(requests.fetchMeetingReport).toHaveBeenCalledWith(
+        expect.objectContaining({ filters: [] })
+      );
+    });
+  });
+
+  test("экспорт с выбранным фильтром трекера", async () => {
+    requests.fetchMeetingReportExcel.mockResolvedValue({
+      ok: true,
+      blob: async () => new Blob(["test"], { type: "application/vnd.ms-excel" }),
+    });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByText("Team Alpha")).toBeInTheDocument();
+    });
+
+    const trackerBtn = screen.getByText("Трекеры");
+    fireEvent.click(trackerBtn);
+
+    const trackerOption = screen.getByRole("button", { name: "Иван Иванов (@tracker1)" });
+    fireEvent.click(trackerOption);
+
+    await waitFor(() => {
+      expect(requests.fetchMeetingReport).toHaveBeenCalledWith(
+        expect.objectContaining({
+          filters: [{ fieldName: "trackerFullName", type: "EQ", value: "Иван Иванов" }],
+        })
+      );
+    });
+
+    const exportBtn = screen.getByText("Выгрузить отчет");
+    fireEvent.click(exportBtn);
+
+    await waitFor(() => {
+      expect(requests.fetchMeetingReportExcel).toHaveBeenCalledWith(
+        expect.objectContaining({
+          streamId: "123",
+          filters: [{ fieldName: "trackerFullName", type: "EQ", value: "Иван Иванов" }],
+        })
+      );
+    });
+  });
+
+  test("сортировка по дате встречи", async () => {
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByText("Team Alpha")).toBeInTheDocument();
+    });
+
+    const dateHeader = screen.getByText("Дата встречи");
+    fireEvent.click(dateHeader);
+
+    await waitFor(() => {
+      expect(requests.fetchMeetingReport).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sort: ["teamName,asc", "startDate,asc"],
+        })
+      );
+    });
+
+    fireEvent.click(dateHeader);
+    await waitFor(() => {
+      expect(requests.fetchMeetingReport).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sort: ["teamName,asc", "startDate,desc"],
+        })
+      );
+    });
+  });
+
+  test("сортировка по статусу команды", async () => {
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByText("Team Alpha")).toBeInTheDocument();
+    });
+
+    const statusHeader = screen.getByText("Статус команды");
+    fireEvent.click(statusHeader);
+
+    await waitFor(() => {
+      expect(requests.fetchMeetingReport).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sort: ["teamName,asc", "teamStatusValue,asc"],
+        })
+      );
+    });
+  });
+
+  test("индикаторы сортировки отображаются корректно", async () => {
+    const { container } = renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByText("Team Alpha")).toBeInTheDocument();
+    });
+
+    const thElements = container.querySelectorAll("th.mrep-th-sortable");
+    expect(thElements[0].textContent).toMatch(/Название команды/);
+    expect(thElements[0].textContent).toMatch(/А→Я/);
+    expect(thElements[1].textContent).toMatch(/Дата встречи/);
+    expect(thElements[1].textContent).toMatch(/↓/);
+
+    fireEvent.click(thElements[0]);
+
+    await waitFor(() => {
+      const updatedThs = container.querySelectorAll("th.mrep-th-sortable");
+      expect(updatedThs[0].textContent).toMatch(/Я→А/);
+    });
+  });
+
+  test("загрузка с ошибкой HTTP", async () => {
+    const consoleSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+    requests.fetchMeetingReport.mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+    });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(consoleSpy).toHaveBeenCalled();
+    });
+
+    consoleSpy.mockRestore();
+  });
 });

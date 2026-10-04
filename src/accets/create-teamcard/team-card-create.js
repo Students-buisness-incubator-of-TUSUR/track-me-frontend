@@ -3,8 +3,9 @@ import {useNavigate} from "react-router-dom";
 import "./team-card-create.css";
 import penIcon from "./pen.png";
 import { getCsrfConfigForFetch } from "../../utils/csrf-utils";
-const backendHost = process.env.REACT_APP_BACKEND_URI + '/backend';
-const backendHost1 = process.env.REACT_APP_BACKEND_URI + '/sso';
+import { getBackendUri } from "../../utils/runtime-env";
+const backendHost = getBackendUri() + '/backend';
+const backendHost1 = getBackendUri() + '/sso';
 const TeamCard = () => {
     const navigate = useNavigate();
 

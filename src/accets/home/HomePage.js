@@ -2,9 +2,10 @@ import React from "react";
 import "./HomePage.css";
 
 import {useLocation } from 'react-router-dom';
+import { getBackendUri } from "../../utils/runtime-env";
 
 const HomePage = () => {
-    const clientGatewayUri = process.env.REACT_APP_BACKEND_URI || "http://localhost:8081";
+    const clientGatewayUri = getBackendUri() || "http://localhost:8081";
     
     const location = useLocation();
     const queryParams = new URLSearchParams(location.search);
@@ -15,16 +16,12 @@ const HomePage = () => {
     };
 
 
-    const handleGithubLogin = () => {
-        alert("в разработке");
+    const handleYandexLogin = () => {
+        window.location.href = `${clientGatewayUri}/oauth2/authorization/yandex`;
     };
 
     const handleGoogleLogin = () => {
-        alert("в разработке");
-    };
-
-    const handleTelegramLogin = () => {
-        alert("в разработке");
+        window.location.href = `${clientGatewayUri}/oauth2/authorization/google`;
     };
 
     return (
@@ -39,14 +36,11 @@ const HomePage = () => {
                 <p className="home-description">Управляйте своими потоками и командами с
                     легкостью.</p>
                 <div className="home-provider-buttons">
-                    <button className="home-provider-button" onClick={handleGoogleLogin} disabled>
+                    <button className="home-provider-button" onClick={handleGoogleLogin}>
                         <img src="/icons/google-logo.svg" alt="Google"/>
                     </button>
-                    <button className="home-provider-button" onClick={handleTelegramLogin} disabled>
-                        <img src="/icons/telegram-logo.svg" alt="Telegram"/>
-                    </button>
-                    <button className="home-provider-button" onClick={handleGithubLogin} disabled>
-                        <img src="/icons/github-logo.svg" alt="GitHub"/>
+                    <button className="home-provider-button" onClick={handleYandexLogin}>
+                        <img src="/icons/yandex-logo-rus.svg" alt="Yandex"/>
                     </button>
                 </div>
                 <button className="home-sso-button" onClick={handleSSOLogin}>

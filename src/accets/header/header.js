@@ -1,7 +1,7 @@
 import { useState } from "react";
 import "./header.css"
 import { Link } from 'react-router-dom';
-import { adminRoleName, backendURL, superadminRoleName } from "../../services/constants";
+import { adminRoleName, backendURL, superadminRoleName, trackerRoleName } from "../../services/constants";
 import PropTypes from "prop-types";
 
 export default function Header({ userRole = "" }) {
@@ -48,6 +48,9 @@ export default function Header({ userRole = "" }) {
                     {[superadminRoleName, adminRoleName].includes(userRole) &&
                         <Link to="/report"><button className="header_nav-btn">Отчётность</button></Link>
                     }
+                    {userRole === trackerRoleName &&
+                        <Link to="/tracker-report"><button className="header_nav-btn">Отчётность</button></Link>
+                    }
                 </div>
                 <button data-testid="personal-acc-btn" className="header_account-btn" onClick={toggleProfileMenu}>
                     <img src="/images/personal-acc.svg" alt="Account" className="header_account-icon" />
@@ -86,6 +89,9 @@ export default function Header({ userRole = "" }) {
                         <Link to="/all-team-cards"><button className="header_menu-item">Все команды</button></Link>
                         {[superadminRoleName, adminRoleName].includes(userRole) &&
                             <Link to="/report"> <button className="header_menu-item separator">Отчётность</button></Link>
+                        }
+                        {userRole === trackerRoleName &&
+                            <Link to="/tracker-report"><button className="header_menu-item separator">Отчётность</button></Link>
                         }
                         <Link to="/profile"><button className="header_menu-item">Личный кабинет</button></Link>
                         <button className="header_menu-item" onClick={() => { setIsMenuOpen(!isMenuOpen); openFeedback() }}>Обратная связь</button>

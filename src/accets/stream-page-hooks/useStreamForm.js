@@ -1,5 +1,6 @@
 const { useCallback, useEffect, useRef, useState, useMemo } = require('react');
 const { getCsrfConfigForFetch } = require('../../utils/csrf-utils');
+const { getBackendUri } = require('../../utils/runtime-env');
 const useStreamForm = (streamId = null, navigate = () => {}) => {
   const [name, setName] = useState('');
   const [startDate, setStartDate] = useState('');
@@ -10,7 +11,7 @@ const useStreamForm = (streamId = null, navigate = () => {}) => {
   const [selectedCheckboxes, setSelectedCheckboxes] = useState([]);
   const [image, setImage] = useState(null);
   const [imageFile, setImageFile] = useState(null);
-  const backendHost = (process.env.REACT_APP_BACKEND_URI || 'http://localhost:8080') + '/backend';
+  const backendHost = (getBackendUri() || 'http://localhost:8080') + '/backend';
   const checkboxesRef = useRef(null);
   const errorRef = useRef(null);
   const [trackStartDate, setTrackStartDate] = useState('');
@@ -179,11 +180,19 @@ useEffect(() => {
   return true;
 };
 
+  const MAX_IMAGE_SIZE_MB = 2;
+  const MAX_IMAGE_SIZE_BYTES = MAX_IMAGE_SIZE_MB * 1024 * 1024;
+
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
       if (!file.type.match('image.*')) {
         setError('Пожалуйста, выберите файл изображения (JPEG, PNG, GIF)');
+        return;
+      }
+      if (file.size > MAX_IMAGE_SIZE_BYTES) {
+        setError(`Размер изображения не должен превышать ${MAX_IMAGE_SIZE_MB} мб`);
+        e.target.value = '';
         return;
       }
       const reader = new FileReader();

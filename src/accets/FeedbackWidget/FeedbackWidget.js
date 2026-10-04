@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import './FeedbackWidget.css';
+import { getBackendUri } from "../../utils/runtime-env";
 
 const FeedbackWidget = () => {
   const location = useLocation();
@@ -10,7 +11,7 @@ const FeedbackWidget = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const backendHost = (process.env.REACT_APP_BACKEND_URI || 'http://localhost:8080') + '/sso';
+  const backendHost = (getBackendUri() || 'http://localhost:8080') + '/sso';
   const hiddenRoutes = ['/', '/login', '/register', '/login-recovery', '/login-recovery-2', '/after-login', '/admin', '/superadmin'];
   const isHiddenRoute = hiddenRoutes.includes(location.pathname);
 

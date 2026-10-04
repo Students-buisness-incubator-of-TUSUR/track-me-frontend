@@ -4,6 +4,7 @@ import {jwtDecode} from "jwt-decode";
 import "./Login.css"; // Подключаем стили
 import eyeOpen from "./Eye-open.png";
 import eyeClosed from "./Eye-closed.png";
+import { getBackendUri } from "../../utils/runtime-env";
 
 const Login = () => {
     const [showPassword, setShowPassword] = useState(false);
@@ -12,7 +13,7 @@ const Login = () => {
     const [errorMessage, setErrorMessage] = useState("");
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate(); // Используем хук для навигации
-    const backendHost = process.env.REACT_APP_BACKEND_URI || 'http://localhost:8080';
+    const backendHost = getBackendUri() || 'http://localhost:8080';
 
     const handleSubmit = async (e) => {
         e.preventDefault();

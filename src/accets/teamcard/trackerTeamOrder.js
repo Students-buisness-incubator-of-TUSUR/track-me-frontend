@@ -9,7 +9,7 @@ const isActiveStream = (stream, today) => {
 const streamKey = (stream) => String(stream.id || stream.name || "");
 
 const scriptPriority = (name) => {
-  const firstLetter = String(name || "").match(/\p{L}/u)?.[0] || "";
+  const firstLetter = /\p{L}/u.exec(String(name || ""))?.[0] || "";
   if (/[А-ЯЁа-яё]/u.test(firstLetter)) return 0;
   if (/[A-Za-z]/u.test(firstLetter)) return 1;
   return 2;

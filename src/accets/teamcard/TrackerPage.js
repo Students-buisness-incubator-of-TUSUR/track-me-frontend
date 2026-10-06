@@ -208,7 +208,8 @@ const [currentFilters, setCurrentFilters] = useState([]);
                     ? Array.from(new Map(pageCards.map((card) => [card.id, card])).values())
                     : pageCards;
                 const mappedCards = cardsArray.map(card => ({ ...card, _showFull: false }));
-                const sortedCards = trackerView ? mappedCards : mappedCards.sort((a, b) => {
+                if (!trackerView) {
+                    mappedCards.sort((a, b) => {
                         if (a.passive && !b.passive) return 1;
                         if (!a.passive && b.passive) return -1;
                         const gradeA = a.averageGrade ?? 0;
@@ -216,7 +217,8 @@ const [currentFilters, setCurrentFilters] = useState([]);
                         if (gradeB !== gradeA) return gradeB - gradeA;
                         return (a.name || '').localeCompare(b.name || '');
                     });
-                setCards(sortedCards);
+                }
+                setCards(mappedCards);
                 setTotalPages(data?.page?.totalPages || 1);
             }
         })
@@ -396,9 +398,15 @@ const options = {
 
     const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
     const trackerOrder = useMemo(() => orderTrackerTeams(cards, streams, todayKey), [cards, streams, todayKey]);
-    const filteredCards = userRole === "TRACKER"
-        ? (showInactiveStreams ? trackerOrder.cards : trackerOrder.cards.filter((card) => Boolean(trackerOrder.activeStreamKey) && card._streamKey === trackerOrder.activeStreamKey))
-        : cards;
+    let filteredCards = cards;
+    if (userRole === "TRACKER") {
+        filteredCards = trackerOrder.cards;
+        if (!showInactiveStreams) {
+            filteredCards = filteredCards.filter((card) =>
+                Boolean(trackerOrder.activeStreamKey) && card._streamKey === trackerOrder.activeStreamKey
+            );
+        }
+    }
     const totalPagesToUse = userRole === "TRACKER" ? Math.max(1, Math.ceil(filteredCards.length / pageSize)) : totalPages;
     const visibleCards = userRole === "TRACKER" ? filteredCards.slice(page * pageSize, (page + 1) * pageSize) : cards;
 

@@ -1,4 +1,4 @@
-export const IDLE_TIMEOUT_MS = 60 * 60 * 1000;
+export const IDLE_TIMEOUT_MS = 80 * 60 * 1000;
 export const ACTIVITY_KEY = 'trackme.lastUserActivity';
 const REQUEST_INTERVAL_MS = 30000;
 const EVENTS = ['keydown', 'input', 'pointerdown', 'pointermove', 'touchstart', 'touchmove', 'wheel'];
@@ -39,11 +39,13 @@ export function startActivitySession({ readStatus, heartbeat, onExpired }) {
         busy = true;
         lastRequest = Date.now();
         const sentActivity = lastActivity;
+        let succeeded = false;
         const sendingActivity = initialized && pending;
         if (sendingActivity) lastHeartbeat = Date.now();
         try {
             const status = await (sendingActivity ? heartbeat() : readStatus());
             if (stopped) return;
+            succeeded = true;
             if (!initialized) {
                 // Server elapsed time avoids depending on synchronized browser/server clocks.
                 lastActivity = Date.now() - Math.max(0, status.serverTime - status.lastActivityAt);
@@ -59,6 +61,9 @@ export function startActivitySession({ readStatus, heartbeat, onExpired }) {
             // A temporary network/server failure must not discard an unfinished form.
         } finally {
             busy = false;
+            // Do not let a slow status request postpone real activity until the next poll.
+            if (succeeded && !stopped && pending
+                    && Date.now() - lastHeartbeat >= REQUEST_INTERVAL_MS) request();
         }
     };
     const activity = () => {

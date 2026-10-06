@@ -1,5 +1,5 @@
 /* global globalThis */
-import {useCallback, useEffect, useState} from "react";
+import {useCallback, useEffect, useMemo, useState} from "react";
 import "./TrackerPage.css";
 import { useSearchParams } from "react-router-dom";
 import {useNavigate} from "react-router-dom";
@@ -8,6 +8,8 @@ import { getCsrfConfigForFetch } from "../../utils/csrf-utils";
 import Header from "../header/header";
 import { useGetUserInfo } from "../../services/util";
 import { getBackendUri } from "../../utils/runtime-env";
+import { orderTrackerTeams } from "./trackerTeamOrder";
+import TrackerInactiveSwitch from "./TrackerInactiveSwitch";
 
 function TrackerPage() {
     const [cards, setCards] = useState([]);
@@ -30,6 +32,7 @@ function TrackerPage() {
     const [searchParams] = useSearchParams();
 const showAllCards = globalThis.location.pathname === "/all-team-cards";
 const [showMyTeamsOnly, setShowMyTeamsOnly] = useState(false);
+const [showInactiveStreams, setShowInactiveStreams] = useState(false);
 const [page, setPage] = useState(0);
 const pageSize = 18; // или 10, если хочешь другой размер
 const [totalPages, setTotalPages] = useState(1);
@@ -175,7 +178,9 @@ const [currentFilters, setCurrentFilters] = useState([]);
     const allFilters = buildTeamCardFilters(filters, searchParams);
     const endpoint = getTeamCardsEndpoint();
 
-    fetch(`${endpoint}?page=${page}&size=${pageSize}&${sortParams}`, {
+    const trackerView = userRole === "TRACKER";
+    const requestSize = trackerView ? 100 : pageSize;
+    const requestPage = (requestedPage) => fetch(`${endpoint}?page=${requestedPage}&size=${requestSize}&${sortParams}`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
@@ -187,13 +192,23 @@ const [currentFilters, setCurrentFilters] = useState([]);
         .then((response) => {
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             return response.json();
-        })
-        .then((data) => {
+        });
+
+    requestPage(trackerView ? 0 : page)
+        .then(async (data) => {
             if (data?.content) {
-                const cardsArray = Array.isArray(data.content) ? data.content : [];
-                const sortedCards = cardsArray
-                    .map(card => ({ ...card, _showFull: false }))
-                    .sort((a, b) => {
+                const remainingPages = trackerView
+                    ? Array.from({ length: Math.max(0, (data.page?.totalPages || 1) - 1) }, (_, index) => index + 1)
+                    : [];
+                const additionalPages = await Promise.all(remainingPages.map(requestPage));
+                const pageCards = [data, ...additionalPages].flatMap((result) =>
+                    Array.isArray(result.content) ? result.content : []
+                );
+                const cardsArray = trackerView
+                    ? Array.from(new Map(pageCards.map((card) => [card.id, card])).values())
+                    : pageCards;
+                const mappedCards = cardsArray.map(card => ({ ...card, _showFull: false }));
+                const sortedCards = trackerView ? mappedCards : mappedCards.sort((a, b) => {
                         if (a.passive && !b.passive) return 1;
                         if (!a.passive && b.passive) return -1;
                         const gradeA = a.averageGrade ?? 0;
@@ -379,9 +394,19 @@ const options = {
 }, [backendHost, userRole]);
 
 
-    const filteredCards = cards;
-    const totalPagesToUse = totalPages;
-    const visibleCards = cards;
+    const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    const trackerOrder = useMemo(() => orderTrackerTeams(cards, streams, todayKey), [cards, streams, todayKey]);
+    const filteredCards = userRole === "TRACKER"
+        ? (showInactiveStreams ? trackerOrder.cards : trackerOrder.cards.filter((card) => Boolean(trackerOrder.activeStreamKey) && card._streamKey === trackerOrder.activeStreamKey))
+        : cards;
+    const totalPagesToUse = userRole === "TRACKER" ? Math.max(1, Math.ceil(filteredCards.length / pageSize)) : totalPages;
+    const visibleCards = userRole === "TRACKER" ? filteredCards.slice(page * pageSize, (page + 1) * pageSize) : cards;
+
+    useEffect(() => {
+        if (userRole === "TRACKER" && cards.length > 0 && page >= totalPagesToUse) {
+            setPage(totalPagesToUse - 1);
+        }
+    }, [userRole, cards, page, totalPagesToUse]);
 
     const handleShowMore = () => {
         if (page + 1 < totalPagesToUse) {
@@ -785,13 +810,24 @@ const options = {
                         />
                     </div>
                 </div>
-                <button
-                    className="Stream-butt"
-                    onClick={() => {
-                        navigate(`/teamcard/create`);
-                    }}>
-                    + Создать карточку
-                </button>
+                <div className="tracker-create-actions">
+                    <button
+                        className="Stream-butt"
+                        onClick={() => {
+                            navigate(`/teamcard/create`);
+                        }}>
+                        + Создать карточку
+                    </button>
+                    {userRole === "TRACKER" && (
+                        <TrackerInactiveSwitch
+                            checked={showInactiveStreams}
+                            onToggle={() => {
+                                setShowInactiveStreams((previous) => !previous);
+                                setPage(0);
+                            }}
+                        />
+                    )}
+                </div>
             </div>
             {isVisible && (
                 <div className="Teams-header-afterclick-cont">

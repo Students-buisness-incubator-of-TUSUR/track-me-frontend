@@ -63,7 +63,7 @@ export function startActivitySession({ readStatus, heartbeat, onExpired }) {
             busy = false;
             // Do not let a slow status request postpone real activity until the next poll.
             if (succeeded && !stopped && pending
-                    && Date.now() - lastHeartbeat >= REQUEST_INTERVAL_MS) request();
+                    && Date.now() - lastHeartbeat >= REQUEST_INTERVAL_MS) void request();
         }
     };
     const activity = () => {
@@ -73,7 +73,7 @@ export function startActivitySession({ readStatus, heartbeat, onExpired }) {
         pending = true;
         // Avoid a synchronous localStorage write for every mouse movement.
         if (lastActivity - readShared() >= 1000) writeShared(lastActivity);
-        if (Date.now() - lastHeartbeat >= REQUEST_INTERVAL_MS) request();
+        if (Date.now() - lastHeartbeat >= REQUEST_INTERVAL_MS) void request();
     };
     const storage = event => {
         if (event.key !== ACTIVITY_KEY || stopped) return;
@@ -84,7 +84,7 @@ export function startActivitySession({ readStatus, heartbeat, onExpired }) {
         if (stopped) return;
         if (isExpired()) { expire(); return; }
         if ((pending && Date.now() - lastHeartbeat >= REQUEST_INTERVAL_MS)
-                || Date.now() - lastRequest >= REQUEST_INTERVAL_MS) request();
+                || Date.now() - lastRequest >= REQUEST_INTERVAL_MS) void request();
     };
     const stop = () => {
         if (stopped) return;
@@ -100,6 +100,6 @@ export function startActivitySession({ readStatus, heartbeat, onExpired }) {
     window.addEventListener('storage', storage);
     document.addEventListener('visibilitychange', tick);
     window.addEventListener('focus', tick);
-    request();
+    void request();
     return stop;
 }

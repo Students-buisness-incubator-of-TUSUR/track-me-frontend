@@ -69,6 +69,19 @@ describe('activity-based session', () => {
         expect(onExpired).not.toHaveBeenCalled();
     });
 
+    test('activity during a slow status poll is sent as soon as the poll completes', async () => {
+        await begin();
+        let finishStatus;
+        readStatus.mockReturnValueOnce(new Promise(resolve => { finishStatus = resolve; }));
+        await advance(IDLE_TIMEOUT_MS - 1000);
+        fireEvent.input(window);
+        expect(heartbeat).not.toHaveBeenCalled();
+        finishStatus({ lastActivityAt: start, serverTime: Date.now() });
+        await flush();
+        expect(heartbeat).toHaveBeenCalledTimes(1);
+        expect(onExpired).not.toHaveBeenCalled();
+    });
+
     test('a late event after sleep cannot revive an expired session', async () => {
         await begin();
         jest.setSystemTime(start + IDLE_TIMEOUT_MS + 1);
@@ -110,8 +123,8 @@ describe('activity-based session', () => {
         expect(heartbeat).not.toHaveBeenCalled();
     });
 
-    test('mounting with an old server activity does not restart the hour', async () => {
-        readStatus.mockResolvedValue({ lastActivityAt: start - 59 * 60000, serverTime: start });
+    test('mounting with an old server activity does not restart the idle timeout', async () => {
+        readStatus.mockResolvedValue({ lastActivityAt: start - 79 * 60000, serverTime: start });
         await begin();
         await advance(60000);
         expect(onExpired).toHaveBeenCalledTimes(1);

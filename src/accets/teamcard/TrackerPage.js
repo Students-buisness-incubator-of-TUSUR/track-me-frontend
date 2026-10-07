@@ -11,6 +11,10 @@ import { getBackendUri } from "../../utils/runtime-env";
 import { orderTrackerTeams } from "./trackerTeamOrder";
 import TrackerInactiveSwitch from "./TrackerInactiveSwitch";
 
+const isTrackerScopedView = (role, selectedUsername) =>
+    role === "TRACKER" ||
+    ((role === "ADMIN" || role === "SUPER_ADMIN") && Boolean(selectedUsername));
+
 function TrackerPage() {
     const [cards, setCards] = useState([]);
     const [streamImages, setStreamImages] = useState({});
@@ -32,8 +36,7 @@ function TrackerPage() {
     const [searchParams] = useSearchParams();
 const showAllCards = globalThis.location.pathname === "/all-team-cards";
 const selectedTrackerUsername = searchParams.get("username");
-const trackerScopedView = userRole === "TRACKER" ||
-    ((userRole === "ADMIN" || userRole === "SUPER_ADMIN") && Boolean(selectedTrackerUsername));
+const trackerScopedView = isTrackerScopedView(userRole, selectedTrackerUsername);
 const [showMyTeamsOnly, setShowMyTeamsOnly] = useState(false);
 const [showInactiveStreams, setShowInactiveStreams] = useState(false);
 const [page, setPage] = useState(0);

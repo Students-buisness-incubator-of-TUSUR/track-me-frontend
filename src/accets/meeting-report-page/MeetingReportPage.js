@@ -7,6 +7,8 @@ import IconOpen from "./icon-open.png";
 import IconClose from "./icon-close.png";
 
 import { fetchMeetingReport, fetchMeetingReportExcel } from "../../services/requests";
+import { initialMeetingReportSort, nextMeetingReportSort } from "../../services/meetingReportSort";
+import { passiveTeamsLast } from "../../services/passiveTeamsLast";
 import { useGetUserInfo } from "../../services/util";
 
 import Header from "../header/header";
@@ -55,10 +57,7 @@ export default function MeetingReportPage() {
   const [openMenu, setOpenMenu] = useState({ tracker: false, team: false, status: false });
   const [filters, setFilters] = useState({ tracker: null, team: null, status: null });
   const [trackerSearchQuery, setTrackerSearchQuery] = useState("");
-  const [sortConfig, setSortConfig] = useState({ 
-    teamNameDir: "asc", 
-    secondary: { field: "startDate", direction: "desc" } 
-  });
+  const [sortConfig, setSortConfig] = useState(initialMeetingReportSort);
 
   const user = useGetUserInfo();
   const userRole = user?.roles?.[0] || "";
@@ -74,14 +73,7 @@ export default function MeetingReportPage() {
   };
 
   const requestSort = (field) => {
-    if (field === "teamName") {
-      setSortConfig(prev => ({ ...prev, teamNameDir: prev.teamNameDir === "asc" ? "desc" : "asc" }));
-    } else {
-      setSortConfig(prev => ({
-        ...prev,
-        secondary: { field, direction: prev.secondary.field === field && prev.secondary.direction === "asc" ? "desc" : "asc" }
-      }));
-    }
+    setSortConfig(prev => nextMeetingReportSort(prev, field));
   };
 
   const effectiveSortParams = useMemo(() => {
@@ -117,7 +109,7 @@ export default function MeetingReportPage() {
       });
       if (!response.ok) throw new Error(`Ошибка HTTP: ${response.status}`);
       const data = await response.json();
-      setReports(data.content);
+      setReports(passiveTeamsLast(data.content || []));
 
       if (isInitial) {
         const trackersMap = new Map();
@@ -250,7 +242,7 @@ export default function MeetingReportPage() {
                 <th>Трекер</th>
                 <th>Выполнение задач / инфо по команде</th>
                 <th>Задачи к следующей встрече</th>
-                <SortableHeader title="Статус команды" currentSort={sortConfig.secondary} field="teamStatusValue" onSort={() => requestSort("teamStatusValue")} />
+                <SortableHeader title="Статус встречи" currentSort={sortConfig.secondary} field="teamStatusValue" onSort={() => requestSort("teamStatusValue")} />
               </tr>
             </thead>
             <tbody>

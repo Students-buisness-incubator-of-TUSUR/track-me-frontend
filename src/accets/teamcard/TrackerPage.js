@@ -31,6 +31,9 @@ function TrackerPage() {
     const restoredPage = globalThis.location.state?.restoredPage;
     const [searchParams] = useSearchParams();
 const showAllCards = globalThis.location.pathname === "/all-team-cards";
+const selectedTrackerUsername = searchParams.get("username");
+const trackerScopedView = userRole === "TRACKER" ||
+    ((userRole === "ADMIN" || userRole === "SUPER_ADMIN") && Boolean(selectedTrackerUsername));
 const [showMyTeamsOnly, setShowMyTeamsOnly] = useState(false);
 const [showInactiveStreams, setShowInactiveStreams] = useState(false);
 const [page, setPage] = useState(0);
@@ -147,12 +150,11 @@ const [currentFilters, setCurrentFilters] = useState([]);
         }
 
         if (userRole === "ADMIN" || userRole === "SUPER_ADMIN") {
-            if (!showAllCards && streamName) {
+            if (!showAllCards && streamName && !trackerScopedView) {
                 allFilters.push({ fieldName: "streams.name", type: "EQ", value: streamName });
             }
-            const searchUsername = searchParams?.get("username");
-            if (searchUsername) {
-                allFilters.push({ fieldName: "username", type: "EQ", value: searchUsername });
+            if (selectedTrackerUsername) {
+                allFilters.push({ fieldName: "username", type: "EQ", value: selectedTrackerUsername });
             } else if (showMyTeamsOnly) {
                 allFilters.push({ fieldName: "username", type: "EQ", value: username });
             }
@@ -161,7 +163,7 @@ const [currentFilters, setCurrentFilters] = useState([]);
         }
 
         return allFilters;
-    }, [userRole, username, streamName, showAllCards, showMyTeamsOnly, searchQuery]);
+    }, [userRole, username, streamName, showAllCards, showMyTeamsOnly, searchQuery, selectedTrackerUsername, trackerScopedView]);
 
     const getTeamCardsEndpoint = useCallback(() => {
         return (userRole === "ADMIN" || userRole === "SUPER_ADMIN")
@@ -178,7 +180,7 @@ const [currentFilters, setCurrentFilters] = useState([]);
     const allFilters = buildTeamCardFilters(filters, searchParams);
     const endpoint = getTeamCardsEndpoint();
 
-    const trackerView = userRole === "TRACKER";
+    const trackerView = trackerScopedView;
     const requestSize = trackerView ? 100 : pageSize;
     const requestPage = (requestedPage) => fetch(`${endpoint}?page=${requestedPage}&size=${requestSize}&${sortParams}`, {
         method: "POST",
@@ -226,7 +228,7 @@ const [currentFilters, setCurrentFilters] = useState([]);
             console.error("Error fetching cards:", err);
             setError(`Ошибка при загрузке карточек: ${err.message}`);
         });
-}, [userRole, username, buildTeamCardFilters, getTeamCardsEndpoint, page]);
+}, [userRole, username, buildTeamCardFilters, getTeamCardsEndpoint, page, trackerScopedView]);
 
  // ✅ streamName в зависимости
 
@@ -399,7 +401,7 @@ const options = {
     const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
     const trackerOrder = useMemo(() => orderTrackerTeams(cards, streams, todayKey), [cards, streams, todayKey]);
     let filteredCards = cards;
-    if (userRole === "TRACKER") {
+    if (trackerScopedView) {
         filteredCards = trackerOrder.cards;
         if (!showInactiveStreams) {
             filteredCards = filteredCards.filter((card) =>
@@ -407,14 +409,14 @@ const options = {
             );
         }
     }
-    const totalPagesToUse = userRole === "TRACKER" ? Math.max(1, Math.ceil(filteredCards.length / pageSize)) : totalPages;
-    const visibleCards = userRole === "TRACKER" ? filteredCards.slice(page * pageSize, (page + 1) * pageSize) : cards;
+    const totalPagesToUse = trackerScopedView ? Math.max(1, Math.ceil(filteredCards.length / pageSize)) : totalPages;
+    const visibleCards = trackerScopedView ? filteredCards.slice(page * pageSize, (page + 1) * pageSize) : cards;
 
     useEffect(() => {
-        if (userRole === "TRACKER" && cards.length > 0 && page >= totalPagesToUse) {
+        if (trackerScopedView && cards.length > 0 && page >= totalPagesToUse) {
             setPage(totalPagesToUse - 1);
         }
-    }, [userRole, cards, page, totalPagesToUse]);
+    }, [trackerScopedView, cards, page, totalPagesToUse]);
 
     const handleShowMore = () => {
         if (page + 1 < totalPagesToUse) {
@@ -826,7 +828,7 @@ const options = {
                         }}>
                         + Создать карточку
                     </button>
-                    {userRole === "TRACKER" && (
+                    {trackerScopedView && (
                         <TrackerInactiveSwitch
                             checked={showInactiveStreams}
                             onToggle={() => {
@@ -982,7 +984,7 @@ const options = {
                             </div>
                         </div>
                     </div>
-                    {(userRole === "ADMIN" || userRole === "SUPER_ADMIN") &&
+                    {(userRole === "ADMIN" || userRole === "SUPER_ADMIN") && !trackerScopedView &&
                         (globalThis.location.pathname === "/all-team-cards" || globalThis.location.pathname.startsWith("/team-cards")) ? (
                         <div className="switch-wrapper">
                             <div className="tooltip-wrapper">

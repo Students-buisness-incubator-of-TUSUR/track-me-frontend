@@ -2,6 +2,7 @@ import { useEffect, useCallback, useState, useMemo } from "react";
 import { getCsrfConfigForFetch } from "../../utils/csrf-utils";
 import { fetchUserTeams } from "../../services/requests";
 import { isValidUsername } from "../../utils/validation";
+import { getBackendUri } from "../../utils/runtime-env";
  
 // Allowed API paths whitelist for user operations
 const ALLOWED_USER_API_PATHS = [
@@ -41,7 +42,7 @@ export function useTrackerList(endpoint) {
   const [attachedTeams, setAttachedTeams] = useState([]);
   const [userToDelete, setUserToDelete] = useState(null);
  
-  const ssoServiceUri = (process.env.REACT_APP_BACKEND_URI || "http://localhost:8080") + "/sso";
+  const ssoServiceUri = (getBackendUri() || "http://localhost:8080") + "/sso";
  
   /**
    * Создаёт безопасный URL с валидацией пути и параметров.

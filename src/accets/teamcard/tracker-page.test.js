@@ -57,6 +57,51 @@ test('tracker shows only current-stream teams until inactive streams are enabled
   expect(screen.queryByText('Старая команда')).not.toBeInTheDocument();
 });
 
+test('admin viewing one tracker gets the same stream order and inactive-stream switch', async () => {
+  localStorage.clear();
+  sessionStorage.clear();
+  redux.useSelector.mockImplementation(() => ({
+    user: { username: 'admin', roles: ['ADMIN'] },
+    roles: ['ADMIN'],
+    username: 'admin',
+  }));
+
+  const streams = [
+    { id: 'current', name: 'Текущий', startDate: '2025-01-01', endDate: activeEndDate },
+    { id: 'old', name: 'Старый', startDate: '2024-01-01', endDate: '2024-12-31' },
+  ];
+  const card = (id, name, grade, stream) => ({
+    id, name, description: '', averageGrade: grade, enabled: true, streams: [{ name: stream }],
+  });
+  global.fetch = jest.fn((url, options) => {
+    if (url.includes('/api/v1/admin/streams')) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: streams }) });
+    }
+    if (url.includes('/api/v1/admin/team-cards')) {
+      const filters = JSON.parse(options.body).filters;
+      expect(filters).toContainEqual({ fieldName: 'username', type: 'EQ', value: 'targetTracker' });
+      expect(filters.some((filter) => filter.fieldName === 'streams.name')).toBe(false);
+      const content = url.includes('page=1')
+        ? [card('old', 'Старая команда', 10, 'Старый')]
+        : [card('latin', 'Alpha', 5, 'Текущий'), card('russian', 'Альфа', 5, 'Текущий')];
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ content, page: { totalPages: 2 } }) });
+    }
+    return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [] }) });
+  });
+
+  render(<MemoryRouter initialEntries={['/all-team-cards?username=targetTracker']}><TrackerPage /></MemoryRouter>);
+  expect(await screen.findByText('Альфа')).toBeInTheDocument();
+  expect(screen.getByText('Alpha')).toBeInTheDocument();
+  expect(screen.queryByText('Старая команда')).not.toBeInTheDocument();
+  const toggle = screen.getByRole('switch', { name: 'Показать команды неактивных потоков' });
+  expect(toggle).not.toBeChecked();
+  fireEvent.click(toggle);
+  expect(await screen.findByText('Старая команда')).toBeInTheDocument();
+  expect(screen.getByText('Alpha').compareDocumentPosition(screen.getByText('Старая команда')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  fireEvent.click(toggle);
+  expect(screen.queryByText('Старая команда')).not.toBeInTheDocument();
+});
+
 // Моки для scrollIntoView и scrollTo
 beforeAll(() => {
   window.HTMLElement.prototype.scrollIntoView = jest.fn();

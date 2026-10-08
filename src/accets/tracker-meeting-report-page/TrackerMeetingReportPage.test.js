@@ -138,16 +138,16 @@ describe("TrackerMeetingReportPage", () => {
       sort: ["teamName,desc", "startDate,desc"],
     })));
 
-    fireEvent.click(screen.getByText("Статус команды"));
+    fireEvent.click(screen.getByText("Статус встречи"));
     await waitFor(() => expect(fetchMyTrackerMeetingReport).toHaveBeenLastCalledWith(expect.objectContaining({
-      sort: ["teamName,desc", "teamStatus,asc"],
+      sort: ["teamName,desc", "teamStatusValue,asc"],
     })));
   });
 
   test.each([
     ["Название команды", ["teamName,desc", "startDate,desc"], ["teamName,asc", "startDate,desc"]],
     ["Дата встречи", ["teamName,asc", "startDate,asc"], ["teamName,asc", "startDate,desc"]],
-    ["Статус команды", ["teamName,asc", "teamStatus,asc"], ["teamName,asc", "teamStatus,desc"]],
+    ["Статус встречи", ["teamName,asc", "teamStatusValue,asc"], ["teamName,asc", "teamStatusValue,desc"]],
   ])("%s: третье нажатие возвращает исходную сортировку", async (label, firstSort, secondSort) => {
     renderPage();
     await screen.findByText("Команда А");

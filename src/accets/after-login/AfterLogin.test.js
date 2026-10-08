@@ -29,6 +29,7 @@ describe("AfterLogin", () => {
   let mockGetUserInfo;
 
   beforeEach(() => {
+    axios.get.mockResolvedValue({ data: { token: "test-csrf-token", headerName: "X-CSRF-TOKEN" } });
     mockNavigate = jest.fn();
     useNavigate.mockReturnValue(mockNavigate);
 
@@ -51,6 +52,31 @@ describe("AfterLogin", () => {
   ];
 
   
+
+  it.each(scenarios)("routes $roles after validating CSRF", async ({ roles, expectedPath }) => {
+    mockGetUserInfo.mockResolvedValue({ roles });
+    render(<AfterLogin />);
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith(expectedPath));
+    expect(localStorage.getItem('csrfToken')).toBe('test-csrf-token');
+    expect(localStorage.getItem('csrfHeaderName')).toBe('X-CSRF-TOKEN');
+  });
+
+  it.each([
+    { token: 'valid-token', headerName: 'Authorization' },
+    { token: 'bad\r\nInjected: value', headerName: 'X-CSRF-TOKEN' },
+    { token: {}, headerName: 'X-CSRF-TOKEN' },
+    { token: 'x'.repeat(4097), headerName: 'X-CSRF-TOKEN' },
+  ])('rejects invalid CSRF data without storing it', async data => {
+    const logged = jest.spyOn(console, 'error').mockImplementation(() => {});
+    axios.get.mockResolvedValueOnce({ data });
+    render(<AfterLogin />);
+    await waitFor(() => expect(logged).toHaveBeenCalled());
+    expect(mockGetUserInfo).not.toHaveBeenCalled();
+    expect(localStorage.getItem('csrfToken')).toBeNull();
+    expect(localStorage.getItem('csrfHeaderName')).toBeNull();
+    expect(mockNavigate).not.toHaveBeenCalled();
+    logged.mockRestore();
+  });
 
   it("logs an error if CSRF token fetch fails", async () => {
     const error = new Error("CSRF fetch failed");

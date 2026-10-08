@@ -1,5 +1,9 @@
+jest.mock('../../services/session-api', () => ({
+  readSessionStatus: jest.fn(async () => ({ serverTime: Date.now(), lastActivityAt: Date.now() })),
+  reportUserActivity: jest.fn(async () => ({})),
+}));
 import { render, screen, waitFor } from '@testing-library/react';
-import { act } from 'react-dom/test-utils'; // For act wrapping
+import { act } from 'react'; // For act wrapping
 import { useDispatch, useSelector } from 'react-redux';
 import { Navigate } from 'react-router-dom';
 import ProtectedRoute from './ProtectedRoute';
@@ -47,6 +51,7 @@ describe('ProtectedRoute', () => {
   });
 
   test('renders loading state while checking auth', () => {
+    mockGetUserInfo.mockReturnValue(new Promise(() => {}));
     render(<ProtectedRoute>Content</ProtectedRoute>);
     expect(screen.getByText('Loading...')).toBeInTheDocument();
   });

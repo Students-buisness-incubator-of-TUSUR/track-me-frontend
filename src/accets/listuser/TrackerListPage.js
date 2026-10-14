@@ -71,16 +71,13 @@ function TrackerListPage({ endpoint }) {
 
 
   const handleDoubleTap = (username) => {
-    // Validate username before using
-    if (!isValidUsername(username)) {
-      console.error("Invalid username for double tap", { username });
-      return;
-    }
-    
     const now = Date.now();
     const timeDiff = now - lastTap.current;
 
     if (timeDiff < 300) {
+      // Переход в профиль по-прежнему требует корректный username;
+      // первое касание открывает админские действия даже для «битых» записей.
+      if (!isValidUsername(username)) return;
       if (tapTimeout.current) {
         clearTimeout(tapTimeout.current);
       }
@@ -335,7 +332,8 @@ function TrackerListPage({ endpoint }) {
                         if (!window.confirm("Вы точно хотите отключить этого пользователя?")) {
                           return;
                         }
-                        safeAction(tracker.username, toggleUserLock);
+                        // Админские действия принимают любые username, чтобы убирать «битые» записи.
+                        toggleUserLock(tracker.username);
                         setActiveMobileMenu(null);
                       }}
                       onMouseEnter={() => setHoveredButton("cancel")}
@@ -356,7 +354,7 @@ function TrackerListPage({ endpoint }) {
                       className="confirm-button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        safeAction(tracker.username, toggleUserLock);
+                        toggleUserLock(tracker.username);
                         setActiveMobileMenu(null);
                       }}
                       onMouseEnter={() => setHoveredButton("confirm")}
@@ -375,7 +373,7 @@ function TrackerListPage({ endpoint }) {
                       className="cancel-button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        safeAction(tracker.username, handleDeleteClick);
+                        handleDeleteClick(tracker.username);
                         setActiveMobileMenu(null);
                       }}
                       onMouseEnter={() => setHoveredButton("cancel")}
@@ -418,7 +416,7 @@ function TrackerListPage({ endpoint }) {
                         if (!window.confirm("Вы точно хотите заблокировать этого пользователя?")) {
                           return;
                         }
-                        safeAction(tracker.username, toggleUserLock);
+                        toggleUserLock(tracker.username);
                         setActiveMobileMenu(null);
                       }}
                       onMouseEnter={() => setHoveredButton("cancel")}

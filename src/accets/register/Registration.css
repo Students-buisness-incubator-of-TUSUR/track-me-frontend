@@ -159,6 +159,10 @@
     top: 645px;
     left: 804px;
     width: 470px;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
     display: flex;
     flex-direction: column;
     gap: 14px;

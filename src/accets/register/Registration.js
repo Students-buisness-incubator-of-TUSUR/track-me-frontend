@@ -212,7 +212,7 @@ const Registration = () => {
                     />
                 </div>
 
-                <div className="registration-consents" role="group" aria-label="Согласия">
+                <fieldset className="registration-consents" aria-label="Согласия">
                     <label className="registration-consent">
                         <input
                             type="checkbox"
@@ -231,7 +231,7 @@ const Registration = () => {
                         />
                         <span>Я даю согласие на обработку персональных данных.</span>
                     </label>
-                </div>
+                </fieldset>
 
                 <button type="submit" className="register-button">Зарегистрироваться</button>
             </form>

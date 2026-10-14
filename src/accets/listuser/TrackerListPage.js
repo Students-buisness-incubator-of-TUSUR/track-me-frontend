@@ -333,7 +333,7 @@ function TrackerListPage({ endpoint }) {
                           return;
                         }
                         // Админские действия принимают любые username, чтобы убирать «битые» записи.
-                        toggleUserLock(tracker.username);
+                        void toggleUserLock(tracker.username);
                         setActiveMobileMenu(null);
                       }}
                       onMouseEnter={() => setHoveredButton("cancel")}
@@ -354,7 +354,7 @@ function TrackerListPage({ endpoint }) {
                       className="confirm-button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        toggleUserLock(tracker.username);
+                        void toggleUserLock(tracker.username);
                         setActiveMobileMenu(null);
                       }}
                       onMouseEnter={() => setHoveredButton("confirm")}
@@ -373,7 +373,7 @@ function TrackerListPage({ endpoint }) {
                       className="cancel-button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleDeleteClick(tracker.username);
+                        void handleDeleteClick(tracker.username);
                         setActiveMobileMenu(null);
                       }}
                       onMouseEnter={() => setHoveredButton("cancel")}
@@ -416,7 +416,7 @@ function TrackerListPage({ endpoint }) {
                         if (!window.confirm("Вы точно хотите заблокировать этого пользователя?")) {
                           return;
                         }
-                        toggleUserLock(tracker.username);
+                        void toggleUserLock(tracker.username);
                         setActiveMobileMenu(null);
                       }}
                       onMouseEnter={() => setHoveredButton("cancel")}

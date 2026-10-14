@@ -304,7 +304,7 @@ export default function TrackerMeetingReportPage() {
                   }
                 }}
               />
-              Показывать неактивные
+              <span>Показывать неактивные</span>
             </label>
             <Dropdown label={filters.stream?.name || "Потоки"} isOpen={openMenu.stream} onToggle={() => toggleMenu("stream")}>
               <button className="mrep-dropdown-item" onClick={() => updateFilter("stream", null)}>— Все —</button>

@@ -218,11 +218,6 @@ export function useTrackerList(endpoint) {
   // передаём RAW username
   const toggleUserLock = async (username) => {
     try {
-      // Validate username before using
-      if (!isValidUsername(username)) {
-        throw new Error("Invalid username format");
-      }
- 
       if (showLockedOnly) {
         // Разблокировка заблокированного
         const url = createSafeUserUrl('/api/v1/users/unlock', { username });
@@ -251,11 +246,6 @@ export function useTrackerList(endpoint) {
   // передаём RAW username без предварительного кодирования
   const handleDeleteClick = async (username) => {
       try {
-          // Validate username
-          if (!isValidUsername(username)) {
-            throw new Error("Invalid username format");
-          }
- 
           // Передаём RAW username
           const response = await fetchUserTeams(username);
  
@@ -289,11 +279,6 @@ export function useTrackerList(endpoint) {
   const confirmDeleteUser = async () => {
     if (!userToDelete) return;
     try {
-      // Validate userToDelete (теперь это RAW username)
-      if (!isValidUsername(userToDelete)) {
-        throw new Error("Invalid username format");
-      }
- 
       // Передаём RAW username
       const url = createSafeUserUrl('/api/v1/users', { username: userToDelete });
  

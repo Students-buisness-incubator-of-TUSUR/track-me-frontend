@@ -6,11 +6,13 @@ import TrackerMeetingReportPage from "./TrackerMeetingReportPage";
 import {
   fetchMyTrackerMeetingReport,
   fetchMyTrackerMeetingReportExcel,
+  fetchTeams,
 } from "../../services/requests";
 
 jest.mock("../../services/requests", () => ({
   fetchMyTrackerMeetingReport: jest.fn(),
   fetchMyTrackerMeetingReportExcel: jest.fn(),
+  fetchTeams: jest.fn(),
 }));
 
 jest.mock("../../services/util", () => ({
@@ -38,6 +40,13 @@ describe("TrackerMeetingReportPage", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     fetchMyTrackerMeetingReport.mockResolvedValue(successfulResponse([report]));
+    const today = new Date().toISOString().slice(0, 10);
+    fetchTeams.mockResolvedValue(successfulResponse(
+      Array.from({ length: 5 }, (_, index) => ({
+        id: `team-${index + 1}`,
+        streams: [{ id: "active-stream", name: "Активный поток", startDate: today, endDate: today }],
+      }))
+    ));
   });
 
   function renderPage() {
@@ -127,6 +136,56 @@ describe("TrackerMeetingReportPage", () => {
     await waitFor(() => expect(fetchMyTrackerMeetingReport).toHaveBeenLastCalledWith(expect.objectContaining({
       filters: [{ fieldName: "status", type: "EQ", value: "SCHEDULED" }],
     })));
+  });
+
+  test("filters by stream and includes inactive streams only when requested", async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    fetchMyTrackerMeetingReport.mockResolvedValue(successfulResponse([
+      report,
+      { ...report, teamId: "team-2", teamName: "Команда Б" },
+    ]));
+    fetchTeams.mockResolvedValue(successfulResponse([
+      { id: "team-1", streams: [{ id: "active-stream", name: "Активный поток", startDate: today, endDate: today }] },
+      { id: "team-2", streams: [{ id: "old-stream", name: "Старый поток", startDate: "2020-01-01", endDate: "2020-12-31" }] },
+    ]));
+    renderPage();
+
+    await screen.findByText("Команда А");
+    expect(screen.queryByText("Команда Б")).not.toBeInTheDocument();
+    expect(fetchMyTrackerMeetingReport).toHaveBeenCalledWith(expect.objectContaining({
+      streamId: undefined,
+      includeInactiveStreams: false,
+    }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Потоки" }));
+    expect(await screen.findByRole("button", { name: "Активный поток" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Старый поток" }));
+    await waitFor(() => expect(fetchMyTrackerMeetingReport).toHaveBeenLastCalledWith(expect.objectContaining({
+      streamId: "old-stream",
+      includeInactiveStreams: true,
+    })));
+    expect(await screen.findByText("Команда Б")).toBeInTheDocument();
+    expect(screen.queryByText("Команда А")).not.toBeInTheDocument();
+
+    fetchMyTrackerMeetingReportExcel.mockResolvedValue({
+      ok: true,
+      blob: () => Promise.resolve(new Blob(["report"])),
+    });
+    URL.createObjectURL = jest.fn(() => "blob:report");
+    URL.revokeObjectURL = jest.fn();
+    fireEvent.click(screen.getByText("Выгрузить отчёт"));
+    await waitFor(() => expect(fetchMyTrackerMeetingReportExcel).toHaveBeenCalledWith(expect.objectContaining({
+      streamId: "old-stream",
+      includeInactiveStreams: true,
+    })));
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Показывать неактивные" }));
+    await waitFor(() => expect(fetchMyTrackerMeetingReport).toHaveBeenLastCalledWith(expect.objectContaining({
+      streamId: undefined,
+      includeInactiveStreams: false,
+    })));
+    expect(await screen.findByText("Команда А")).toBeInTheDocument();
+    expect(screen.queryByText("Команда Б")).not.toBeInTheDocument();
   });
 
   test("updates sort parameters when sortable headers are clicked", async () => {

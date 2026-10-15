@@ -49,7 +49,10 @@ export default function YandexRegistration() {
     }, []);
     function change(event) {
         const { name, type, checked, value } = event.target;
-        const next = { ...values, [name]: type === 'checkbox' ? checked : name === 'username' ? value.replace(/^@/, '') : value };
+        let nextValue = value;
+        if (type === 'checkbox') nextValue = checked;
+        else if (name === 'username') nextValue = value.replace(/^@/, '');
+        const next = { ...values, [name]: nextValue };
         setValues(next);
         setErrors(previous => ({ ...previous, [name]: validateRegistration(next)[name] }));
     }
@@ -74,11 +77,11 @@ export default function YandexRegistration() {
         } catch (error) { setMessage(error.message); }
         finally { submitting.current = false; setBusy(false); }
     }
-    const text = agreement.map((paragraph, index) => <p key={index}>{paragraph}</p>);
+    const text = agreement.map(paragraph => <p key={paragraph}>{paragraph}</p>);
     return <div className="yandex-registration"><main>
         <h1>Завершение регистрации</h1>
-        {message && <p className="notice" role="status">{message}</p>}
-        {!profile && !message && <p role="status">Загрузка…</p>}
+        {message && <output className="notice">{message}</output>}
+        {!profile && !message && <output>Загрузка…</output>}
         {profile && !profile.pending && !message && <p className="notice">Сначала подтвердите вход через Яндекс или начните вход повторно: срок регистрации — 10 минут.</p>}
         {profile?.pending && <form onSubmit={submit} noValidate>
             <p className="verified">Подтверждённая почта: {profile.email}</p>

@@ -1,9 +1,10 @@
-import axios from 'axios';
 import { backendURL } from './constants';
 import { ACTIVITY_KEY } from './activity-session';
 
 export async function logoutSession() {
-    const { data } = await axios.get(`${backendURL}/csrf`, { withCredentials: true });
+    const response = await fetch(`${backendURL}/csrf`, { credentials: 'include' });
+    if (!response.ok) throw new Error('Failed to retrieve logout CSRF token');
+    const data = await response.json();
     if (data.parameterName !== '_csrf' || typeof data.token !== 'string' || !data.token) {
         throw new Error('Missing logout CSRF token');
     }

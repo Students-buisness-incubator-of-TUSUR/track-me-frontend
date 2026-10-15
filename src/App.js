@@ -1,3 +1,4 @@
+import YandexRegistration from './accets/yandex-registration/YandexRegistration';
 import React from "react";
 import './App.css';
 import {BrowserRouter as Router, Route, Routes} from "react-router-dom";
@@ -28,6 +29,7 @@ function App() {
         <Router>
             <div>
                 <Routes>
+                    <Route path="/yandex-registration" element={<YandexRegistration />} />
                     {/* Публичные маршруты (не требуют авторизации) */}
                     <Route path="/" element={<HomePage />} />
                     <Route path="/after-login" element={<AfterLogin />} />

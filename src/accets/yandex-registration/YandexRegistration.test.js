@@ -56,5 +56,5 @@ test('does not display registration when the pending session is missing', async 
 test('shows loading errors', async () => {
     global.fetch = jest.fn().mockRejectedValue(new Error('Нет связи с SSO'));
     render(<YandexRegistration />);
-    await screen.findByText('Нет связи с SSO');
+    expect(await screen.findByText('Нет связи с SSO')).toBeInTheDocument();
 });

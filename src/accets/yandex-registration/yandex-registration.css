@@ -5,3 +5,5 @@
 .yandex-registration{min-height:100vh}.yandex-registration .terms{display:block;width:100%;text-align:left;cursor:pointer;font-family:inherit}.yandex-registration .license-link{background:none;border:0;padding:0;color:inherit;font:inherit;text-decoration:underline;cursor:pointer}
 
 .yandex-registration dialog{position:fixed;inset:0;margin:auto}
+
+.yandex-registration output{display:block}

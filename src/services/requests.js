@@ -56,8 +56,10 @@ function toSortArray(sort) {
   return [];
 }
 
-export async function fetchMyTrackerMeetingReport({ filters, page, size, sort }) {
+export async function fetchMyTrackerMeetingReport({ filters, page, size, sort, streamId, includeInactiveStreams = false }) {
   let url = `${backendURLMeeting}/api/v1/tracker/meetings/reports/my?page=${page}&size=${size}`;
+  if (streamId) url += `&streamId=${encodeURIComponent(streamId)}`;
+  url += `&includeInactiveStreams=${includeInactiveStreams}`;
   const sortArray = toSortArray(sort);
   sortArray.forEach((sortParam) => {
     url += `&sort=${sortParam}`;
@@ -74,8 +76,10 @@ export async function fetchMyTrackerMeetingReport({ filters, page, size, sort })
   });
 }
 
-export async function fetchMyTrackerMeetingReportExcel({ filters, sort }) {
+export async function fetchMyTrackerMeetingReportExcel({ filters, sort, streamId, includeInactiveStreams = false }) {
   const params = new URLSearchParams();
+  if (streamId) params.append("streamId", streamId);
+  params.append("includeInactiveStreams", String(includeInactiveStreams));
   const sortArray = toSortArray(sort);
   sortArray.forEach((sortParam) => params.append("sort", sortParam));
   const query = params.toString();
@@ -280,7 +284,7 @@ export async function updateUserPhoto({ newUserPhotoFile }) {
 
 export async function fetchUserTeams(username) {
   const response = await fetch(
-    `${backendURLBackend}/api/v1/admin/team-cards/by-user?username=${username}`,
+    `${backendURLBackend}/api/v1/admin/team-cards/by-user?username=${encodeURIComponent(username)}`,
     {
       method: "GET",
       headers: {

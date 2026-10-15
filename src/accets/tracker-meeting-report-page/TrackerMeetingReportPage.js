@@ -7,6 +7,7 @@ import IconClose from "../meeting-report-page/icon-close.png";
 import {
   fetchMyTrackerMeetingReport,
   fetchMyTrackerMeetingReportExcel,
+  fetchTeams,
 } from "../../services/requests";
 import { useGetUserInfo } from "../../services/util";
 import { initialMeetingReportSort, nextMeetingReportSort } from "../../services/meetingReportSort";
@@ -20,6 +21,16 @@ const COMBINED_STATUS_OPTIONS = {
   SCHEDULED: { label: "Запланирована", isTeamStatus: false },
   COMPLETED_AS_NOT_HAPPENED: { label: "Не состоялась", isTeamStatus: false },
 };
+
+const isStreamActive = (stream, today = new Date().toISOString().slice(0, 10)) =>
+  stream.startDate <= today && stream.endDate >= today;
+
+const sortStreams = (streams) => [...streams].sort((left, right) => {
+  const activityDifference = Number(isStreamActive(right)) - Number(isStreamActive(left));
+  if (activityDifference) return activityDifference;
+  const endDateDifference = (right.endDate || "").localeCompare(left.endDate || "");
+  return endDateDifference || left.name.localeCompare(right.name, "ru", { numeric: true });
+});
 
 function getStatusInfo(item) {
   if (item.status === "SCHEDULED") {
@@ -56,10 +67,15 @@ export default function TrackerMeetingReportPage() {
 
   const [reports, setReports] = useState([]);
   const [availableTeams, setAvailableTeams] = useState([]);
+  const [streams, setStreams] = useState([]);
+  const [teamStreams, setTeamStreams] = useState(new Map());
+  const [teamsLoading, setTeamsLoading] = useState(true);
+  const [streamsError, setStreamsError] = useState(false);
+  const [includeInactiveStreams, setIncludeInactiveStreams] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [openMenu, setOpenMenu] = useState({ team: false, status: false });
-  const [filters, setFilters] = useState({ team: null, status: null });
+  const [openMenu, setOpenMenu] = useState({ stream: false, team: false, status: false });
+  const [filters, setFilters] = useState({ stream: null, team: null, status: null });
   const [sortConfig, setSortConfig] = useState(initialMeetingReportSort);
 
   const apiFilters = useMemo(() => {
@@ -89,6 +105,14 @@ export default function TrackerMeetingReportPage() {
     `${sortConfig.secondary.field},${sortConfig.secondary.direction}`,
   ], [sortConfig]);
 
+  const visibleReports = useMemo(() => reports.filter((report) => {
+    const assignedStreamIds = teamStreams.get(String(report.teamId));
+    if (!assignedStreamIds) return !filters.stream;
+    if (filters.stream && !assignedStreamIds.has(String(filters.stream.id))) return false;
+    if (includeInactiveStreams) return true;
+    return streams.some((stream) => assignedStreamIds.has(String(stream.id)) && isStreamActive(stream));
+  }), [reports, teamStreams, filters.stream, includeInactiveStreams, streams]);
+
   const loadReports = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -96,6 +120,8 @@ export default function TrackerMeetingReportPage() {
     try {
       const response = await fetchMyTrackerMeetingReport({
         filters: apiFilters,
+        streamId: filters.stream?.id,
+        includeInactiveStreams,
         page: 0,
         size: 10000,
         sort: effectiveSortParams,
@@ -108,12 +134,14 @@ export default function TrackerMeetingReportPage() {
       const data = await response.json();
       const content = data.content || [];
       setReports(passiveTeamsLast(content));
-      setAvailableTeams((previousTeams) => previousTeams.length > 0
-        ? previousTeams
-        : [...new Set(content.map((item) => item.teamName))]
-          .filter(Boolean)
-          .sort((a, b) => a.localeCompare(b, "ru", { numeric: true }))
-      );
+      setAvailableTeams((previousTeams) => [...new Map([
+        ...previousTeams,
+        ...content.filter((item) => item.teamId && item.teamName).map((item) => ({
+          id: String(item.teamId),
+          name: item.teamName,
+        })),
+      ].map((team) => [team.id, team])).values()]
+        .sort((a, b) => a.name.localeCompare(b.name, "ru", { numeric: true })));
     } catch (requestError) {
       console.error(requestError);
       setError("Не удалось загрузить отчёт. Попробуйте обновить страницу.");
@@ -121,19 +149,60 @@ export default function TrackerMeetingReportPage() {
     } finally {
       setLoading(false);
     }
-  }, [apiFilters, effectiveSortParams]);
+  }, [apiFilters, effectiveSortParams, filters.stream, includeInactiveStreams]);
 
   useEffect(() => {
     loadReports();
   }, [loadReports]);
 
+  useEffect(() => {
+    let cancelled = false;
+    const loadStreams = async () => {
+      try {
+        const firstResponse = await fetchTeams({ page: 0, size: 1000, filters: [] });
+        if (!firstResponse.ok) throw new Error(`Ошибка HTTP: ${firstResponse.status}`);
+        const firstPage = await firstResponse.json();
+        const remainingPages = Array.from(
+          { length: Math.max(0, (firstPage.page?.totalPages || 1) - 1) },
+          (_, index) => index + 1
+        );
+        const pages = await Promise.all(remainingPages.map(async (page) => {
+          const response = await fetchTeams({ page, size: 1000, filters: [] });
+          if (!response.ok) throw new Error(`Ошибка HTTP: ${response.status}`);
+          return response.json();
+        }));
+        if (cancelled) return;
+        const cards = [firstPage, ...pages].flatMap((page) => page.content || []);
+        const allStreams = cards.flatMap((card) => card.streams || []);
+        setStreams(sortStreams([...new Map(allStreams.map((stream) => [String(stream.id), stream])).values()]));
+        setTeamStreams(new Map(cards.map((card) => [
+          String(card.id),
+          new Set((card.streams || []).map((stream) => String(stream.id))),
+        ])));
+      } catch (requestError) {
+        console.error(requestError);
+        if (!cancelled) setStreamsError(true);
+      } finally {
+        if (!cancelled) setTeamsLoading(false);
+      }
+    };
+    void loadStreams();
+    return () => { cancelled = true; };
+  }, []);
+
   const updateFilter = (key, value) => {
-    setFilters((previous) => ({ ...previous, [key]: value }));
-    setOpenMenu({ team: false, status: false });
+    setFilters((previous) => ({
+      ...previous,
+      [key]: value,
+      ...(key === "stream" ? { team: null } : {}),
+    }));
+    if (key === "stream") setAvailableTeams([]);
+    setOpenMenu({ stream: false, team: false, status: false });
   };
 
   const toggleMenu = (key) => {
     setOpenMenu((previous) => ({
+      stream: false,
       team: false,
       status: false,
       [key]: !previous[key],
@@ -148,6 +217,8 @@ export default function TrackerMeetingReportPage() {
     try {
       const response = await fetchMyTrackerMeetingReportExcel({
         filters: apiFilters,
+        streamId: filters.stream?.id,
+        includeInactiveStreams,
         sort: effectiveSortParams,
       });
 
@@ -168,21 +239,25 @@ export default function TrackerMeetingReportPage() {
   };
 
   const renderTableContent = () => {
-    if (loading) {
+    if (loading || teamsLoading) {
       return <tr><td colSpan="6">Загрузка...</td></tr>;
+    }
+
+    if (streamsError) {
+      return <tr><td colSpan="6">Не удалось загрузить потоки команд. Попробуйте обновить страницу.</td></tr>;
     }
 
     if (error) {
       return <tr><td colSpan="6">{error}</td></tr>;
     }
 
-    if (reports.length === 0) {
+    if (visibleReports.length === 0) {
       return <tr><td colSpan="6">Нет данных</td></tr>;
     }
 
-    return reports.map((item, index) => {
-      const isFirstInGroup = index === 0 || reports[index - 1].teamName !== item.teamName;
-      const isLastInGroup = index === reports.length - 1 || reports[index + 1].teamName !== item.teamName;
+    return visibleReports.map((item, index) => {
+      const isFirstInGroup = index === 0 || visibleReports[index - 1].teamName !== item.teamName;
+      const isLastInGroup = index === visibleReports.length - 1 || visibleReports[index + 1].teamName !== item.teamName;
       const isNotHappened = item.status === "COMPLETED_AS_NOT_HAPPENED";
       const { text: statusText, className: statusClassName } = getStatusInfo(item);
       const showTasks = item.status === "COMPLETED";
@@ -217,11 +292,44 @@ export default function TrackerMeetingReportPage() {
         <div className="mrep-header">
           <button className="mrep-btn-back" onClick={() => navigate(-1)}>← Назад</button>
           <div className="mrep-filters-container">
+            <label className="mrep-inactive-toggle">
+              <input
+                type="checkbox"
+                checked={includeInactiveStreams}
+                onChange={(event) => {
+                  const showInactive = event.target.checked;
+                  setIncludeInactiveStreams(showInactive);
+                  if (!showInactive && filters.stream && !isStreamActive(filters.stream)) {
+                    updateFilter("stream", null);
+                  }
+                }}
+              />
+              <span>Показывать неактивные</span>
+            </label>
+            <Dropdown label={filters.stream?.name || "Потоки"} isOpen={openMenu.stream} onToggle={() => toggleMenu("stream")}>
+              <button className="mrep-dropdown-item" onClick={() => updateFilter("stream", null)}>— Все —</button>
+              {streamsError && <span className="mrep-dropdown-item">Не удалось загрузить потоки</span>}
+              {streams.map((stream) => (
+                <button
+                  key={stream.id}
+                  className="mrep-dropdown-item mrep-stream-option"
+                  onClick={() => {
+                    if (!isStreamActive(stream)) setIncludeInactiveStreams(true);
+                    updateFilter("stream", stream);
+                  }}
+                >
+                  {isStreamActive(stream) && <span className="mrep-active-stream-dot" aria-hidden="true" />}
+                  {stream.name}
+                </button>
+              ))}
+            </Dropdown>
             <Dropdown label={filters.team || "Команда"} isOpen={openMenu.team} onToggle={() => toggleMenu("team")}>
               <button className="mrep-dropdown-item" onClick={() => updateFilter("team", null)}>— Все —</button>
-              {availableTeams.map((teamName) => (
-                <button key={teamName} className="mrep-dropdown-item" onClick={() => updateFilter("team", teamName)}>
-                  {teamName}
+              {availableTeams.filter((team) => !filters.stream ||
+                teamStreams.get(team.id)?.has(String(filters.stream.id))
+              ).map((team) => (
+                <button key={team.id} className="mrep-dropdown-item" onClick={() => updateFilter("team", team.name)}>
+                  {team.name}
                 </button>
               ))}
             </Dropdown>

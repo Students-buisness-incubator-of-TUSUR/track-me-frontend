@@ -95,6 +95,30 @@ font-family: var(--text-font);
   z-index: 1000;
   box-shadow: 0 2px 8px rgba(0,0,0,0.15);
   overflow: hidden;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.team-card_tracker-select {
+  position: relative;
+  box-sizing: border-box;
+  width: 400px;
+  max-width: 100%;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.team-card_tracker-select-value {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  padding-right: 36px;
+  display: block;
+  line-height: 52px;
+  text-align: left;
 }
 
 .team-card_field-select-search {

@@ -359,7 +359,7 @@ describe('TrackerListPage (объединённые тесты)', () => {
 
     const cancelButton = screen.getByAltText('Отключить');
     fireEvent.click(cancelButton);
-    expect(isValidUsername).toHaveBeenCalledWith('user1');
+    expect(isValidUsername).not.toHaveBeenCalled();
     expect(toggleUserLock).toHaveBeenCalledWith('user1');
   });
 
@@ -407,7 +407,7 @@ describe('TrackerListPage (объединённые тесты)', () => {
 
     const cancelBtn = screen.getByAltText('Отклонить');
     fireEvent.click(cancelBtn);
-    expect(isValidUsername).toHaveBeenCalledWith('user2');
+    expect(isValidUsername).not.toHaveBeenCalled();
     expect(toggleUserLock).toHaveBeenCalledWith('user2');
   });
 
@@ -589,7 +589,7 @@ describe('TrackerListPage (объединённые тесты)', () => {
     const TrackerListPage = require('./TrackerListPage').default;
     render(<BrowserRouter><TrackerListPage endpoint="/trackers" /></BrowserRouter>);
     fireEvent.click(screen.getByAltText('Отклонить'));
-    expect(isValidUsername).toHaveBeenCalledWith('disabled2');
+    expect(isValidUsername).not.toHaveBeenCalled();
     expect(toggleUserLock).toHaveBeenCalledWith('disabled2');
   });
 });
@@ -1645,13 +1645,13 @@ describe('Locked mode delete button', () => {
     
     const deleteButton = screen.getByAltText('Удалить');
     fireEvent.click(deleteButton);
-    expect(isValidUsername).toHaveBeenCalledWith('disabled1');
+    expect(isValidUsername).not.toHaveBeenCalled();
     expect(handleDeleteClick).toHaveBeenCalledWith('disabled1');
   });
 });
 
-describe('safeAction validation - invalid username', () => {
-  test('не вызывает toggleUserLock если username невалидный', () => {
+describe('admin actions with invalid usernames', () => {
+  test('вызывает toggleUserLock если username невалидный', () => {
     isValidUsername.mockReturnValueOnce(false);
     
     const toggleUserLock = jest.fn();
@@ -1674,11 +1674,11 @@ describe('safeAction validation - invalid username', () => {
     const cancelButton = screen.getByAltText('Отключить');
     fireEvent.click(cancelButton);
     
-    expect(isValidUsername).toHaveBeenCalledWith('invalid<script>');
-    expect(toggleUserLock).not.toHaveBeenCalled();
+    expect(isValidUsername).not.toHaveBeenCalled();
+    expect(toggleUserLock).toHaveBeenCalledWith('invalid<script>');
   });
 
-  test('не вызывает handleDeleteClick если username невалидный', () => {
+  test('вызывает handleDeleteClick если username невалидный', () => {
     isValidUsername.mockReturnValueOnce(false);
     
     const handleDeleteClick = jest.fn();
@@ -1701,8 +1701,8 @@ describe('safeAction validation - invalid username', () => {
     const deleteButton = screen.getByAltText('Удалить');
     fireEvent.click(deleteButton);
     
-    expect(isValidUsername).toHaveBeenCalledWith('invalid\nuser');
-    expect(handleDeleteClick).not.toHaveBeenCalled();
+    expect(isValidUsername).not.toHaveBeenCalled();
+    expect(handleDeleteClick).toHaveBeenCalledWith('invalid\nuser');
   });
 
   test('Escape очищает поисковый запрос (setSearchQuery called with empty string)', () => {

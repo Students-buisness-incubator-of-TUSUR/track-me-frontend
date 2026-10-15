@@ -60,12 +60,24 @@ describe('fetchMyTrackerMeetingReport', () => {
     });
 
     expect(fetch).toHaveBeenCalledWith(
-      expect.stringContaining('api/v1/tracker/meetings/reports/my?page=0&size=20&sort=teamName,asc&sort=startDate,desc'),
+      expect.stringContaining('api/v1/tracker/meetings/reports/my?page=0&size=20&includeInactiveStreams=false&sort=teamName,asc&sort=startDate,desc'),
       expect.objectContaining({
         method: 'POST',
         body: JSON.stringify({ filters }),
       })
     );
+    expect(fetch.mock.calls[0][0]).toContain('includeInactiveStreams=false');
+  });
+
+  it('sends selected stream and inactive visibility to both tracker report endpoints', async () => {
+    fetch.mockResolvedValue({ ok: true });
+    const options = { filters: [], page: 0, size: 20, streamId: 'stream/1', includeInactiveStreams: true };
+
+    await fetchMyTrackerMeetingReport(options);
+    await fetchMyTrackerMeetingReportExcel(options);
+
+    expect(fetch.mock.calls[0][0]).toContain('streamId=stream%2F1&includeInactiveStreams=true');
+    expect(fetch.mock.calls[1][0]).toContain('streamId=stream%2F1&includeInactiveStreams=true');
   });
 
   it('exports the tracker report with filters and sort', async () => {
@@ -77,7 +89,7 @@ describe('fetchMyTrackerMeetingReport', () => {
     });
 
     expect(fetch).toHaveBeenCalledWith(
-      expect.stringContaining('api/v1/tracker/meetings/reports/my/excel?sort=startDate%2Cdesc'),
+      expect.stringContaining('api/v1/tracker/meetings/reports/my/excel?includeInactiveStreams=false&sort=startDate%2Cdesc'),
       expect.objectContaining({
         method: 'POST',
         headers: expect.objectContaining({
@@ -360,6 +372,17 @@ describe('fetchUserTeams', () => {
         })
       })
     );
+  });
+
+  it('encodes Cyrillic, spaces and special characters in username', async () => {
+    fetch.mockResolvedValue({ ok: true });
+    const username = 'Иван Иванов&?';
+
+    await fetchUserTeams(username);
+
+    const requestUrl = fetch.mock.calls[0][0];
+    expect(new URL(requestUrl).searchParams.get('username')).toBe(username);
+    expect(requestUrl).not.toContain(username);
   });
 });
 

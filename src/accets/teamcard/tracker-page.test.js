@@ -388,6 +388,9 @@ describe('TrackerPage - Исправленные тесты', () => {
           userId: 'user3',
           streamId: localStorage.getItem('streamId'),
           from: '/',
+          page: 0,
+          returnScroll: 0,
+          returnCardId: 'card3',
         },
       }
     );

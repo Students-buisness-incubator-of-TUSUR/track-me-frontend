@@ -2,6 +2,8 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import '@testing-library/jest-dom';
 import Header from './header';
+import { logoutSession } from '../../services/logout-session';
+jest.mock('../../services/logout-session', () => ({ logoutSession: jest.fn().mockResolvedValue() }));
 import { adminRoleName, superadminRoleName, trackerRoleName } from '../../services/constants';
 
 // Mock constants
@@ -67,7 +69,7 @@ describe('Header', () => {
         expect(screen.queryByTestId('profile-dropdown')).not.toBeInTheDocument();
     });
 
-    it('clears localStorage on logout', () => {
+    it('submits logout without following the GET link', () => {
         // Setup localStorage
         localStorage.setItem('user', 'test');
         localStorage.setItem('userRole', 'test');
@@ -76,8 +78,8 @@ describe('Header', () => {
         fireEvent.click(screen.getByTestId('personal-acc-btn'));
         fireEvent.click(screen.getByTestId('profile-logout-btn'));
 
-        expect(localStorage.getItem('user')).toBeNull();
-        expect(localStorage.getItem('userRole')).toBeNull();
+        expect(logoutSession).toHaveBeenCalled();
+        expect(screen.getByTestId('profile-logout-btn').tagName).toBe('A');
     });
 
     it('toggles mobile hamburger menu', () => {

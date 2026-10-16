@@ -3,20 +3,24 @@ import "./header.css"
 import { Link } from 'react-router-dom';
 import { adminRoleName, backendURL, superadminRoleName, trackerRoleName } from "../../services/constants";
 import PropTypes from "prop-types";
+import { logoutSession } from "../../services/logout-session";
 
 export default function Header({ userRole = "" }) {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
-    const handleLogout = async () => {
-        localStorage.removeItem("user");
-        localStorage.removeItem("userRole");
-        localStorage.removeItem("streamName");
-        localStorage.removeItem("streamId");
-        localStorage.removeItem("streamSDate");
-        localStorage.removeItem("streamEDate");
-        localStorage.removeItem("csrfToken");
-        localStorage.removeItem("csrfHeaderName");
-
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
+    const [logoutError, setLogoutError] = useState('');
+    const handleLogout = async (event) => {
+        event.preventDefault();
+        if (isLoggingOut) return;
+        setIsLoggingOut(true);
+        setLogoutError('');
+        try {
+            await logoutSession();
+        } catch {
+            setLogoutError('Не удалось выйти. Попробуйте ещё раз.');
+            setIsLoggingOut(false);
+        }
     };
     const logoutHost = backendURL + '/logout';
     const openFeedback = () => {
@@ -28,6 +32,7 @@ export default function Header({ userRole = "" }) {
     const defaultPage = "/after-login";
     return (
         <header className="header_container">
+            {logoutError && <span role="alert">{logoutError}</span>}
             <Link className="header_left-side" to={defaultPage}>
                 <img src="/images/logo.svg" alt="logo" />
                 <span>TrackMe</span>

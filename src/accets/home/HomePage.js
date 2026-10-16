@@ -17,7 +17,7 @@ const HomePage = () => {
 
 
     const handleYandexLogin = () => {
-        window.location.href = `${clientGatewayUri}/oauth2/authorization/yandex`;
+        window.location.href = `${clientGatewayUri}/oauth2/authorization/yandex?redirect_uri=${encodeURIComponent(window.location.origin + '/after-login')}`;
     };
 
     const handleGoogleLogin = () => {

@@ -1428,7 +1428,7 @@ describe("checkMeetingCreation max meetings", () => {
     await waitForLoad();
     fireEvent.click(screen.getByRole("button", { name: /запланировать/i }));
     await waitFor(() =>
-      expect(screen.getByTestId("meeting-error")).toHaveTextContent(/максимальное количество/i)
+      expect(screen.getByTestId("meeting-error")).toHaveTextContent(/максимально возможное число встреч/i)
     );
   });
 });

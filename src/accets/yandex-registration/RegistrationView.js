@@ -94,7 +94,7 @@ export default function RegistrationView({ profile, sso, values, errors, busy, m
         </main>
         <dialog className="registration-license" ref={dialog} aria-labelledby="yandex-license-title">
             <header><h2 id="yandex-license-title">Лицензионное соглашение</h2><button type="button" className="license-close" aria-label="Закрыть соглашение" onClick={closeLicense}>×</button></header>
-            <div className="license-full-text" tabIndex="0">{agreement.map(paragraph => <p key={paragraph}>{paragraph}</p>)}</div>
+            <div className="license-full-text">{agreement.map(paragraph => <p key={paragraph}>{paragraph}</p>)}</div>
             <footer><button type="button" className="license-dismiss" onClick={closeLicense}>Закрыть</button><button type="button" className="license-accept" onClick={acceptLicense}>Принимаю условия</button></footer>
         </dialog>
     </div>;

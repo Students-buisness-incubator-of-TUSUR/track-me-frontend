@@ -1,9 +1,9 @@
 import '@testing-library/jest-dom';
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import YandexRegistration, { validateRegistration } from './YandexRegistration';
 
-const valid = { username: 'newuser', role: 'TRACKER', licenseAccepted: true, policyAccepted: true, consent: true };
+const valid = { username: 'newuser', role: 'TRACKER', licenseAccepted: true, policyAccepted: true, consent: true, phoneNumber: '' };
 const response = (data, ok = true) => ({ ok, headers: { get: () => 'application/json' }, json: async () => data });
 beforeEach(() => {
     global.fetch = jest.fn().mockResolvedValueOnce(response({ ssoUri: 'http://localhost:9000' }))
@@ -22,7 +22,7 @@ test('rejects privileged roles and malformed usernames', () => {
 test('loads confirmed profile, strips @, requires all consents and submits with session CSRF', async () => {
     global.fetch.mockResolvedValueOnce(response({ registered: true, message: 'Аккаунт ожидает активации' }));
     render(<YandexRegistration />);
-    await screen.findByText(/Подтверждённая почта/);
+    await screen.findByText('test@yandex.ru');
     const button = screen.getByRole('button', { name: 'Завершить регистрацию' });
     expect(button).toBeDisabled();
     expect(screen.getByLabelText('Роль')).toHaveValue('');
@@ -32,7 +32,7 @@ test('loads confirmed profile, strips @, requires all consents and submits with 
     screen.getAllByRole('checkbox').forEach(box => { expect(box).not.toBeChecked(); fireEvent.click(box); });
     expect(button).toBeEnabled();
     fireEvent.click(button);
-    await screen.findByText('Аккаунт ожидает активации');
+    await screen.findByRole('heading', { name: 'Заявка принята' });
     expect(global.fetch).toHaveBeenLastCalledWith('http://localhost:9000/client/social/registration', expect.objectContaining({
         credentials: 'include', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': 'csrf' }, body: JSON.stringify(valid),
     }));
@@ -40,8 +40,8 @@ test('loads confirmed profile, strips @, requires all consents and submits with 
 });
 test('opens agreement in place and closes it', async () => {
     render(<YandexRegistration />);
-    await screen.findByText(/Подтверждённая почта/);
-    fireEvent.click(screen.getByRole('button', { name: 'Лицензионное соглашение' }));
+    await screen.findByText('test@yandex.ru');
+    fireEvent.click(screen.getByRole('button', { name: /лицензионного соглашения/ }));
     expect(HTMLDialogElement.prototype.showModal).toHaveBeenCalled();
     fireEvent.click(screen.getByLabelText('Закрыть соглашение'));
     expect(HTMLDialogElement.prototype.close).toHaveBeenCalled();
@@ -66,5 +66,27 @@ test('Google uses the same registration fields as Yandex', async () => {
     expect(await screen.findByText(/test@gmail.com/)).toBeInTheDocument();
     expect(document.getElementById('yandex-username')).toBeInTheDocument();
     expect(document.getElementById('yandex-role')).toBeInTheDocument();
-    expect(document.getElementById('social-phone')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Телефон')).toHaveValue('+79001234567');
+});
+
+test('accepting the license in the dialog checks only its own consent', async () => {
+    render(<YandexRegistration />);
+    await screen.findByText('test@yandex.ru');
+    fireEvent.click(screen.getByRole('button', { name: /лицензионного соглашения/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Принимаю условия', hidden: true }));
+    expect(screen.getByRole('checkbox', { name: 'Принимаю условия лицензионного соглашения' })).toBeChecked();
+    expect(screen.getAllByRole('checkbox').filter(box => box.checked)).toHaveLength(1);
+    expect(screen.getByRole('button', { name: 'Завершить регистрацию' })).toBeDisabled();
+    expect(HTMLDialogElement.prototype.close).toHaveBeenCalled();
+});
+
+test('validates optional formatted phone and shows field errors on blur', async () => {
+    expect(validateRegistration({ ...valid, phoneNumber: '+7 (913) 123-45-67' })).not.toHaveProperty('phoneNumber');
+    expect(validateRegistration({ ...valid, phoneNumber: 'bad' })).toHaveProperty('phoneNumber');
+    render(<YandexRegistration />);
+    await screen.findByText('test@yandex.ru');
+    fireEvent.change(screen.getByLabelText(/Имя пользователя/), { target: { value: 'ivan' } });
+    expect(screen.getByText(/Слишком короткое имя/)).toBeInTheDocument();
+    fireEvent.blur(screen.getByLabelText('Роль'));
+    expect(screen.getByText('Выберите роль.')).toBeInTheDocument();
 });

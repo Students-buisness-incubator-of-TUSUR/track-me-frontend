@@ -30,6 +30,7 @@ function App() {
             <div>
                 <Routes>
                     <Route path="/yandex-registration" element={<YandexRegistration />} />
+                    <Route path="/social-registration" element={<YandexRegistration />} />
                     {/* Публичные маршруты (не требуют авторизации) */}
                     <Route path="/" element={<HomePage />} />
                     <Route path="/after-login" element={<AfterLogin />} />

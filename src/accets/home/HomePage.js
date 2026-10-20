@@ -21,7 +21,7 @@ const HomePage = () => {
     };
 
     const handleGoogleLogin = () => {
-        window.location.href = `${clientGatewayUri}/oauth2/authorization/google`;
+        window.location.href = `${clientGatewayUri}/oauth2/authorization/google?redirect_uri=${encodeURIComponent(window.location.origin + '/after-login')}`;
     };
 
     return (

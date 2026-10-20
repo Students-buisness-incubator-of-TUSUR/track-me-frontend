@@ -33,7 +33,7 @@ test('loads confirmed profile, strips @, requires all consents and submits with 
     expect(button).toBeEnabled();
     fireEvent.click(button);
     await screen.findByText('Аккаунт ожидает активации');
-    expect(global.fetch).toHaveBeenLastCalledWith('http://localhost:9000/client/yandex/registration', expect.objectContaining({
+    expect(global.fetch).toHaveBeenLastCalledWith('http://localhost:9000/client/social/registration', expect.objectContaining({
         credentials: 'include', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': 'csrf' }, body: JSON.stringify(valid),
     }));
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
@@ -57,4 +57,14 @@ test('shows loading errors', async () => {
     global.fetch = jest.fn().mockRejectedValue(new Error('Нет связи с SSO'));
     render(<YandexRegistration />);
     expect(await screen.findByText('Нет связи с SSO')).toBeInTheDocument();
+});
+
+test('Google uses the same registration fields as Yandex', async () => {
+    global.fetch = jest.fn().mockResolvedValueOnce(response({ ssoUri: 'http://localhost:9000' }))
+        .mockResolvedValueOnce(response({ pending: true, provider: 'google', email: 'test@gmail.com', phoneNumber: '+79001234567', csrfHeader: 'X-CSRF-TOKEN', csrfToken: 'csrf' }));
+    render(<YandexRegistration />);
+    expect(await screen.findByText(/test@gmail.com/)).toBeInTheDocument();
+    expect(document.getElementById('yandex-username')).toBeInTheDocument();
+    expect(document.getElementById('yandex-role')).toBeInTheDocument();
+    expect(document.getElementById('social-phone')).not.toBeInTheDocument();
 });

@@ -32,14 +32,14 @@ export default function YandexRegistration() {
         let active = true;
         async function load() {
             try {
-                const configResponse = await fetch(`${backendURL}/oauth2/yandex/config`, { credentials: 'include' });
-                if (!configResponse.ok) throw new Error('Вход через Яндекс пока недоступен.');
+                const configResponse = await fetch(`${backendURL}/oauth2/social/config`, { credentials: 'include' });
+                if (!configResponse.ok) throw new Error('Вход через Google или Яндекс пока недоступен.');
                 const config = await jsonResponse(configResponse);
                 const url = new URL(config.ssoUri);
                 if (!['https:', 'http:'].includes(url.protocol) || (window.location.protocol === 'https:' && url.protocol !== 'https:')) throw new Error('Неверная настройка адреса SSO.');
                 const origin = url.origin;
-                const response = await fetch(`${origin}/client/yandex/profile`, { credentials: 'include', cache: 'no-store' });
-                if (!response.ok) throw new Error('Не удалось загрузить профиль. Повторите вход через Яндекс.');
+                const response = await fetch(`${origin}/client/social/profile`, { credentials: 'include', cache: 'no-store' });
+                if (!response.ok) throw new Error('Не удалось загрузить профиль. Повторите вход через Google или Яндекс.');
                 const data = await jsonResponse(response);
                 if (active) { setSso(origin); setProfile(data); setMessage(data.message || ''); }
             } catch (error) { if (active) setMessage(error.message); }
@@ -65,14 +65,14 @@ export default function YandexRegistration() {
         if (Object.keys(validation).length) return;
         submitting.current = true; setBusy(true); setMessage('');
         try {
-            const response = await fetch(`${sso}/client/yandex/registration`, {
+            const response = await fetch(`${sso}/client/social/registration`, {
                 method: 'POST', credentials: 'include',
                 headers: { 'Content-Type': 'application/json', [profile.csrfHeader]: profile.csrfToken },
                 body: JSON.stringify(next),
             });
             const data = await jsonResponse(response);
             if (data.fieldErrors) setErrors(data.fieldErrors);
-            setMessage(data.message || (!response.ok ? 'Не удалось завершить регистрацию. Повторите вход через Яндекс.' : ''));
+            setMessage(data.message || (!response.ok ? 'Не удалось завершить регистрацию. Повторите вход через Google или Яндекс.' : ''));
             if (response.ok && data.registered) setProfile(previous => ({ ...previous, pending: false }));
         } catch (error) { setMessage(error.message); }
         finally { submitting.current = false; setBusy(false); }
@@ -82,7 +82,7 @@ export default function YandexRegistration() {
         <h1>Завершение регистрации</h1>
         {message && <output className="notice">{message}</output>}
         {!profile && !message && <output>Загрузка…</output>}
-        {profile && !profile.pending && !message && <p className="notice">Сначала подтвердите вход через Яндекс или начните вход повторно: срок регистрации — 10 минут.</p>}
+        {profile && !profile.pending && !message && <p className="notice">Сначала подтвердите вход через Google или Яндекс или начните вход повторно: срок регистрации — 10 минут.</p>}
         {profile?.pending && <form onSubmit={submit} noValidate>
             <p className="verified">Подтверждённая почта: {profile.email}</p>
             <div className="field"><label htmlFor="yandex-username">Имя пользователя в Telegram (без @)</label>

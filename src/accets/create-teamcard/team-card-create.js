@@ -567,7 +567,7 @@ useEffect(() => {
                     className="create-button"
                     onClick={handleCreate}
                     
-                    disabled={isLoading}
+                    disabled={isLoading || !formData.streamId}
                 >
                     
                     {isLoading ? "Создание..." : "Создать"}

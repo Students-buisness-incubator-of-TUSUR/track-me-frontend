@@ -12,7 +12,7 @@ const FeedbackWidget = () => {
   const [error, setError] = useState(null);
 
   const backendHost = (getBackendUri() || 'http://localhost:8080') + '/sso';
-  const hiddenRoutes = ['/', '/login', '/register', '/login-recovery', '/login-recovery-2', '/after-login', '/admin', '/superadmin'];
+  const hiddenRoutes = ['/social-registration', '/yandex-registration', '/', '/login', '/register', '/login-recovery', '/login-recovery-2', '/after-login', '/admin', '/superadmin'];
   const isHiddenRoute = hiddenRoutes.includes(location.pathname);
 
   useEffect(() => {

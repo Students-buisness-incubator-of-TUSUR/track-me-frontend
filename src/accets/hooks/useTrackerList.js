@@ -2,6 +2,7 @@ import { useEffect, useCallback, useState, useMemo } from "react";
 import { getCsrfConfigForFetch } from "../../utils/csrf-utils";
 import { fetchUserTeams } from "../../services/requests";
 import { isValidUsername } from "../../utils/validation";
+import { useScrollToTopOnPageChange } from "../../utils/useScrollToTopOnPageChange";
  
 // Allowed API paths whitelist for user operations
 const ALLOWED_USER_API_PATHS = [
@@ -28,6 +29,7 @@ export function useTrackerList(endpoint) {
  
   // Пагинация
   const [page, setPage] = useState(0);
+  useScrollToTopOnPageChange(page);
   const [totalPages, setTotalPages] = useState(1);
   const [totalElements, setTotalElements] = useState(0);
   const trackersPerPage = 16;

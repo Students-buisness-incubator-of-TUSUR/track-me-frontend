@@ -170,6 +170,19 @@ const [currentFilters, setCurrentFilters] = useState([]);
     // Функция для запроса карточек с заданными фильтрами
    const fetchCards = useCallback((filters = [], searchParams) => {
     if (!userRole || !username) return;
+    const compareNames = (a, b) => {
+    const nameA = (a || "").trim();
+    const nameB = (b || "").trim();
+
+    const isCyrA = /^[А-Яа-яЁё]/.test(nameA);
+    const isCyrB = /^[А-Яа-яЁё]/.test(nameB);
+
+    // Сначала все русские
+    if (isCyrA && !isCyrB) return -1;
+    if (!isCyrA && isCyrB) return 1;
+
+    return nameA.localeCompare(nameB, "ru", { sensitivity: "base" });
+};
 
     const allFilters = buildTeamCardFilters(filters, searchParams);
     const endpoint = getTeamCardsEndpoint();
@@ -193,12 +206,25 @@ const [currentFilters, setCurrentFilters] = useState([]);
                 const sortedCards = cardsArray
                     .map(card => ({ ...card, _showFull: false }))
                     .sort((a, b) => {
-                        if (a.passive && !b.passive) return 1;
-                        if (!a.passive && b.passive) return -1;
+                         if (a.passive && !b.passive) return 1;
+                         if (!a.passive && b.passive) return -1;
+                         if (a.passive && b.passive) {
+                            const aEnd = a.streams?.[0]?.endDate ?? "";
+                            const bEnd = b.streams?.[0]?.endDate ?? "";
+                            if (aEnd !== bEnd) return bEnd.localeCompare(aEnd);
+                            
+                            const gradeA = a.averageGrade ?? 0;
+                            const gradeB = b.averageGrade ?? 0;
+                            if (gradeB !== gradeA) return gradeB - gradeA;
+                            
+                            return compareNames(a.name, b.name);
+                        }
+                        
                         const gradeA = a.averageGrade ?? 0;
+                        
                         const gradeB = b.averageGrade ?? 0;
                         if (gradeB !== gradeA) return gradeB - gradeA;
-                        return (a.name || '').localeCompare(b.name || '');
+                        return compareNames(a.name, b.name);
                     });
                 setCards(sortedCards);
                 setTotalPages(data?.page?.totalPages || 1);

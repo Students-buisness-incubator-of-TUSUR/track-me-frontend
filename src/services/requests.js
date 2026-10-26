@@ -50,6 +50,54 @@ export async function fetchMeetingReportExcel({ streamId, filters, sort }) {
   });
 }
 
+function toSortArray(sort) {
+  if (Array.isArray(sort)) return sort;
+  if (sort) return [sort];
+  return [];
+}
+
+export async function fetchMyTrackerMeetingReport({ filters, page, size, sort, streamId, includeInactiveStreams = false }) {
+  let url = `${backendURLMeeting}/api/v1/tracker/meetings/reports/my?page=${page}&size=${size}`;
+  if (streamId) url += `&streamId=${encodeURIComponent(streamId)}`;
+  url += `&includeInactiveStreams=${includeInactiveStreams}`;
+  const sortArray = toSortArray(sort);
+  sortArray.forEach((sortParam) => {
+    url += `&sort=${sortParam}`;
+  });
+
+  return fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getCsrfConfigForFetch(),
+    },
+    credentials: "include",
+    body: JSON.stringify({ filters: filters ?? [] }),
+  });
+}
+
+export async function fetchMyTrackerMeetingReportExcel({ filters, sort, streamId, includeInactiveStreams = false }) {
+  const params = new URLSearchParams();
+  if (streamId) params.append("streamId", streamId);
+  params.append("includeInactiveStreams", String(includeInactiveStreams));
+  const sortArray = toSortArray(sort);
+  sortArray.forEach((sortParam) => params.append("sort", sortParam));
+  const query = params.toString();
+  let url = `${backendURLMeeting}/api/v1/tracker/meetings/reports/my/excel`;
+  if (query) url += `?${query}`;
+
+  return fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Accept": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      ...getCsrfConfigForFetch(),
+    },
+    credentials: "include",
+    body: JSON.stringify({ filters: filters ?? [] }),
+  });
+}
+
 export async function fetchReports({ page, size, filters }) {
   const response = await fetch(
     `${backendURLBackend}/api/v1/team-cards/reports?page=${page}&size=${size}`,
@@ -236,7 +284,7 @@ export async function updateUserPhoto({ newUserPhotoFile }) {
 
 export async function fetchUserTeams(username) {
   const response = await fetch(
-    `${backendURLBackend}/api/v1/admin/team-cards/by-user?username=${username}`,
+    `${backendURLBackend}/api/v1/admin/team-cards/by-user?username=${encodeURIComponent(username)}`,
     {
       method: "GET",
       headers: {

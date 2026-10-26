@@ -8,12 +8,13 @@ import { getCsrfConfigForFetch } from "../../utils/csrf-utils";
 import { validateMeetingWeekLimit, validateMeetingDateChange } from "../../utils/date-utils"; 
 import VideoChat from "./video_chat.svg";
 import Header from "../header/header";
+import { getBackendUri } from "../../utils/runtime-env";
 // y
 const MeetingCard = () => {
     let backendHost = 'http://localhost/meeting';
 
-    if (process.env.REACT_APP_BACKEND_URI?.trim()) {
-        backendHost = process.env.REACT_APP_BACKEND_URI.trim() + '/meeting';
+    if (getBackendUri()?.trim()) {
+        backendHost = getBackendUri().trim() + '/meeting';
     } else if (typeof window !== 'undefined' && window.location?.origin) {
         backendHost = window.location.origin + '/meeting';
     }

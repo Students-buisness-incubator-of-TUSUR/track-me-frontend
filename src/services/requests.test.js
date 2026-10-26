@@ -1,4 +1,4 @@
-import { fetchReports, fetchTrackers, fetchStreams, fetchTeams, fetchUserInfo, fetchUserPhoto, updateUserInfo, updateUserPhoto, fetchMeetingReportExcel, fetchMeetingReport, fetchUserTeams, fetchReportExcel } from './requests';
+import { fetchReports, fetchTrackers, fetchStreams, fetchTeams, fetchUserInfo, fetchUserPhoto, updateUserInfo, updateUserPhoto, fetchMeetingReportExcel, fetchMeetingReport, fetchMyTrackerMeetingReport, fetchMyTrackerMeetingReportExcel, fetchUserTeams, fetchReportExcel } from './requests';
 
 // Mock global fetch
 global.fetch = jest.fn();
@@ -40,6 +40,64 @@ describe('fetchMeetingReport', () => {
     expect(callUrl).not.toContain('size=');
     
     expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({ filters: [] });
+  });
+});
+
+describe('fetchMyTrackerMeetingReport', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('posts filters to the current tracker report endpoint', async () => {
+    fetch.mockResolvedValue({ ok: true });
+    const filters = [{ fieldName: 'teamName', type: 'EQ', value: 'Команда А' }];
+
+    await fetchMyTrackerMeetingReport({
+      filters,
+      page: 0,
+      size: 20,
+      sort: ['teamName,asc', 'startDate,desc'],
+    });
+
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining('api/v1/tracker/meetings/reports/my?page=0&size=20&includeInactiveStreams=false&sort=teamName,asc&sort=startDate,desc'),
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ filters }),
+      })
+    );
+    expect(fetch.mock.calls[0][0]).toContain('includeInactiveStreams=false');
+  });
+
+  it('sends selected stream and inactive visibility to both tracker report endpoints', async () => {
+    fetch.mockResolvedValue({ ok: true });
+    const options = { filters: [], page: 0, size: 20, streamId: 'stream/1', includeInactiveStreams: true };
+
+    await fetchMyTrackerMeetingReport(options);
+    await fetchMyTrackerMeetingReportExcel(options);
+
+    expect(fetch.mock.calls[0][0]).toContain('streamId=stream%2F1&includeInactiveStreams=true');
+    expect(fetch.mock.calls[1][0]).toContain('streamId=stream%2F1&includeInactiveStreams=true');
+  });
+
+  it('exports the tracker report with filters and sort', async () => {
+    fetch.mockResolvedValue({ ok: true });
+
+    await fetchMyTrackerMeetingReportExcel({
+      filters: [],
+      sort: 'startDate,desc',
+    });
+
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining('api/v1/tracker/meetings/reports/my/excel?includeInactiveStreams=false&sort=startDate%2Cdesc'),
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          Accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        }),
+        body: JSON.stringify({ filters: [] }),
+      })
+    );
   });
 });
 
@@ -314,6 +372,17 @@ describe('fetchUserTeams', () => {
         })
       })
     );
+  });
+
+  it('encodes Cyrillic, spaces and special characters in username', async () => {
+    fetch.mockResolvedValue({ ok: true });
+    const username = 'Иван Иванов&?';
+
+    await fetchUserTeams(username);
+
+    const requestUrl = fetch.mock.calls[0][0];
+    expect(new URL(requestUrl).searchParams.get('username')).toBe(username);
+    expect(requestUrl).not.toContain(username);
   });
 });
 

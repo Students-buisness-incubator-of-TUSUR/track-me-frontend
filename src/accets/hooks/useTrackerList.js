@@ -3,6 +3,7 @@ import { getCsrfConfigForFetch } from "../../utils/csrf-utils";
 import { fetchUserTeams } from "../../services/requests";
 import { isValidUsername } from "../../utils/validation";
 import { useScrollToTopOnPageChange } from "../../utils/useScrollToTopOnPageChange";
+import { getBackendUri } from "../../utils/runtime-env";
  
 // Allowed API paths whitelist for user operations
 const ALLOWED_USER_API_PATHS = [
@@ -43,7 +44,7 @@ export function useTrackerList(endpoint) {
   const [attachedTeams, setAttachedTeams] = useState([]);
   const [userToDelete, setUserToDelete] = useState(null);
  
-  const ssoServiceUri = (process.env.REACT_APP_BACKEND_URI || "http://localhost:8080") + "/sso";
+  const ssoServiceUri = (getBackendUri() || "http://localhost:8080") + "/sso";
  
   /**
    * Создаёт безопасный URL с валидацией пути и параметров.
@@ -219,11 +220,6 @@ export function useTrackerList(endpoint) {
   // передаём RAW username
   const toggleUserLock = async (username) => {
     try {
-      // Validate username before using
-      if (!isValidUsername(username)) {
-        throw new Error("Invalid username format");
-      }
- 
       if (showLockedOnly) {
         // Разблокировка заблокированного
         const url = createSafeUserUrl('/api/v1/users/unlock', { username });
@@ -252,11 +248,6 @@ export function useTrackerList(endpoint) {
   // передаём RAW username без предварительного кодирования
   const handleDeleteClick = async (username) => {
       try {
-          // Validate username
-          if (!isValidUsername(username)) {
-            throw new Error("Invalid username format");
-          }
- 
           // Передаём RAW username
           const response = await fetchUserTeams(username);
  
@@ -290,11 +281,6 @@ export function useTrackerList(endpoint) {
   const confirmDeleteUser = async () => {
     if (!userToDelete) return;
     try {
-      // Validate userToDelete (теперь это RAW username)
-      if (!isValidUsername(userToDelete)) {
-        throw new Error("Invalid username format");
-      }
- 
       // Передаём RAW username
       const url = createSafeUserUrl('/api/v1/users', { username: userToDelete });
  

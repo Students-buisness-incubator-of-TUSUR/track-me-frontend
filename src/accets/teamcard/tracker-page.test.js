@@ -8,6 +8,100 @@ import { MemoryRouter, createMemoryRouter, RouterProvider } from 'react-router-d
 import * as redux from 'react-redux';
 import { act } from 'react'; // Используйте act из react
 
+const activeEndDate = `${new Date().getFullYear()}-12-31`;
+
+test('tracker shows only current-stream teams until inactive streams are enabled', async () => {
+  localStorage.clear();
+  sessionStorage.clear();
+  localStorage.setItem('streamName', 'Текущий');
+  redux.useSelector.mockImplementation(() => ({
+    user: { username: 'testuser', roles: ['TRACKER'] },
+    roles: ['TRACKER'],
+    username: 'testuser',
+  }));
+
+  const streams = [
+    { id: 'current', name: 'Текущий', startDate: '2025-01-01', endDate: activeEndDate },
+    { id: 'old', name: 'Старый', startDate: '2024-01-01', endDate: '2024-12-31' },
+  ];
+  const card = (id, name, grade, stream) => ({
+    id, name, description: '', averageGrade: grade, enabled: true, streams: [{ name: stream }],
+  });
+  global.fetch = jest.fn((url) => {
+    if (url.includes('/api/v1/streams') && !url.includes('/image')) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: streams }) });
+    }
+    if (url.includes('/team-cards')) {
+      const content = url.includes('page=1')
+        ? [card('old', 'Старая команда', 10, 'Старый')]
+        : [card('latin', 'Alpha', 5, 'Текущий'), card('russian', 'Альфа', 5, 'Текущий')];
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ content, page: { totalPages: 2 } }) });
+    }
+    return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [] }) });
+  });
+
+  render(<MemoryRouter><TrackerPage /></MemoryRouter>);
+  expect(await screen.findByText('Альфа')).toBeInTheDocument();
+  expect(screen.getByText('Alpha')).toBeInTheDocument();
+  expect(screen.queryByText('Старая команда')).not.toBeInTheDocument();
+  const toggle = screen.getByRole('switch', { name: 'Показать команды неактивных потоков' });
+  expect(toggle).not.toBeChecked();
+  expect(toggle.closest('.Stream-header-bottom-cont')).toBeInTheDocument();
+  expect(toggle.parentElement.previousElementSibling).toHaveClass('Stream-butt');
+  expect(screen.getByText('Альфа').compareDocumentPosition(screen.getByText('Alpha')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+  fireEvent.click(toggle);
+  expect(await screen.findByText('Старая команда')).toBeInTheDocument();
+  expect(screen.getByText('Alpha').compareDocumentPosition(screen.getByText('Старая команда')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  fireEvent.click(toggle);
+  expect(screen.queryByText('Старая команда')).not.toBeInTheDocument();
+});
+
+test('admin viewing one tracker gets the same stream order and inactive-stream switch', async () => {
+  localStorage.clear();
+  sessionStorage.clear();
+  redux.useSelector.mockImplementation(() => ({
+    user: { username: 'admin', roles: ['ADMIN'] },
+    roles: ['ADMIN'],
+    username: 'admin',
+  }));
+
+  const streams = [
+    { id: 'current', name: 'Текущий', startDate: '2025-01-01', endDate: activeEndDate },
+    { id: 'old', name: 'Старый', startDate: '2024-01-01', endDate: '2024-12-31' },
+  ];
+  const card = (id, name, grade, stream) => ({
+    id, name, description: '', averageGrade: grade, enabled: true, streams: [{ name: stream }],
+  });
+  global.fetch = jest.fn((url, options) => {
+    if (url.includes('/api/v1/admin/streams')) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: streams }) });
+    }
+    if (url.includes('/api/v1/admin/team-cards')) {
+      const filters = JSON.parse(options.body).filters;
+      expect(filters).toContainEqual({ fieldName: 'username', type: 'EQ', value: 'targetTracker' });
+      expect(filters.some((filter) => filter.fieldName === 'streams.name')).toBe(false);
+      const content = url.includes('page=1')
+        ? [card('old', 'Старая команда', 10, 'Старый')]
+        : [card('latin', 'Alpha', 5, 'Текущий'), card('russian', 'Альфа', 5, 'Текущий')];
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ content, page: { totalPages: 2 } }) });
+    }
+    return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [] }) });
+  });
+
+  render(<MemoryRouter initialEntries={['/all-team-cards?username=targetTracker']}><TrackerPage /></MemoryRouter>);
+  expect(await screen.findByText('Альфа')).toBeInTheDocument();
+  expect(screen.getByText('Alpha')).toBeInTheDocument();
+  expect(screen.queryByText('Старая команда')).not.toBeInTheDocument();
+  const toggle = screen.getByRole('switch', { name: 'Показать команды неактивных потоков' });
+  expect(toggle).not.toBeChecked();
+  fireEvent.click(toggle);
+  expect(await screen.findByText('Старая команда')).toBeInTheDocument();
+  expect(screen.getByText('Alpha').compareDocumentPosition(screen.getByText('Старая команда')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  fireEvent.click(toggle);
+  expect(screen.queryByText('Старая команда')).not.toBeInTheDocument();
+});
+
 // Моки для scrollIntoView и scrollTo
 beforeAll(() => {
   window.HTMLElement.prototype.scrollIntoView = jest.fn();
@@ -127,7 +221,7 @@ describe('TrackerPage - Исправленные тесты', () => {
           json: () =>
             Promise.resolve({
               content: [
-                { id: '1', name: 'Stream1', startDate: '2025-01-01', endDate: '2025-12-31' },
+                { id: '1', name: 'Stream1', startDate: '2025-01-01', endDate: activeEndDate },
               ],
             }),
         });
@@ -164,7 +258,7 @@ describe('TrackerPage - Исправленные тесты', () => {
     ntiMarkets: [{ displayName: 'NTI-One' }], // Updated to array
       readinessLevel: '5',
       userId: 'user1',
-    streams: [{ name: 'MainStream', startDate: '2025-01-01', endDate: '2025-12-31' }], // Added stream data
+    streams: [{ name: 'MainStream', startDate: '2025-01-01', endDate: activeEndDate }], // Added stream data
     };
 
     global.fetch = jest.fn((url) => {
@@ -178,7 +272,7 @@ describe('TrackerPage - Исправленные тесты', () => {
                   id: '1',
                   name: 'MainStream',
                   startDate: '2025-01-01',
-                  endDate: '2025-12-31',
+                  endDate: activeEndDate,
                 },
               ],
             }),
@@ -235,6 +329,7 @@ describe('TrackerPage - Исправленные тесты', () => {
       ntiMarket: { displayName: 'NTI-Three' },
       readinessLevel: '7',
       userId: 'user3',
+      streams: [{ name: 'MainStream', startDate: '2025-01-01', endDate: activeEndDate }],
     };
 
     global.fetch = jest.fn((url) => {
@@ -248,7 +343,7 @@ describe('TrackerPage - Исправленные тесты', () => {
                   id: '1',
                   name: 'MainStream',
                   startDate: '2025-01-01',
-                  endDate: '2025-12-31',
+                  endDate: activeEndDate,
                 },
               ],
             }),
@@ -309,7 +404,7 @@ describe('TrackerPage - Исправленные тесты', () => {
           ok: true,
           json: () => Promise.resolve({
             content: [
-              { id: '1', name: 'StreamA', startDate: '2025-01-01', endDate: '2025-12-31' },
+              { id: '1', name: 'StreamA', startDate: '2025-01-01', endDate: activeEndDate },
             ],
           }),
         });
@@ -357,7 +452,7 @@ describe('TrackerPage - Исправленные тесты', () => {
         ntiMarkets: [{ displayName: 'NTI-A' }],
         readinessLevel: '8',
         userId: 'u1',
-        streams: [{ name: 'Stream1', startDate: '2025-01-01', endDate: '2025-12-31' }],
+        streams: [{ name: 'Stream1', startDate: '2025-01-01', endDate: activeEndDate }],
       },
       {
         id: 'c2',
@@ -368,7 +463,7 @@ describe('TrackerPage - Исправленные тесты', () => {
         ntiMarkets: [{ displayName: 'NTI-B' }],
         readinessLevel: '5',
         userId: 'u2',
-        streams: [{ name: 'Stream1', startDate: '2025-01-01', endDate: '2025-12-31' }],
+        streams: [{ name: 'Stream1', startDate: '2025-01-01', endDate: activeEndDate }],
       },
       {
         id: 'c3',
@@ -379,13 +474,13 @@ describe('TrackerPage - Исправленные тесты', () => {
         ntiMarkets: [{ displayName: 'NTI-C' }],
         readinessLevel: '2',
         userId: 'u3',
-        streams: [{ name: 'Stream1', startDate: '2025-01-01', endDate: '2025-12-31' }],
+        streams: [{ name: 'Stream1', startDate: '2025-01-01', endDate: activeEndDate }],
       },
     ];
 
     global.fetch = jest.fn((url) => {
       if (url.includes('/api/v1/streams')) {
-        return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream1', startDate: '2025-01-01', endDate: '2025-12-31' }] }) });
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream1', startDate: '2025-01-01', endDate: activeEndDate }] }) });
       }
       if (url.endsWith('/streams/nti-markets')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
@@ -452,7 +547,7 @@ describe('TrackerPage - Полное покрытие', () => {
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve({
-            content: [{ id: '1', name: 'MainStream', startDate: '2025-01-01', endDate: '2025-12-31' }],
+            content: [{ id: '1', name: 'MainStream', startDate: '2025-01-01', endDate: activeEndDate }],
           }),
         });
       }
@@ -573,7 +668,7 @@ describe('TrackerPage - Полное покрытие', () => {
     }));
     global.fetch = jest.fn((url) => {
       if (url.includes('/api/v1/streams')) {
-        return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [{ id: '1', name: 'StreamAdmin', startDate: '2025-01-01', endDate: '2025-12-31' }] }) });
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [{ id: '1', name: 'StreamAdmin', startDate: '2025-01-01', endDate: activeEndDate }] }) });
       }
       if (url.endsWith('/streams/nti-markets')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
@@ -591,7 +686,7 @@ describe('TrackerPage - Полное покрытие', () => {
   test('Фильтр по годам (154–161)', async () => {
     global.fetch = jest.fn((url) => {
       if (url.includes('/api/v1/streams')) {
-        return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream', startDate: '2025-01-01', endDate: '2025-12-31' }] }) });
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream', startDate: '2025-01-01', endDate: activeEndDate }] }) });
       }
       if (url.endsWith('/streams/nti-markets')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
@@ -663,7 +758,7 @@ describe('TrackerPage - Полное покрытие', () => {
   test('Выбор и сброс фильтров (309–313)', async () => {
     global.fetch = jest.fn((url) => {
       if (url.includes('/api/v1/streams')) {
-        return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream', startDate: '2025-01-01', endDate: '2025-12-31' }] }) });
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream', startDate: '2025-01-01', endDate: activeEndDate }] }) });
       }
       if (url.endsWith('/streams/nti-markets')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
@@ -707,6 +802,7 @@ describe('TrackerPage - Полное покрытие', () => {
         ntiMarket: { displayName: 'Market1' },
         readinessLevel: '7',
         userId: 'user1',
+        streams: [{ name: 'Stream1', startDate: '2025-01-01', endDate: activeEndDate }],
       },
       {
         id: '2',
@@ -716,11 +812,12 @@ describe('TrackerPage - Полное покрытие', () => {
         ntiMarket: { displayName: 'Market2' },
         readinessLevel: '2',
         userId: 'user2',
+        streams: [{ name: 'Stream1', startDate: '2025-01-01', endDate: activeEndDate }],
       },
     ];
     global.fetch = jest.fn((url) => {
       if (url.includes('/api/v1/streams')) {
-        return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [{ id: 'stream1', name: 'Stream1', startDate: '2025-01-01', endDate: '2025-12-31' }] }) });
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [{ id: 'stream1', name: 'Stream1', startDate: '2025-01-01', endDate: activeEndDate }] }) });
       }
       if (url.endsWith('/streams/nti-markets')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve([{ id: 'm1', name: 'Market1', displayName: 'Market1' }, { id: 'm2', name: 'Market2', displayName: 'Market2' }]) });
@@ -751,7 +848,7 @@ describe('TrackerPage - Полное покрытие', () => {
       enabled: true,
       ntiMarkets: [{ displayName: 'Market1' }],
       readinessLevel: '5',
-      streams: [{ name: 'TestStream', startDate: '2025-01-01', endDate: '2025-12-31' }],
+      streams: [{ name: 'TestStream', startDate: '2025-01-01', endDate: activeEndDate }],
       userId: 'testuser',
     };
 
@@ -760,7 +857,7 @@ describe('TrackerPage - Полное покрытие', () => {
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve({
-            content: [{ id: '1', name: 'TestStream', startDate: '2025-01-01', endDate: '2025-12-31' }],
+            content: [{ id: '1', name: 'TestStream', startDate: '2025-01-01', endDate: activeEndDate }],
           }),
         });
       }
@@ -804,7 +901,7 @@ describe('TrackerPage - Полное покрытие', () => {
       enabled: true,
       ntiMarkets: [{ displayName: 'Market1' }],
       readinessLevel: '5',
-      streams: [{ name: 'TestStream', startDate: '2025-01-01', endDate: '2025-12-31' }],
+      streams: [{ name: 'TestStream', startDate: '2025-01-01', endDate: activeEndDate }],
       userId: 'testuser',
     };
 
@@ -813,7 +910,7 @@ describe('TrackerPage - Полное покрытие', () => {
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve({
-            content: [{ id: '1', name: 'TestStream', startDate: '2025-01-01', endDate: '2025-12-31' }],
+            content: [{ id: '1', name: 'TestStream', startDate: '2025-01-01', endDate: activeEndDate }],
           }),
         });
       }
@@ -841,7 +938,7 @@ describe('TrackerPage - Полное покрытие', () => {
     });
 
     expect(await screen.findByText('Test Card')).toBeInTheDocument();
-  expect(document.querySelector('.Stream-footer-button-4')).toBeInTheDocument(); // Кнопка пагинации
+    expect(document.querySelector('.Stream-footer-button-4')).not.toBeInTheDocument(); // Один уникальный результат после загрузки всех страниц
   });
   test('Рендеринг карточек с разными статусами (668-694)', async () => {
     const mockCards = [
@@ -853,7 +950,7 @@ describe('TrackerPage - Полное покрытие', () => {
         ntiMarkets: [{ displayName: 'Market1' }],
         readinessLevel: '7',
         userId: 'user1',
-        streams: [{ name: 'Stream1', startDate: '2025-01-01', endDate: '2025-12-31' }],
+        streams: [{ name: 'Stream1', startDate: '2025-01-01', endDate: activeEndDate }],
       },
       {
         id: '2',
@@ -873,7 +970,7 @@ describe('TrackerPage - Полное покрытие', () => {
           ok: true,
           json: () => Promise.resolve({
             content: [
-              { id: 'stream1', name: 'Stream1', startDate: '2025-01-01', endDate: '2025-12-31' },
+              { id: 'stream1', name: 'Stream1', startDate: '2025-01-01', endDate: activeEndDate },
               { id: 'stream2', name: 'Stream2', startDate: '2024-01-01', endDate: '2024-12-31' },
             ],
           }),
@@ -910,6 +1007,8 @@ describe('TrackerPage - Полное покрытие', () => {
 
     expect(await screen.findByText('Active Card')).toBeInTheDocument();
     expect(screen.getByText('Активно')).toBeInTheDocument();
+    expect(screen.queryByText('Inactive Card')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('switch', { name: 'Показать команды неактивных потоков' }));
     expect(screen.getByText('Inactive Card')).toBeInTheDocument();
     expect(screen.getByText('Завершено')).toBeInTheDocument();
     expect(screen.getByText('Рынки НТИ: Market1')).toBeInTheDocument();
@@ -926,7 +1025,7 @@ describe('TrackerPage - Полное покрытие', () => {
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve({
-            content: [{ id: '1', name: 'Stream', startDate: '2025-01-01', endDate: '2025-12-31' }],
+            content: [{ id: '1', name: 'Stream', startDate: '2025-01-01', endDate: activeEndDate }],
           }),
         });
       }
@@ -969,7 +1068,7 @@ describe('TrackerPage - Полное покрытие', () => {
       enabled: true,
       ntiMarkets: [{ displayName: 'Market1' }],
       readinessLevel: '5',
-      streams: [{ name: 'TestStream', startDate: '2025-01-01', endDate: '2025-12-31' }],
+      streams: [{ name: 'TestStream', startDate: '2025-01-01', endDate: activeEndDate }],
       userId: 'testuser',
     };
 
@@ -979,7 +1078,7 @@ describe('TrackerPage - Полное покрытие', () => {
           ok: true,
           json: () =>
             Promise.resolve({
-              content: [{ id: '1', name: 'TestStream', startDate: '2025-01-01', endDate: '2025-12-31' }],
+              content: [{ id: '1', name: 'TestStream', startDate: '2025-01-01', endDate: activeEndDate }],
             }),
         });
       }
@@ -1010,7 +1109,7 @@ describe('TrackerPage - Полное покрытие', () => {
     });
 
     expect(await screen.findByText('Test Card')).toBeInTheDocument(); // Проверка рендеринга карточки (164-171)
-    expect(document.querySelector('.Stream-footer-button-4')).toBeInTheDocument(); // Проверка пагинации (totalPages > 1)
+    expect(document.querySelector('.Stream-footer-button-4')).not.toBeInTheDocument(); // Один уникальный результат после загрузки всех страниц
   });
 
 
@@ -1025,7 +1124,7 @@ describe('TrackerPage - Полное покрытие', () => {
         ntiMarkets: [{ displayName: 'Market1' }],
         readinessLevel: '7',
         userId: 'user1',
-        streams: [{ name: 'Stream1', startDate: '2025-01-01', endDate: '2025-12-31' }],
+        streams: [{ name: 'Stream1', startDate: '2025-01-01', endDate: activeEndDate }],
       },
       {
         id: '2',
@@ -1046,7 +1145,7 @@ describe('TrackerPage - Полное покрытие', () => {
           json: () =>
             Promise.resolve({
               content: [
-                { id: 'stream1', name: 'Stream1', startDate: '2025-01-01', endDate: '2025-12-31' },
+                { id: 'stream1', name: 'Stream1', startDate: '2025-01-01', endDate: activeEndDate },
                 { id: 'stream2', name: 'Stream2', startDate: '2024-01-01', endDate: '2024-12-31' },
               ],
             }),
@@ -1086,6 +1185,8 @@ describe('TrackerPage - Полное покрытие', () => {
     // Проверка строк 605-618
     expect(await screen.findByText('Active Card')).toBeInTheDocument();
     expect(screen.getByText('Активно')).toBeInTheDocument();
+    expect(screen.queryByText('Inactive Card')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('switch', { name: 'Показать команды неактивных потоков' }));
     expect(screen.getByText('Inactive Card')).toBeInTheDocument();
     expect(screen.getByText('Завершено')).toBeInTheDocument();
 
@@ -1109,7 +1210,7 @@ describe('TrackerPage - Полное покрытие', () => {
       ntiMarkets: [{ displayName: 'Market1' }],
       readinessLevel: '5',
       userId: 'user1',
-      streams: [{ name: 'Stream1', startDate: '2025-01-01', endDate: '2025-12-31' }],
+      streams: [{ name: 'Stream1', startDate: '2025-01-01', endDate: activeEndDate }],
     };
 
     global.fetch = jest.fn((url) => {
@@ -1118,7 +1219,7 @@ describe('TrackerPage - Полное покрытие', () => {
           ok: true,
           json: () =>
             Promise.resolve({
-              content: [{ id: 'stream1', name: 'Stream1', startDate: '2025-01-01', endDate: '2025-12-31' }],
+              content: [{ id: 'stream1', name: 'Stream1', startDate: '2025-01-01', endDate: activeEndDate }],
             }),
         });
       }
@@ -1183,7 +1284,7 @@ describe('TrackerPage - Полное покрытие', () => {
   it('should clear search on Escape key and call applyFilters in TrackerPage', async () => {
     global.fetch = jest.fn((url) => {
       if (url.includes('/api/v1/streams')) {
-        return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream', startDate: '2025-01-01', endDate: '2025-12-31' }] }) });
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream', startDate: '2025-01-01', endDate: activeEndDate }] }) });
       }
       if (url.endsWith('/streams/nti-markets')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
@@ -1212,7 +1313,7 @@ describe('TrackerPage - Полное покрытие', () => {
   it('should call applyFilters on Enter key in TrackerPage', async () => {
     global.fetch = jest.fn((url) => {
       if (url.includes('/api/v1/streams')) {
-        return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream', startDate: '2025-01-01', endDate: '2025-12-31' }] }) });
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream', startDate: '2025-01-01', endDate: activeEndDate }] }) });
       }
       if (url.endsWith('/streams/nti-markets')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
@@ -1248,7 +1349,7 @@ describe('TrackerPage - Полное покрытие', () => {
       ntiMarkets: [{ displayName: 'Market1' }],
       readinessLevel: '5',
       userId: 'user1',
-      streams: [{ name: 'Stream1', startDate: '2025-01-01', endDate: '2025-12-31' }],
+      streams: [{ name: 'Stream1', startDate: '2025-01-01', endDate: activeEndDate }],
     };
 
     global.fetch = jest.fn((url) => {
@@ -1257,7 +1358,7 @@ describe('TrackerPage - Полное покрытие', () => {
           ok: true,
           json: () =>
             Promise.resolve({
-              content: [{ id: 'stream1', name: 'Stream1', startDate: '2025-01-01', endDate: '2025-12-31' }],
+              content: [{ id: 'stream1', name: 'Stream1', startDate: '2025-01-01', endDate: activeEndDate }],
             }),
         });
       }
@@ -1308,7 +1409,7 @@ describe('TrackerPage - Полное покрытие', () => {
       ntiMarkets: [{ displayName: 'Market1' }],
       readinessLevel: '5',
       userId: 'user1',
-      streams: [{ name: 'Stream1', startDate: '2025-01-01', endDate: '2025-12-31' }],
+      streams: [{ name: 'Stream1', startDate: '2025-01-01', endDate: activeEndDate }],
     };
 
     global.fetch = jest.fn((url) => {
@@ -1317,7 +1418,7 @@ describe('TrackerPage - Полное покрытие', () => {
           ok: true,
           json: () =>
             Promise.resolve({
-              content: [{ id: 'stream1', name: 'Stream1', startDate: '2025-01-01', endDate: '2025-12-31' }],
+              content: [{ id: 'stream1', name: 'Stream1', startDate: '2025-01-01', endDate: activeEndDate }],
             }),
         });
       }
@@ -1367,7 +1468,7 @@ describe('TrackerPage - Полное покрытие', () => {
       ntiMarkets: [{ displayName: 'Market1' }],
       readinessLevel: '5',
       userId: 'user1',
-      streams: [{ name: 'Stream1', startDate: '2025-01-01', endDate: '2025-12-31' }],
+      streams: [{ name: 'Stream1', startDate: '2025-01-01', endDate: activeEndDate }],
     };
 
     global.fetch = jest.fn((url) => {
@@ -1376,7 +1477,7 @@ describe('TrackerPage - Полное покрытие', () => {
           ok: true,
           json: () =>
             Promise.resolve({
-              content: [{ id: 'stream1', name: 'Stream1', startDate: '2025-01-01', endDate: '2025-12-31' }],
+              content: [{ id: 'stream1', name: 'Stream1', startDate: '2025-01-01', endDate: activeEndDate }],
             }),
         });
       }
@@ -1426,7 +1527,7 @@ describe('TrackerPage - Полное покрытие', () => {
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve({
-            content: [{ id: '1', name: 'TestStream', startDate: '2025-01-01', endDate: '2025-12-31' }],
+            content: [{ id: '1', name: 'TestStream', startDate: '2025-01-01', endDate: activeEndDate }],
           }),
         });
       }
@@ -1466,14 +1567,14 @@ describe('TrackerPage - Полное покрытие', () => {
 
   test('восстанавливает страницу из location.state.restoredPage', async () => {
     const mockCards = [
-      { id: '1', name: 'Card 1', description: 'Desc', enabled: true, ntiMarkets: [], readinessLevel: '5', streams: [] }
+      { id: '1', name: 'Card 1', description: 'Desc', enabled: true, ntiMarkets: [], readinessLevel: '5', streams: [{ name: 'TestStream', startDate: '2025-01-01', endDate: activeEndDate }] }
     ];
 
     global.fetch = jest.fn((url) => {
       if (url.includes('/api/v1/streams')) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream', startDate: '2025-01-01', endDate: '2025-12-31' }] }),
+          json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream', startDate: '2025-01-01', endDate: activeEndDate }] }),
         });
       }
       if (url.endsWith('/streams/nti-markets')) {
@@ -1510,14 +1611,14 @@ describe('TrackerPage - Полное покрытие', () => {
       ntiMarkets: [{ displayName: 'Market1' }],
       readinessLevel: '5',
       userId: 'user1',
-      streams: [{ name: 'Stream1', startDate: '2025-01-01', endDate: '2025-12-31' }],
+      streams: [{ name: 'Stream1', startDate: '2025-01-01', endDate: activeEndDate }],
     };
 
     global.fetch = jest.fn((url) => {
       if (url.includes('/api/v1/streams')) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream1', startDate: '2025-01-01', endDate: '2025-12-31' }] }),
+          json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream1', startDate: '2025-01-01', endDate: activeEndDate }] }),
         });
       }
       if (url.endsWith('/streams/nti-markets')) {
@@ -1579,14 +1680,14 @@ describe('TrackerPage - Полное покрытие', () => {
       ntiMarkets: [{ displayName: 'Market1' }],
       readinessLevel: '5',
       userId: 'user1',
-      streams: [{ name: 'Stream1', startDate: '2025-01-01', endDate: '2025-12-31' }],
+      streams: [{ name: 'Stream1', startDate: '2025-01-01', endDate: activeEndDate }],
     };
 
     global.fetch = jest.fn((url) => {
       if (url.includes('/api/v1/streams')) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream1', startDate: '2025-01-01', endDate: '2025-12-31' }] }),
+          json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream1', startDate: '2025-01-01', endDate: activeEndDate }] }),
         });
       }
       if (url.endsWith('/streams/nti-markets')) {
@@ -1629,7 +1730,7 @@ describe('TrackerPage - Полное покрытие', () => {
       if (url.includes('/api/v1/streams')) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream', startDate: '2025-01-01', endDate: '2025-12-31' }] }),
+          json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream', startDate: '2025-01-01', endDate: activeEndDate }] }),
         });
       }
       if (url.endsWith('/streams/nti-markets')) {
@@ -1692,7 +1793,7 @@ describe('TrackerPage - Исправленный поиск и пагинаци�
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve({
-            content: [{ id: '1', name: 'TestStream', startDate: '2025-01-01', endDate: '2025-12-31' }],
+            content: [{ id: '1', name: 'TestStream', startDate: '2025-01-01', endDate: activeEndDate }],
           }),
         });
       }
@@ -1735,7 +1836,7 @@ describe('TrackerPage - Исправленный поиск и пагинаци�
   });
 
   // Тест 2: Пагинация работает через бэкенд (не на клиенте)
-  test('пагинация работает через бэкенд: при нажатии "Вперёд" меняется page в запросе', async () => {
+  test('пагинация трекера применяется после загрузки и сортировки всех команд', async () => {
     let requestedPage = null;
 
     global.fetch = jest.fn((url, options) => {
@@ -1746,7 +1847,7 @@ describe('TrackerPage - Исправленный поиск и пагинаци�
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve({
-            content: [{ id: '1', name: 'TestStream', startDate: '2025-01-01', endDate: '2025-12-31' }],
+            content: [{ id: '1', name: 'TestStream', startDate: '2025-01-01', endDate: activeEndDate }],
           }),
         });
       }
@@ -1757,10 +1858,11 @@ describe('TrackerPage - Исправленный поиск и пагинаци�
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve({
-            content: [
-              { id: '1', name: 'Card 1', description: 'Desc 1', enabled: true, ntiMarkets: [], readinessLevel: '5', streams: [] },
-            ],
-            page: { totalPages: 3 },
+            content: Array.from({ length: 19 }, (_, index) => ({
+              id: String(index + 1), name: `Card ${index + 1}`, description: 'Desc', enabled: true,
+              ntiMarkets: [], readinessLevel: '5', streams: [{ name: 'TestStream', startDate: '2025-01-01', endDate: activeEndDate }],
+            })),
+            page: { totalPages: 1 },
           }),
         });
       }
@@ -1779,15 +1881,11 @@ describe('TrackerPage - Исправленный поиск и пагинаци�
       expect(requestedPage).toBe(0);
     });
 
-    const nextButton = await screen.findByText((content, element) => {
-      return element.classList?.contains('Stream-footer-button-4');
-    });
-
-    fireEvent.click(nextButton);
-
-    await waitFor(() => {
-      expect(requestedPage).toBe(1);
-    });
+    expect(screen.getByText('Card 1')).toBeInTheDocument();
+    expect(screen.queryByText('Card 19')).not.toBeInTheDocument();
+    fireEvent.click(document.querySelector('.Stream-footer-button-4'));
+    expect(await screen.findByText('Card 19')).toBeInTheDocument();
+    expect(requestedPage).toBe(0);
   });
 
   // Тест 3: Сброс страницы в 0 при новом поиске
@@ -1802,7 +1900,7 @@ describe('TrackerPage - Исправленный поиск и пагинаци�
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve({
-            content: [{ id: '1', name: 'TestStream', startDate: '2025-01-01', endDate: '2025-12-31' }],
+            content: [{ id: '1', name: 'TestStream', startDate: '2025-01-01', endDate: activeEndDate }],
           }),
         });
       }
@@ -1812,7 +1910,7 @@ describe('TrackerPage - Исправленный поиск и пагинаци�
       if (url.includes('/team-cards')) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ content: [], page: { totalPages: 3 } }),
+          json: () => Promise.resolve({ content: [], page: { totalPages: 1 } }),
         });
       }
       return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [], page: { totalPages: 1 } }) });
@@ -1868,7 +1966,7 @@ describe('TrackerPage - Исправленный поиск и пагинаци�
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve({
-            content: [{ id: '1', name: 'TestStream', startDate: '2025-01-01', endDate: '2025-12-31' }],
+            content: [{ id: '1', name: 'TestStream', startDate: '2025-01-01', endDate: activeEndDate }],
           }),
         });
       }
@@ -1880,9 +1978,9 @@ describe('TrackerPage - Исправленный поиск и пагинаци�
           ok: true,
           json: () => Promise.resolve({
             content: [
-              { id: '1', name: 'Card 1', description: 'Desc', enabled: true, ntiMarkets: [], readinessLevel: '5', streams: [] },
-              { id: '2', name: 'Card 2', description: 'Desc', enabled: true, ntiMarkets: [], readinessLevel: '5', streams: [] },
-              { id: '3', name: 'Card 3', description: 'Desc', enabled: true, ntiMarkets: [], readinessLevel: '5', streams: [] },
+              { id: '1', name: 'Card 1', description: 'Desc', enabled: true, ntiMarkets: [], readinessLevel: '5', streams: [{ name: 'TestStream', startDate: '2025-01-01', endDate: activeEndDate }] },
+              { id: '2', name: 'Card 2', description: 'Desc', enabled: true, ntiMarkets: [], readinessLevel: '5', streams: [{ name: 'TestStream', startDate: '2025-01-01', endDate: activeEndDate }] },
+              { id: '3', name: 'Card 3', description: 'Desc', enabled: true, ntiMarkets: [], readinessLevel: '5', streams: [{ name: 'TestStream', startDate: '2025-01-01', endDate: activeEndDate }] },
             ],
             page: { totalPages: 2 },
           }),
@@ -1935,7 +2033,7 @@ describe('TrackerPage - Покрытие строк (рабочая версия
   test('покрывает handleTrlChange при удалении уже выбранного TRL', async () => {
     global.fetch = jest.fn((url) => {
       if (url.includes('/api/v1/streams')) {
-        return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream', startDate: '2025-01-01', endDate: '2025-12-31' }] }) });
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream', startDate: '2025-01-01', endDate: activeEndDate }] }) });
       }
       if (url.endsWith('/streams/nti-markets')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
@@ -1967,7 +2065,7 @@ describe('TrackerPage - Покрытие строк (рабочая версия
   test('покрывает handleStreamChange при удалении потока', async () => {
     global.fetch = jest.fn((url) => {
       if (url.includes('/api/v1/streams')) {
-        return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [{ id: '1', name: 'TestStream', startDate: '2025-01-01', endDate: '2025-12-31' }] }) });
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [{ id: '1', name: 'TestStream', startDate: '2025-01-01', endDate: activeEndDate }] }) });
       }
       if (url.endsWith('/streams/nti-markets')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
@@ -2014,14 +2112,14 @@ describe('TrackerPage - Покрытие строк (рабочая версия
       ntiMarkets: [{ displayName: 'Market1' }],
       readinessLevel: '5',
       userId: 'user1',
-      streams: [{ name: 'Stream1', startDate: '2025-01-01', endDate: '2025-12-31' }],
+      streams: [{ name: 'Stream1', startDate: '2025-01-01', endDate: activeEndDate }],
     };
 
     global.fetch = jest.fn((url) => {
       if (url.includes('/api/v1/streams')) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream1', startDate: '2025-01-01', endDate: '2025-12-31' }] }),
+          json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream1', startDate: '2025-01-01', endDate: activeEndDate }] }),
         });
       }
       if (url.endsWith('/streams/nti-markets')) {
@@ -2058,7 +2156,7 @@ describe('TrackerPage - Покрытие строк (рабочая версия
       if (url.includes('/api/v1/streams')) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream', startDate: '2025-01-01', endDate: '2025-12-31' }] }),
+          json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream', startDate: '2025-01-01', endDate: activeEndDate }] }),
         });
       }
       if (url.endsWith('/streams/nti-markets')) {
@@ -2095,14 +2193,14 @@ describe('TrackerPage - Покрытие строк (рабочая версия
 
   test('покрывает setPage(restoredPage) при восстановлении', async () => {
     const mockCards = [
-      { id: '1', name: 'Card 1', description: 'Desc', enabled: true, ntiMarkets: [], readinessLevel: '5', streams: [] }
+      { id: '1', name: 'Card 1', description: 'Desc', enabled: true, ntiMarkets: [], readinessLevel: '5', streams: [{ name: 'TestStream', startDate: '2025-01-01', endDate: activeEndDate }] }
     ];
 
     global.fetch = jest.fn((url) => {
       if (url.includes('/api/v1/streams')) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream', startDate: '2025-01-01', endDate: '2025-12-31' }] }),
+          json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream', startDate: '2025-01-01', endDate: activeEndDate }] }),
         });
       }
       if (url.endsWith('/streams/nti-markets')) {
@@ -2210,7 +2308,7 @@ describe('TrackerPage - Покрытие строк (рабочая версия
   test('покрывает setSelectedStreams через applyFilters', async () => {
     global.fetch = jest.fn((url) => {
       if (url.includes('/api/v1/streams')) {
-        return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream1', startDate: '2025-01-01', endDate: '2025-12-31' }] }) });
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream1', startDate: '2025-01-01', endDate: activeEndDate }] }) });
       }
       if (url.endsWith('/streams/nti-markets')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
@@ -2317,7 +2415,7 @@ describe('TrackerPage - Финальное покрытие (последние 
       ntiMarkets: [{ displayName: 'Market1' }],
       readinessLevel: '5',
       userId: 'user1',
-      streams: [{ id: 'stream1', name: 'Stream1', startDate: '2025-01-01', endDate: '2025-12-31' }],
+      streams: [{ id: 'stream1', name: 'Stream1', startDate: '2025-01-01', endDate: activeEndDate }],
     };
 
     global.fetch = jest.fn((url) => {
@@ -2327,7 +2425,7 @@ describe('TrackerPage - Финальное покрытие (последние 
       if (url.includes('/api/v1/streams')) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ content: [{ id: 'stream1', name: 'Stream1', startDate: '2025-01-01', endDate: '2025-12-31' }] }),
+          json: () => Promise.resolve({ content: [{ id: 'stream1', name: 'Stream1', startDate: '2025-01-01', endDate: activeEndDate }] }),
         });
       }
       if (url.endsWith('/streams/nti-markets')) {
@@ -2367,7 +2465,7 @@ describe('TrackerPage - Финальное покрытие (последние 
       ntiMarkets: [{ displayName: 'Market1' }],
       readinessLevel: '5',
       userId: 'user1',
-      streams: [{ id: 'stream1', name: 'Stream1', startDate: '2025-01-01', endDate: '2025-12-31' }],
+      streams: [{ id: 'stream1', name: 'Stream1', startDate: '2025-01-01', endDate: activeEndDate }],
     };
 
     global.fetch = jest.fn((url) => {
@@ -2380,7 +2478,7 @@ describe('TrackerPage - Финальное покрытие (последние 
       if (url.includes('/api/v1/streams')) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ content: [{ id: 'stream1', name: 'Stream1', startDate: '2025-01-01', endDate: '2025-12-31' }] }),
+          json: () => Promise.resolve({ content: [{ id: 'stream1', name: 'Stream1', startDate: '2025-01-01', endDate: activeEndDate }] }),
         });
       }
       if (url.endsWith('/streams/nti-markets')) {
@@ -2418,7 +2516,7 @@ describe('TrackerPage - Финальное покрытие (последние 
       ntiMarkets: [{ displayName: 'Market1' }],
       readinessLevel: '5',
       userId: 'user1',
-      streams: [{ id: 'stream1', name: 'Stream1', startDate: '2025-01-01', endDate: '2025-12-31' }],
+      streams: [{ id: 'stream1', name: 'Stream1', startDate: '2025-01-01', endDate: activeEndDate }],
     };
 
     global.fetch = jest.fn((url) => {
@@ -2431,7 +2529,7 @@ describe('TrackerPage - Финальное покрытие (последние 
       if (url.includes('/api/v1/streams')) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ content: [{ id: 'stream1', name: 'Stream1', startDate: '2025-01-01', endDate: '2025-12-31' }] }),
+          json: () => Promise.resolve({ content: [{ id: 'stream1', name: 'Stream1', startDate: '2025-01-01', endDate: activeEndDate }] }),
         });
       }
       if (url.endsWith('/streams/nti-markets')) {
@@ -2468,7 +2566,7 @@ describe('TrackerPage - Финальное покрытие (последние 
       ntiMarkets: [{ displayName: 'Market1' }],
       readinessLevel: '5',
       userId: 'user1',
-      streams: [{ id: 'stream1', name: 'Stream1', startDate: '2025-01-01', endDate: '2025-12-31' }],
+      streams: [{ id: 'stream1', name: 'Stream1', startDate: '2025-01-01', endDate: activeEndDate }],
     };
 
     global.fetch = jest.fn((url) => {
@@ -2481,7 +2579,7 @@ describe('TrackerPage - Финальное покрытие (последние 
       if (url.includes('/api/v1/streams')) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ content: [{ id: 'stream1', name: 'Stream1', startDate: '2025-01-01', endDate: '2025-12-31' }] }),
+          json: () => Promise.resolve({ content: [{ id: 'stream1', name: 'Stream1', startDate: '2025-01-01', endDate: activeEndDate }] }),
         });
       }
       if (url.endsWith('/streams/nti-markets')) {
@@ -2563,14 +2661,14 @@ describe('TrackerPage - Финальное покрытие (последние 
       ntiMarkets: [{ displayName: 'Market1' }],
       readinessLevel: '5',
       userId: 'user1',
-      streams: [{ name: 'Stream1', startDate: '2025-01-01', endDate: '2025-12-31' }],
+      streams: [{ name: 'Stream1', startDate: '2025-01-01', endDate: activeEndDate }],
     };
 
     global.fetch = jest.fn((url) => {
       if (url.includes('/api/v1/streams')) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream1', startDate: '2025-01-01', endDate: '2025-12-31' }] }),
+          json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream1', startDate: '2025-01-01', endDate: activeEndDate }] }),
         });
       }
       if (url.endsWith('/streams/nti-markets')) {
@@ -2603,14 +2701,14 @@ describe('TrackerPage - Финальное покрытие (последние 
   // 8. Покрываем setPage(restoredPage) с проверкой restoredPage
   test('покрывает setPage(restoredPage) с валидным значением', async () => {
     const mockCards = [
-      { id: '1', name: 'Card 1', description: 'Desc', enabled: true, ntiMarkets: [], readinessLevel: '5', streams: [] }
+      { id: '1', name: 'Card 1', description: 'Desc', enabled: true, ntiMarkets: [], readinessLevel: '5', streams: [{ name: 'TestStream', startDate: '2025-01-01', endDate: activeEndDate }] }
     ];
 
     global.fetch = jest.fn((url) => {
       if (url.includes('/api/v1/streams')) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream', startDate: '2025-01-01', endDate: '2025-12-31' }] }),
+          json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream', startDate: '2025-01-01', endDate: activeEndDate }] }),
         });
       }
       if (url.endsWith('/streams/nti-markets')) {
@@ -2644,7 +2742,7 @@ describe('TrackerPage - Финальное покрытие (последние 
   test('покрывает setSelectedStreams при удалении', async () => {
     global.fetch = jest.fn((url) => {
       if (url.includes('/api/v1/streams')) {
-        return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream1', startDate: '2025-01-01', endDate: '2025-12-31' }] }) });
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream1', startDate: '2025-01-01', endDate: activeEndDate }] }) });
       }
       if (url.endsWith('/streams/nti-markets')) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
@@ -2699,7 +2797,7 @@ describe('TrackerPage - Дополнительное покрытие до 80%',
       ntiMarkets: [{ displayName: 'Market1' }],
       readinessLevel: '5',
       userId: 'user1',
-      streams: [{ id: 'stream1', name: 'Stream1', startDate: '2025-01-01', endDate: '2025-12-31' }],
+      streams: [{ id: 'stream1', name: 'Stream1', startDate: '2025-01-01', endDate: activeEndDate }],
     };
 
     global.fetch = jest.fn((url) => {
@@ -2709,7 +2807,7 @@ describe('TrackerPage - Дополнительное покрытие до 80%',
       if (url.includes('/api/v1/streams')) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ content: [{ id: 'stream1', name: 'Stream1', startDate: '2025-01-01', endDate: '2025-12-31' }] }),
+          json: () => Promise.resolve({ content: [{ id: 'stream1', name: 'Stream1', startDate: '2025-01-01', endDate: activeEndDate }] }),
         });
       }
       if (url.endsWith('/streams/nti-markets')) {
@@ -2745,7 +2843,7 @@ describe('TrackerPage - Дополнительное покрытие до 80%',
       if (url.includes('/api/v1/streams')) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream', startDate: '2025-01-01', endDate: '2025-12-31' }] }),
+          json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream', startDate: '2025-01-01', endDate: activeEndDate }] }),
         });
       }
       if (url.endsWith('/streams/nti-markets')) {
@@ -2781,7 +2879,7 @@ describe('TrackerPage - Дополнительное покрытие до 80%',
       if (url.includes('/api/v1/streams')) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream', startDate: '2025-01-01', endDate: '2025-12-31' }] }),
+          json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream', startDate: '2025-01-01', endDate: activeEndDate }] }),
         });
       }
       if (url.endsWith('/streams/nti-markets')) {
@@ -2814,7 +2912,7 @@ describe('TrackerPage - Дополнительное покрытие до 80%',
       if (url.includes('/api/v1/streams')) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream', startDate: '2025-01-01', endDate: '2025-12-31' }] }),
+          json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream', startDate: '2025-01-01', endDate: activeEndDate }] }),
         });
       }
       if (url.endsWith('/streams/nti-markets')) {
@@ -2851,7 +2949,7 @@ describe('TrackerPage - Дополнительное покрытие до 80%',
       if (url.includes('/api/v1/streams')) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream', startDate: '2025-01-01', endDate: '2025-12-31' }] }),
+          json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream', startDate: '2025-01-01', endDate: activeEndDate }] }),
         });
       }
       if (url.endsWith('/streams/nti-markets')) {
@@ -2900,14 +2998,14 @@ describe('TrackerPage - Дополнительное покрытие до 80%',
       ntiMarkets: [{ displayName: 'Market1' }],
       readinessLevel: '5',
       userId: 'user1',
-      streams: [{ name: 'Stream1', startDate: '2025-01-01', endDate: '2025-12-31' }],
+      streams: [{ name: 'Stream1', startDate: '2025-01-01', endDate: activeEndDate }],
     };
 
     global.fetch = jest.fn((url) => {
       if (url.includes('/api/v1/streams')) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream1', startDate: '2025-01-01', endDate: '2025-12-31' }] }),
+          json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream1', startDate: '2025-01-01', endDate: activeEndDate }] }),
         });
       }
       if (url.endsWith('/streams/nti-markets')) {
@@ -2954,14 +3052,14 @@ describe('TrackerPage - Дополнительное покрытие до 80%',
       ntiMarkets: [{ displayName: 'Market1' }],
       readinessLevel: '5',
       userId: 'user1',
-      streams: [{ name: 'Stream1', startDate: '2025-01-01', endDate: '2025-12-31' }],
+      streams: [{ name: 'Stream1', startDate: '2025-01-01', endDate: activeEndDate }],
     };
 
     global.fetch = jest.fn((url) => {
       if (url.includes('/api/v1/streams')) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream1', startDate: '2025-01-01', endDate: '2025-12-31' }] }),
+          json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream1', startDate: '2025-01-01', endDate: activeEndDate }] }),
         });
       }
       if (url.endsWith('/streams/nti-markets')) {
@@ -3005,7 +3103,7 @@ describe('TrackerPage - Дополнительное покрытие до 80%',
       if (url.includes('/api/v1/streams')) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream', startDate: '2025-01-01', endDate: '2025-12-31' }] }),
+          json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream', startDate: '2025-01-01', endDate: activeEndDate }] }),
         });
       }
       if (url.endsWith('/streams/nti-markets')) {
@@ -3043,7 +3141,7 @@ describe('TrackerPage - Дополнительное покрытие до 80%',
       if (url.includes('/api/v1/streams')) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream', startDate: '2025-01-01', endDate: '2025-12-31' }] }),
+          json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream', startDate: '2025-01-01', endDate: activeEndDate }] }),
         });
       }
       if (url.endsWith('/streams/nti-markets')) {
@@ -3081,7 +3179,7 @@ describe('TrackerPage - Дополнительное покрытие до 80%',
         ntiMarkets: [{ displayName: 'Market1' }],
         readinessLevel: '5',
         userId: 'user1',
-        streams: [{ name: 'Stream1', startDate: '2025-01-01', endDate: '2025-12-31' }],
+        streams: [{ name: 'Stream1', startDate: '2025-01-01', endDate: activeEndDate }],
       },
     ];
 
@@ -3089,7 +3187,7 @@ describe('TrackerPage - Дополнительное покрытие до 80%',
       if (url.includes('/api/v1/streams')) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream1', startDate: '2025-01-01', endDate: '2025-12-31' }] }),
+          json: () => Promise.resolve({ content: [{ id: '1', name: 'Stream1', startDate: '2025-01-01', endDate: activeEndDate }] }),
         });
       }
       if (url.endsWith('/streams/nti-markets')) {

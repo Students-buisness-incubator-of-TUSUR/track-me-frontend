@@ -1,6 +1,7 @@
 import React, {useState} from 'react';
 import './Registration.css';
 import axios from 'axios';
+import { getBackendUri } from "../../utils/runtime-env";
 
 const Registration = () => {
     const [form, setForm] = useState({
@@ -14,7 +15,8 @@ const Registration = () => {
     });
     const [selectedFile, setSelectedFile] = useState(null);
     const [previewPhoto, setPreviewPhoto] = useState(null);
-    const backendHost = (process.env.REACT_APP_BACKEND_URI || 'http://localhost:8080') + '/backend';
+    const [consents, setConsents] = useState({ policy: false, personalData: false });
+    const backendHost = (getBackendUri() || 'http://localhost:8080') + '/backend';
 
     const handleChange = (e) => {
         setForm({...form, [e.target.name]: e.target.value});
@@ -56,6 +58,8 @@ const Registration = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        if (!consents.policy || !consents.personalData) return;
 
         if (form.password !== form.confirmPassword) {
             alert('Пароли не совпадают!');
@@ -207,6 +211,27 @@ const Registration = () => {
                         accept="image/*"
                     />
                 </div>
+
+                <fieldset className="registration-consents" aria-label="Согласия">
+                    <label className="registration-consent">
+                        <input
+                            type="checkbox"
+                            checked={consents.policy}
+                            onChange={(event) => setConsents((previous) => ({...previous, policy: event.target.checked}))}
+                            required
+                        />
+                        <span>Я ознакомился с политикой в отношении обработки данных.</span>
+                    </label>
+                    <label className="registration-consent">
+                        <input
+                            type="checkbox"
+                            checked={consents.personalData}
+                            onChange={(event) => setConsents((previous) => ({...previous, personalData: event.target.checked}))}
+                            required
+                        />
+                        <span>Я даю согласие на обработку персональных данных.</span>
+                    </label>
+                </fieldset>
 
                 <button type="submit" className="register-button">Зарегистрироваться</button>
             </form>

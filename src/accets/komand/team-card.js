@@ -992,9 +992,8 @@ const checkNtiMarketsMatchWithStream = (streamId, marketIds) => {
               <div className="team-card_field">
   <p>Трекер:</p>
   {isEditing && role !== "TRACKER" ? (
-    <div className="check-box_container team-card_field-nti-checkbox">
-      <div 
-  className={`check-box_container team-card_field-nti-checkbox ${!editedData.username ? 'placeholder' : ''}`}
+    <div
+  className={`team-card_tracker-select ${!editedData.username ? 'placeholder' : ''}`}
   onClick={() => setIsTrackerDropdownOpen(!isTrackerDropdownOpen)}
   onKeyDown={(e) => {
     if (e.key === 'Enter' || e.key === ' ') {
@@ -1008,7 +1007,7 @@ const checkNtiMarketsMatchWithStream = (streamId, marketIds) => {
   aria-haspopup="listbox"
 >
         <div 
-    className="check-box_button" 
+    className="check-box_button team-card_tracker-select-value"
     style={{ 
         color: 'rgba(0, 0, 0, 1)',
         backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'16\' height=\'16\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%23666\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3E%3Cpolyline points=\'6 9 12 15 18 9\'%3E%3C/polyline%3E%3C/svg%3E")',
@@ -1021,8 +1020,6 @@ const checkNtiMarketsMatchWithStream = (streamId, marketIds) => {
         ? trackers.find(t => t.username === editedData.username)?.fullName || editedData.username
         : "Выберите трекера"}
 </div>
-      </div>
-      
       {isTrackerDropdownOpen && (
         <div className="team-card_field-select-dropdown">
           <div className="team-card_field-select-search">

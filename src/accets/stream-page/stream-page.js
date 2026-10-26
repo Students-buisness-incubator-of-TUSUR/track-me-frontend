@@ -2,11 +2,13 @@ import {useCallback, useEffect, useState} from 'react';
 import {Link} from "react-router-dom";
 import axios from 'axios';
 import './stream-page.css';
+import { getStreamStatus } from './stream-status';
 import StreamPlaceholder from "./Заглушка для потока в TrackMe.png";
 import { getCsrfConfig } from '../../utils/csrf-utils'; // Импортируем функцию для CSRF конфигурации
 // import LoginService from '../../services/login-service'; // Импортируем сервис для логина
 import Header from '../header/header';
 import { useGetUserInfo } from '../../services/util';
+import { getBackendUri } from "../../utils/runtime-env";
 
 export default function Stream() {
     const [isVisible, setIsVisible] = useState(false);
@@ -35,7 +37,7 @@ export default function Stream() {
     let today = new Date();
     const [imageUrls, setImageUrls] = useState({});
     let year = today.getFullYear();
-    const backendHost = (process.env.REACT_APP_BACKEND_URI || 'http://localhost:8080') + '/backend';
+    const backendHost = (getBackendUri() || 'http://localhost:8080') + '/backend';
     const numberOfCheckboxes = year - 2015;
 const [userRole, setUserRole] = useState('');
     // Убираем использование и проверку токена
@@ -569,10 +571,13 @@ const [userRole, setUserRole] = useState('');
                 </div>
             )}
             <main className="Stream-main">
-                {visibleCards.map(card => (
+                {visibleCards.map(card => {
+                    const status = getStreamStatus(card.startDate, card.endDate);
+                    return (
                     <Link to="/team-cards" key={card.id} onClick={() => perehod(card)}
-                          className="Stream-card">
+                          className={`Stream-card Stream-card--${status.key}`}>
                         <div className="Stream-card-pic">
+                            <span className="Stream-card-status">{status.label}</span>
                             <img 
                                 src={imageUrls[card.id] || StreamPlaceholder} 
                                 alt=""
@@ -588,7 +593,8 @@ const [userRole, setUserRole] = useState('');
                               className="Stream-edit-link">редактировать</Link>
                     </Link>
 
-                ))}
+                );
+                })}
             </main>
             <footer className="Stream-footer">
                 <div className="Stream-footer-butts">

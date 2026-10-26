@@ -195,6 +195,40 @@ describe('useTrackerList', () => {
     );
   });
 
+  it('блокирует трекера с невалидным username и обновляет список', async () => {
+    const username = 'Иван Иванов&?';
+    isValidUsername.mockReturnValue(false);
+    global.fetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          content: [{ username, enabled: true }],
+          page: { totalPages: 1, totalElements: 1 },
+        }),
+      })
+      .mockResolvedValueOnce({ ok: true })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          content: [{ username, enabled: false }],
+          page: { totalPages: 1, totalElements: 1 },
+        }),
+      });
+
+    const { result } = renderHook(() => useTrackerList(endpoint));
+    await waitFor(() => expect(result.current.trackers).toHaveLength(1));
+    await act(async () => {
+      await result.current.toggleUserLock(username);
+    });
+
+    const actionUrl = new URL(global.fetch.mock.calls[1][0]);
+    expect(actionUrl.pathname).toContain('/api/v1/users/disable');
+    expect(actionUrl.searchParams.get('username')).toBe(username);
+    expect(result.current.trackers[0].enabled).toBe(false);
+    expect(isValidUsername).not.toHaveBeenCalled();
+    expect(global.fetch).toHaveBeenCalledTimes(3);
+  });
+
   it('toggleUserLock разблокирует пользователя (showLockedOnly=true)', async () => {
     global.fetch
       .mockImplementationOnce(() =>
@@ -410,6 +444,50 @@ describe('useTrackerList', () => {
       expect(result.current.showDeleteConfirm).toBe(false);
       expect(result.current.userToDelete).toBeNull();
     });
+  });
+
+  it('удаляет трекера с невалидным username и обновляет список', async () => {
+    const username = 'Иван Иванов&?';
+    isValidUsername.mockReturnValue(false);
+    global.fetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          content: [{ username, enabled: true }],
+          page: { totalPages: 1, totalElements: 1 },
+        }),
+      })
+      .mockResolvedValueOnce({ ok: true })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({
+          content: [],
+          page: { totalPages: 1, totalElements: 0 },
+        }),
+      });
+    fetchUserTeams.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve([]),
+    });
+
+    const { result } = renderHook(() => useTrackerList(endpoint));
+    await waitFor(() => expect(result.current.trackers).toHaveLength(1));
+    await act(async () => {
+      await result.current.handleDeleteClick(username);
+    });
+    expect(fetchUserTeams).toHaveBeenCalledWith(username);
+    expect(result.current.showDeleteConfirm).toBe(true);
+    await act(async () => {
+      await result.current.confirmDeleteUser();
+    });
+
+    const actionUrl = new URL(global.fetch.mock.calls[1][0]);
+    expect(actionUrl.pathname).toContain('/api/v1/users');
+    expect(actionUrl.searchParams.get('username')).toBe(username);
+    expect(global.fetch.mock.calls[1][1].method).toBe('DELETE');
+    expect(result.current.trackers).toEqual([]);
+    expect(isValidUsername).not.toHaveBeenCalled();
+    expect(global.fetch).toHaveBeenCalledTimes(3);
   });
 
   it('confirmDeleteUser не делает ничего если userToDelete null', async () => {

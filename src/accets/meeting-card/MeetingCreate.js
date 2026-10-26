@@ -5,8 +5,9 @@ import { getCsrfConfigForFetch } from "../../utils/csrf-utils";
 import { validateMeetingWeekLimit } from "../../utils/date-utils";
 import CustomDateTimePicker from './CustomDateTimePicker';
 import { adminRoleName, superadminRoleName } from "../../services/constants";
-const backendHost = (process.env.REACT_APP_BACKEND_URI || 'http://localhost:8080') + '/meeting';
-const API_HOST = (process.env.REACT_APP_BACKEND_URI || 'http://localhost:8080') + '/backend';
+import { getBackendUri } from "../../utils/runtime-env";
+const backendHost = (getBackendUri() || 'http://localhost:8080') + '/meeting';
+const API_HOST = (getBackendUri() || 'http://localhost:8080') + '/backend';
 
 const MeetingCreate = ({ onClose, teamId, userRole }) => {
     const navigate = useNavigate();

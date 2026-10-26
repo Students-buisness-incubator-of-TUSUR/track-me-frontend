@@ -3,6 +3,7 @@ import {useLocation, useNavigate} from "react-router-dom";
 import "../login-recovery/login-recovery.css"; // Подключаем стили
 import eyeOpen from "./Eye-open.png"; // Путь может потребовать корректировки
 import eyeClosed from "./Eye-closed.png";
+import { getBackendUri } from "../../utils/runtime-env";
 
 const LoginRecovery2 = () => {
     const [password, setPassword] = useState("");
@@ -16,7 +17,7 @@ const LoginRecovery2 = () => {
     const queryParams = new URLSearchParams(search);
     const token = queryParams.get("token");
 
-    const backendHost = (process.env.REACT_APP_BACKEND_URI || "http://localhost:8080") + '/backend';
+    const backendHost = (getBackendUri() || "http://localhost:8080") + '/backend';
 
     const handleSubmit = async (e) => {
         e.preventDefault();

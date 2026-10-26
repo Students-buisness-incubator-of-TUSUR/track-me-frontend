@@ -1,0 +1,114 @@
+name: Deploy to PROD
+
+# Релиз фронтенда на prod = публикация GitHub Release с тегом vX.Y.Z (образ :vX.Y.Z собирает build-artifacts
+# из тега на main). Выкатка идёт через окружение `production` с обязательным ручным апрувом.
+# workflow_dispatch со входом tag — для повторной выкатки/отката на любой релизный тег.
+#
+# Обновляется только сервис trackme-frontend в compose-проекте track-me-prod, который разворачивает
+# монорепо track-me (docker/docker-compose.prod.yaml и .env уже должны лежать в ~/track-me-prod).
+
+on:
+  release:
+    types: [ published ]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Релизный тег vX.Y.Z для выкатки/отката'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  packages: read
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    steps:
+      - name: Resolve image reference
+        id: image
+        env:
+          EVENT: ${{ github.event_name }}
+          INPUT_TAG: ${{ inputs.tag }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          if [[ "$EVENT" == "workflow_dispatch" ]]; then
+            TAG="$INPUT_TAG"
+          else
+            TAG="$RELEASE_TAG"
+          fi
+          # На prod выкатываем только неизменяемые релизные теги vX.Y.Z
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+            echo "Ожидался релизный тег вида vX.Y.Z, получено: '$TAG'" >&2
+            exit 1
+          fi
+          echo "ref=ghcr.io/${GITHUB_REPOSITORY,,}:$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy frontend to PROD
+        uses: appleboy/ssh-action@v1
+        env:
+          FRONTEND_IMAGE: ${{ steps.image.outputs.ref }}
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          host: ${{ secrets.SBI_SSH_HOST }}
+          username: ${{ secrets.SBI_SSH_USERNAME }}
+          key: ${{ secrets.SBI_SSH_PRIVATE_KEY }}
+          proxy_host: bastion.tusur.ru
+          proxy_username: ${{ secrets.SBI_SSH_USERNAME }}
+          proxy_key: ${{ secrets.SBI_SSH_PRIVATE_KEY }}
+          envs: FRONTEND_IMAGE,GHCR_USER,GHCR_TOKEN
+          script: |
+            set -euo pipefail
+            cd "$HOME/track-me-prod"
+
+            if [ ! -f docker/docker-compose.prod.yaml ] || [ ! -f .env ]; then
+              echo "В ~/track-me-prod нет docker/docker-compose.prod.yaml или .env — сначала разверните prod из монорепо track-me" >&2
+              exit 1
+            fi
+
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
+
+            # Прописать образ фронтенда в .env (идемпотентно, права на .env сохраняем)
+            grep -v '^FRONTEND_IMAGE=' .env > .env.tmp || true
+            cp .env.tmp .env
+            rm -f .env.tmp
+            printf 'FRONTEND_IMAGE=%s\n' "$FRONTEND_IMAGE" >> .env
+
+            compose() { docker compose -p track-me-prod --project-directory . -f docker/docker-compose.prod.yaml "$@"; }
+            compose pull trackme-frontend
+            # --no-deps: остальные сервисы prod не трогаем
+            compose up -d --no-deps trackme-frontend
+            docker image prune -f
+
+      - name: Healthcheck
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SBI_SSH_HOST }}
+          username: ${{ secrets.SBI_SSH_USERNAME }}
+          key: ${{ secrets.SBI_SSH_PRIVATE_KEY }}
+          proxy_host: bastion.tusur.ru
+          proxy_username: ${{ secrets.SBI_SSH_USERNAME }}
+          proxy_key: ${{ secrets.SBI_SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+            cd "$HOME/track-me-prod"
+            for i in $(seq 1 24); do
+              if curl -sf http://127.0.0.1:13000/ > /dev/null; then
+                echo "Frontend is up"
+                # Проверяем, что runtime-конфиг подхватил адрес API из .env
+                curl -sf http://127.0.0.1:13000/env-config.js
+                exit 0
+              fi
+              echo "Waiting for frontend... ($i/24)"
+              sleep 5
+            done
+            echo "Frontend failed healthcheck" >&2
+            docker compose -p track-me-prod --project-directory . -f docker/docker-compose.prod.yaml logs --tail=50 trackme-frontend >&2 || true
+            exit 1

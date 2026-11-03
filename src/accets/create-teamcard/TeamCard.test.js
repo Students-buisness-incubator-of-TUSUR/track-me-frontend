@@ -114,6 +114,23 @@ const router = createBrowserRouter(
 
 const renderComponent = () => render(<RouterProvider router={router} />);
 
+test.each(['ADMIN', 'SUPER_ADMIN'])('requires a stream before %s can save a new team', async role => {
+  const defaultFetch = global.fetch;
+  global.fetch = jest.fn((url, options) => {
+    if (url.includes('/account/info')) return Promise.resolve({ ok: true, json: async () => ({ roles: [role], fullName: 'Admin' }) });
+    return defaultFetch(url, options);
+  });
+  renderComponent();
+  const button = await screen.findByRole('button', { name: 'Создать' });
+  expect(button).toBeDisabled();
+  fireEvent.click(button);
+  expect(global.fetch.mock.calls.some(([url, options]) => url.includes('/team-card?') && options?.method === 'POST')).toBe(false);
+  fireEvent.click(screen.getByText('Поток', { selector: '.create-dropdown-toggle' }));
+  const streamOption = await screen.findByText('Stream 1');
+  fireEvent.click(streamOption.closest('.create-checkbox-item').querySelector('input[type="radio"]'));
+  expect(button).toBeEnabled();
+});
+
 describe("TeamCard — создание карточки команды", () => {
   it("рендерит поля ввода", async () => {
     renderComponent();
@@ -132,6 +149,9 @@ describe("TeamCard — создание карточки команды", () => 
 
   it("показывает ошибку, если поля не заполнены", async () => {
     renderComponent();
+    fireEvent.click(screen.getByText(/Поток/i, { selector: ".create-dropdown-toggle" }));
+    const streamOption = await screen.findByText('Stream 1');
+    fireEvent.click(streamOption.closest('.create-checkbox-item').querySelector('input[type="radio"]'));
     const createBtn = await screen.findByText(/Создать/i);
     fireEvent.click(createBtn);
     await waitFor(() => {
@@ -1017,6 +1037,9 @@ describe('Final coverage for team-card-create.js', () => {
 
   test('covers close error message click', async () => {
     renderComponent();
+    fireEvent.click(screen.getByText('Поток', { selector: '.create-dropdown-toggle' }));
+    const streamOption = await screen.findByText('Stream 1');
+    fireEvent.click(streamOption.closest('.create-checkbox-item').querySelector('input[type="radio"]'));
     fireEvent.click(screen.getByRole('button', { name: /создать/i }));
     await waitFor(() => {
       expect(screen.getByText(/Название команды обязательно/i)).toBeInTheDocument();
@@ -1100,6 +1123,9 @@ describe('Final missing coverage for create', () => {
 
   test('covers setError("") after creating error and clicking error button', async () => {
     renderComponent();
+    fireEvent.click(screen.getByText(/Поток/i, { selector: ".create-dropdown-toggle" }));
+    const streamOption = await screen.findByText('Stream 1');
+    fireEvent.click(streamOption.closest('.create-checkbox-item').querySelector('input[type="radio"]'));
     const createBtn = await screen.findByText(/Создать/i);
     fireEvent.click(createBtn);
     await waitFor(() => {

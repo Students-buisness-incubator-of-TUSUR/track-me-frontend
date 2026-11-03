@@ -32,13 +32,6 @@ const [isTrackerDropdownOpen, setIsTrackerDropdownOpen] = useState(false);
         streamId: null
     });
     const [isLoading, setIsLoading] = useState(false);
-    useEffect(() => {
-        if (!formData.streamId) {
-            setError(previous => previous || "Привяжите к потоку");
-            return;
-        }
-        setError(previous => previous === "Привяжите к потоку" ? "" : previous);
-    }, [formData.streamId]);
     const filteredTrackers = useMemo(() => {
     let filtered = trackers;
     

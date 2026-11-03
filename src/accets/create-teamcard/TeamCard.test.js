@@ -123,12 +123,22 @@ test.each(['ADMIN', 'SUPER_ADMIN'])('requires a stream before %s can save a new 
   renderComponent();
   const button = await screen.findByRole('button', { name: 'Создать' });
   expect(button).toBeDisabled();
+  expect(screen.queryByText('Привяжите к потоку')).not.toBeInTheDocument();
+  expect(button).toHaveStyle({ pointerEvents: 'none' });
+  fireEvent.pointerDown(button.parentElement);
+  expect(screen.getByText('Привяжите к потоку')).toHaveClass('error-message');
+  expect(button).toBeDisabled();
   fireEvent.click(button);
   expect(global.fetch.mock.calls.some(([url, options]) => url.includes('/team-card?') && options?.method === 'POST')).toBe(false);
+  fireEvent.click(screen.getByText('Привяжите к потоку'));
+  expect(screen.queryByText('Привяжите к потоку')).not.toBeInTheDocument();
+  fireEvent.pointerDown(button.parentElement);
+  expect(screen.getByText('Привяжите к потоку')).toBeInTheDocument();
   fireEvent.click(screen.getByText('Поток', { selector: '.create-dropdown-toggle' }));
   const streamOption = await screen.findByText('Stream 1');
   fireEvent.click(streamOption.closest('.create-checkbox-item').querySelector('input[type="radio"]'));
   expect(button).toBeEnabled();
+  expect(screen.queryByText('Привяжите к потоку')).not.toBeInTheDocument();
 });
 
 describe("TeamCard — создание карточки команды", () => {

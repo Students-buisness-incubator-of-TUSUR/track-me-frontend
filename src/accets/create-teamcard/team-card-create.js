@@ -32,6 +32,11 @@ const [isTrackerDropdownOpen, setIsTrackerDropdownOpen] = useState(false);
         streamId: null
     });
     const [isLoading, setIsLoading] = useState(false);
+    useEffect(() => {
+        if (formData.streamId) {
+            setError(previous => previous === "Привяжите к потоку" ? "" : previous);
+        }
+    }, [formData.streamId]);
     const filteredTrackers = useMemo(() => {
     let filtered = trackers;
     
@@ -562,12 +567,15 @@ useEffect(() => {
                 </button>
             )}
 
-            <div className="create-button-container">
+            <div className="create-button-container" onPointerDown={() => {
+                if (!formData.streamId) setError("Привяжите к потоку");
+            }}>
                 <button
                     className="create-button"
                     onClick={handleCreate}
                     
                     disabled={isLoading || !formData.streamId}
+                    style={!formData.streamId ? {pointerEvents: "none"} : undefined}
                 >
                     
                     {isLoading ? "Создание..." : "Создать"}

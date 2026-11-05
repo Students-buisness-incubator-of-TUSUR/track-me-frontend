@@ -1,7 +1,7 @@
 /* global globalThis */
 import {useCallback, useEffect, useMemo, useState} from "react";
 import "./TrackerPage.css";
-import { useSearchParams } from "react-router-dom";
+import { useLocation, useSearchParams } from "react-router-dom";
 import {useNavigate} from "react-router-dom";
 import StreamPlaceholder from './Заглушка для потока в TrackMe.png';
 import { getCsrfConfigForFetch } from "../../utils/csrf-utils";
@@ -10,12 +10,13 @@ import { useGetUserInfo } from "../../services/util";
 import { getBackendUri } from "../../utils/runtime-env";
 import { orderTrackerTeams } from "./trackerTeamOrder";
 import TrackerInactiveSwitch from "./TrackerInactiveSwitch";
+import { getPrimaryTeamStream, getTeamCardSortQuery } from "../../services/teamCardOrder";
 
 const isTrackerScopedView = (role, selectedUsername) =>
     role === "TRACKER" ||
     ((role === "ADMIN" || role === "SUPER_ADMIN") && Boolean(selectedUsername));
 
-function TrackerPage() {
+function TrackerPage({ showAllCards: showAllCardsProp = false }) {
     const [cards, setCards] = useState([]);
     const [streamImages, setStreamImages] = useState({});
     const [streamName, setStreamName] = useState("");
@@ -34,9 +35,12 @@ function TrackerPage() {
     const [isRestoring, setIsRestoring] = useState(true);
     const restoredPage = globalThis.location.state?.restoredPage;
     const [searchParams] = useSearchParams();
-const showAllCards = globalThis.location.pathname === "/all-team-cards";
+const location = useLocation();
+const showAllCards = showAllCardsProp || location.pathname === "/all-team-cards";
 const selectedTrackerUsername = searchParams.get("username");
 const trackerScopedView = isTrackerScopedView(userRole, selectedTrackerUsername);
+const allTeamsView = showAllCards && !trackerScopedView &&
+    (userRole === "ADMIN" || userRole === "SUPER_ADMIN");
 const [showMyTeamsOnly, setShowMyTeamsOnly] = useState(false);
 const [showInactiveStreams, setShowInactiveStreams] = useState(false);
 const [page, setPage] = useState(0);
@@ -174,7 +178,7 @@ const [currentFilters, setCurrentFilters] = useState([]);
             : `${backendHost}/api/v1/team-cards`;
     }, [userRole, backendHost]);
 
-    const sortParams = "sort=enabled,desc&sort=streams.startDate,desc&sort=averageGrade,desc&sort=name,asc";
+    const sortParams = getTeamCardSortQuery(allTeamsView);
 
     // Функция для запроса карточек с заданными фильтрами
    const fetchCards = useCallback((filters = [], searchParams) => {
@@ -213,7 +217,7 @@ const [currentFilters, setCurrentFilters] = useState([]);
                     ? Array.from(new Map(pageCards.map((card) => [card.id, card])).values())
                     : pageCards;
                 const mappedCards = cardsArray.map(card => ({ ...card, _showFull: false }));
-                if (!trackerView) {
+                if (!trackerView && !allTeamsView) {
                     mappedCards.sort((a, b) => {
                         if (a.passive && !b.passive) return 1;
                         if (!a.passive && b.passive) return -1;
@@ -231,7 +235,7 @@ const [currentFilters, setCurrentFilters] = useState([]);
             console.error("Error fetching cards:", err);
             setError(`Ошибка при загрузке карточек: ${err.message}`);
         });
-}, [userRole, username, buildTeamCardFilters, getTeamCardsEndpoint, page, trackerScopedView]);
+}, [userRole, username, buildTeamCardFilters, getTeamCardsEndpoint, page, trackerScopedView, allTeamsView, sortParams]);
 
  // ✅ streamName в зависимости
 
@@ -445,6 +449,7 @@ const options = {
         };
 
         return visibleCards.map((card) => {
+            const cardStream = allTeamsView ? getPrimaryTeamStream(card) : card.streams?.[0];
             let statusClass = "";
             let statusText = "Активно";
             if (!card.enabled) {
@@ -561,7 +566,7 @@ const options = {
                                     </div>
                                     <div className="text-container project-flow">
                                         <p>
-  Поток: {card.streams?.[0]?.name || "Неизвестен"}: {card.streams?.[0]?.startDate || "?"} - {card.streams?.[0]?.endDate || "?"}
+  Поток: {cardStream?.name || "Неизвестен"}: {cardStream?.startDate || "?"} - {cardStream?.endDate || "?"}
 </p>
 
                                     </div>
@@ -685,7 +690,7 @@ const options = {
     useEffect(() => {
     const handleVisibilityChange = () => {
         if (document.visibilityState === 'visible' && userRole && username && streamName) {
-            fetchCards([], searchParams);
+            fetchCards(currentFilters, searchParams);
         }
     };
 
@@ -694,7 +699,7 @@ const options = {
     return () => {
         document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-}, [userRole, username, streamName, fetchCards, searchParams]);
+}, [userRole, username, streamName, fetchCards, searchParams, currentFilters]);
     
     useEffect(() => {
     const savedState = sessionStorage.getItem("trackerPageState");

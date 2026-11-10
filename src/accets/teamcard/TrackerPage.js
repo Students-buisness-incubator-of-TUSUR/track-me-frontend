@@ -16,6 +16,9 @@ const isTrackerScopedView = (role, selectedUsername) =>
     role === "TRACKER" ||
     ((role === "ADMIN" || role === "SUPER_ADMIN") && Boolean(selectedUsername));
 
+const isAllTeamsView = (showAllCards, trackerScopedView, role) =>
+    showAllCards && !trackerScopedView && (role === "ADMIN" || role === "SUPER_ADMIN");
+
 function TrackerPage({ showAllCards: showAllCardsProp = false }) {
     const [cards, setCards] = useState([]);
     const [streamImages, setStreamImages] = useState({});
@@ -39,8 +42,7 @@ const location = useLocation();
 const showAllCards = showAllCardsProp || location.pathname === "/all-team-cards";
 const selectedTrackerUsername = searchParams.get("username");
 const trackerScopedView = isTrackerScopedView(userRole, selectedTrackerUsername);
-const allTeamsView = showAllCards && !trackerScopedView &&
-    (userRole === "ADMIN" || userRole === "SUPER_ADMIN");
+const allTeamsView = isAllTeamsView(showAllCards, trackerScopedView, userRole);
 const [showMyTeamsOnly, setShowMyTeamsOnly] = useState(false);
 const [showInactiveStreams, setShowInactiveStreams] = useState(false);
 const [page, setPage] = useState(0);

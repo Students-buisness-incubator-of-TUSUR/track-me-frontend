@@ -10,5 +10,6 @@ export const getPrimaryTeamStream = (card) => [...(card.streams || [])].sort((fi
     if (firstDate !== secondDate) return firstDate > secondDate ? -1 : 1;
     const firstId = String(first.id || "");
     const secondId = String(second.id || "");
-    return firstId < secondId ? -1 : firstId > secondId ? 1 : 0;
+    if (firstId === secondId) return 0;
+    return firstId < secondId ? -1 : 1;
 })[0];

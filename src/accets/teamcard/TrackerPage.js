@@ -413,9 +413,7 @@ const options = {
     if (trackerScopedView) {
         filteredCards = trackerOrder.cards;
         if (!showInactiveStreams) {
-            filteredCards = filteredCards.filter((card) =>
-                Boolean(trackerOrder.activeStreamKey) && card._streamKey === trackerOrder.activeStreamKey
-            );
+            filteredCards = filteredCards.filter((card) => card._streamActive);
         }
     }
     const totalPagesToUse = trackerScopedView ? Math.max(1, Math.ceil(filteredCards.length / pageSize)) : totalPages;
@@ -451,7 +449,7 @@ const options = {
         };
 
         return visibleCards.map((card) => {
-            const cardStream = allTeamsView ? getPrimaryTeamStream(card) : card.streams?.[0];
+            const cardStream = card._primaryStream || (allTeamsView ? getPrimaryTeamStream(card) : card.streams?.[0]);
             let statusClass = "";
             let statusText = "Активно";
             if (!card.enabled) {

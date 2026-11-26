@@ -73,6 +73,21 @@ const mockReports = Array.from({ length: 30 }, (_, i) => ({
 
 describe('ReportPage Component', () => {
 
+  test.each([
+    [['ADMIN'], true],
+    [['SUPER_ADMIN'], true],
+    [['TRACKER'], false],
+  ])('shows weekly downloads to the allowed roles (%j)', (roles, allowed) => {
+    mockUseGetUserInfo.mockReturnValue({ roles, username: 'username12' });
+    render(<Router><ReportPage /></Router>);
+    const section = screen.queryByRole('region', { name: 'Еженедельные отчёты по командам' });
+    if (allowed) {
+      expect(section).toBeInTheDocument();
+    } else {
+      expect(section).not.toBeInTheDocument();
+    }
+  });
+
   test('isActive checkbox toggles correctly and triggers report reload', async () => {
   render(
     <Router>

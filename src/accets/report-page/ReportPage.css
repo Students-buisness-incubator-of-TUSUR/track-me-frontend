@@ -21,6 +21,51 @@
   background: #ede9fe;
 }
 
+.weekly-team-reports {
+  margin: 0 clamp(16px, 7vw, 100px) 16px;
+}
+
+.weekly-team-reports__controls,
+.weekly-team-reports__period {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.weekly-team-reports__period {
+  color: #44069a;
+  font-weight: 700;
+}
+
+.weekly-team-reports__period select {
+  border: 2px solid #44069a;
+  border-radius: 24px;
+  background: white;
+  color: #44069a;
+  padding: 9px 12px;
+  font: inherit;
+}
+
+.weekly-team-reports .report-btn {
+  padding: 9px 16px;
+  font-size: 16px;
+}
+
+.weekly-team-reports :disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.weekly-team-reports__notice {
+  display: block;
+  margin: 8px 0 0;
+}
+
+.weekly-team-reports__error {
+  color: #a02038;
+}
+
 /* фильтры */
 .report-filters {
   display: flex;

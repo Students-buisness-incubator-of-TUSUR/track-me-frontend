@@ -8,6 +8,8 @@ import IconClose from "./icon-close.png";
 import { fetchReportExcel, fetchReports, fetchStreams, fetchTrackers } from "../../services/requests";
 import { passiveTeamsLast } from "../../services/passiveTeamsLast";
 import { useGetUserInfo } from "../../services/util";
+import { adminRoleName, superadminRoleName } from "../../services/constants";
+import WeeklyTeamReports from "./WeeklyTeamReports";
 
 import Header from "../header/header";
 import PropTypes from "prop-types";
@@ -393,6 +395,8 @@ export default function ReportPage({ defaultIsActive = true }) {
 
           </div>
         </div>
+
+        {user.roles.some((role) => role === adminRoleName || role === superadminRoleName) && <WeeklyTeamReports />}
 
         {/* таблица */}
         <div className="report-table-container">

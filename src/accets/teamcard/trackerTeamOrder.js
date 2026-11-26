@@ -23,6 +23,34 @@ const compareNames = (first, second) => {
   });
 };
 
+const compareStreamSelection = (first, second, today) => {
+  const firstActive = isActiveStream(first, today);
+  const secondActive = isActiveStream(second, today);
+  const activeEndDateOrder = firstActive && secondActive
+    ? datePart(second.endDate).localeCompare(datePart(first.endDate)) : 0;
+  return Number(secondActive) - Number(firstActive) || activeEndDateOrder ||
+    datePart(second.startDate).localeCompare(datePart(first.startDate)) ||
+    compareNames(first.name, second.name) ||
+    streamKey(first).localeCompare(streamKey(second));
+};
+
+const compareTeamDetails = (first, second) =>
+  Number(second.card.averageGrade ?? 0) - Number(first.card.averageGrade ?? 0) ||
+  compareNames(first.card.name, second.card.name) ||
+  String(first.card.id || "").localeCompare(String(second.card.id || ""));
+
+const compareActiveTeams = (first, second) =>
+  Number(first.card.passive === true) - Number(second.card.passive === true) ||
+  datePart(second.stream.endDate).localeCompare(datePart(first.stream.endDate)) ||
+  compareTeamDetails(first, second);
+
+const compareInactiveTeams = (first, second) =>
+  datePart(second.stream?.startDate).localeCompare(datePart(first.stream?.startDate)) ||
+  compareNames(first.stream?.name, second.stream?.name) ||
+  streamKey(first.stream || {}).localeCompare(streamKey(second.stream || {})) ||
+  compareTeamDetails(first, second);
+
+/** Сначала обычные команды активных потоков, затем отчисленные и команды неактивных потоков. */
 export const orderTrackerTeams = (cards, streams, today) => {
   const catalog = new Map(streams.flatMap((stream) => [
     stream.id && [String(stream.id), stream],
@@ -34,50 +62,29 @@ export const orderTrackerTeams = (cards, streams, today) => {
       ...catalog.get(streamKey(stream)),
       ...stream,
     }));
-    teamStreams.sort((first, second) =>
-      Number(isActiveStream(second, today)) - Number(isActiveStream(first, today)) ||
-      datePart(second.startDate).localeCompare(datePart(first.startDate)) ||
-      compareNames(first.name, second.name)
-    );
-    return { card, stream: teamStreams[0] || null };
+    teamStreams.sort((first, second) => compareStreamSelection(first, second, today));
+    const stream = teamStreams[0] || null;
+    return { card, stream, active: Boolean(stream && isActiveStream(stream, today)) };
   });
 
   const activeStreams = entries
+    .filter(({ active }) => active)
     .map(({ stream }) => stream)
-    .filter((stream) => stream && isActiveStream(stream, today));
-  activeStreams.sort((first, second) =>
-    datePart(second.startDate).localeCompare(datePart(first.startDate)) ||
-    compareNames(first.name, second.name)
-  );
+    .sort((first, second) => compareStreamSelection(first, second, today));
   const activeStreamKey = activeStreams.length ? streamKey(activeStreams[0]) : null;
 
-  entries.sort((first, second) => {
-    const firstPrimary = activeStreamKey && streamKey(first.stream || {}) === activeStreamKey;
-    const secondPrimary = activeStreamKey && streamKey(second.stream || {}) === activeStreamKey;
-    if (firstPrimary !== secondPrimary) return firstPrimary ? -1 : 1;
-
-    const firstActive = first.stream && isActiveStream(first.stream, today);
-    const secondActive = second.stream && isActiveStream(second.stream, today);
-    if (firstActive !== secondActive) return firstActive ? -1 : 1;
-
-    const streamDateOrder = datePart(second.stream?.startDate).localeCompare(datePart(first.stream?.startDate));
-    if (streamDateOrder) return streamDateOrder;
-
-    const streamNameOrder = compareNames(first.stream?.name, second.stream?.name);
-    if (streamNameOrder) return streamNameOrder;
-
-    const streamIdOrder = streamKey(first.stream || {}).localeCompare(streamKey(second.stream || {}));
-    if (streamIdOrder) return streamIdOrder;
-
-    const ratingOrder = Number(second.card.averageGrade ?? 0) - Number(first.card.averageGrade ?? 0);
-    return ratingOrder || compareNames(first.card.name, second.card.name);
-  });
+  entries.sort((first, second) =>
+    Number(second.active) - Number(first.active) ||
+    (first.active ? compareActiveTeams(first, second) : compareInactiveTeams(first, second))
+  );
 
   return {
     activeStreamKey,
-    cards: entries.map(({ card, stream }) => ({
+    cards: entries.map(({ card, stream, active }) => ({
       ...card,
       _streamKey: streamKey(stream || {}),
+      _streamActive: active,
+      _primaryStream: stream,
     })),
   };
 };

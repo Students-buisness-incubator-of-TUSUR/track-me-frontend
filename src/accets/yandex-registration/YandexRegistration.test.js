@@ -19,10 +19,12 @@ test('rejects privileged roles and malformed usernames', () => {
     expect(validateRegistration({ ...valid, role: 'SUPER_ADMIN', username: '@' })).toHaveProperty('role');
     expect(validateRegistration({ ...valid, username: 'a' })).toHaveProperty('username');
 });
-test('loads confirmed profile, strips @, requires all consents and submits with session CSRF', async () => {
+test.each(['yandex', 'google'])('completes %s registration and returns to the home page with social login', async provider => {
+    global.fetch = jest.fn().mockResolvedValueOnce(response({ ssoUri: 'http://localhost:9000' }))
+        .mockResolvedValueOnce(response({ pending: true, provider, email: 'test@example.com', csrfHeader: 'X-CSRF-TOKEN', csrfToken: 'csrf' }));
     global.fetch.mockResolvedValueOnce(response({ registered: true, message: 'Аккаунт ожидает активации' }));
     render(<YandexRegistration />);
-    await screen.findByText('test@yandex.ru');
+    await screen.findByText('test@example.com');
     const button = screen.getByRole('button', { name: 'Завершить регистрацию' });
     expect(button).toBeDisabled();
     expect(screen.getByLabelText('Роль')).toHaveValue('');
@@ -33,6 +35,7 @@ test('loads confirmed profile, strips @, requires all consents and submits with 
     expect(button).toBeEnabled();
     fireEvent.click(button);
     await screen.findByRole('heading', { name: 'Заявка принята' });
+    expect(screen.getByRole('link', { name: 'Вернуться на страницу входа' })).toHaveAttribute('href', '/');
     expect(global.fetch).toHaveBeenLastCalledWith('http://localhost:9000/client/social/registration', expect.objectContaining({
         credentials: 'include', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': 'csrf' }, body: JSON.stringify(valid),
     }));

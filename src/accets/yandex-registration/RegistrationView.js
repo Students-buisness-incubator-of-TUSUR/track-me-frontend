@@ -47,7 +47,7 @@ export default function RegistrationView({ profile, sso, values, errors, busy, m
                     <h2 id="next-steps-title">Что дальше</h2>
                     <ol><li>Администратор программы проверит заявку и подтвердит роль.</li><li>После активации аккаунта вы сможете войти через {provider}.</li></ol>
                 </section>
-                <a className="return-login" href={loginUri}>Вернуться на страницу входа</a>
+                <a className="return-login" href="/">Вернуться на страницу входа</a>
             </> : <>
                 <h1>Завершите регистрацию</h1>
                 {message && <output className="registration-notice">{message}</output>}

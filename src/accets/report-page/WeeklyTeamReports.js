@@ -62,7 +62,7 @@ export default function WeeklyTeamReports() {
     <section className="weekly-team-reports" aria-label="Еженедельные отчёты по командам">
       <div className="weekly-team-reports__controls">
         <label className="weekly-team-reports__period">
-          Период
+          <span>Период</span>
           <select value={period} disabled={Boolean(loadingReport)} onChange={(event) => {
             setPeriod(event.target.value);
             setNotice(null);
